@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  schemas   = ["induccion"]
+}
+
+model Usuario {
+  id                                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombreCompleto                     String    @map("nombre_completo") @db.VarChar(150)
+  tipoDocumento                      String    @default("CC") @map("tipo_documento") @db.VarChar(10)
+  numeroDocumento                    String    @unique @map("numero_documento") @db.VarChar(30)
+  correo                             String?   @db.VarChar(150)
+  telefono                           String?   @db.VarChar(30)
+  passwordHash                       String    @map("password_hash")
+  rol                                String    @db.VarChar(20)
+  estado                             String    @default("activo") @db.VarChar(20)
+  tieneExperienciaCobranzasDigitales Boolean?  @map("tiene_experiencia_cobranzas_digitales")
+  fechaRespuestaExperiencia          DateTime? @map("fecha_respuesta_experiencia") @db.Timestamptz(6)
+  debeCompletarDatos                 Boolean   @default(true) @map("debe_completar_datos")
+  fechaDatosCompletados              DateTime? @map("fecha_datos_completados") @db.Timestamptz(6)
+  debeCambiarPassword                Boolean   @default(true) @map("debe_cambiar_password")
+  creadoPor                          String?   @map("creado_por") @db.Uuid
+  fechaCreacion                      DateTime  @default(now()) @map("fecha_creacion") @db.Timestamptz(6)
+  fechaActualizacion                 DateTime  @default(now()) @map("fecha_actualizacion") @db.Timestamptz(6)
+  ultimoAcceso                       DateTime? @map("ultimo_acceso") @db.Timestamptz(6)
+  creador                            Usuario?  @relation("UsuarioCreador", fields: [creadoPor], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_usuarios_creado_por")
+  creados                            Usuario[] @relation("UsuarioCreador")
+
+  @@index([estado], map: "idx_usuarios_estado")
+  @@index([rol], map: "idx_usuarios_rol")
+  @@map("usuarios")
+  @@schema("induccion")
+}

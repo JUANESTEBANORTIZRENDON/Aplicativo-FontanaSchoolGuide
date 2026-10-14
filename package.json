@@ -3,21 +3,36 @@
   "private": true,
   "version": "2.0.0",
   "type": "module",
-  "main": "desktop/main.mjs",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
-    "check": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit",
-    "build": "tsc --noEmit && vite build",
+    "dev": "concurrently -k -n frontend,server \"vite --host 127.0.0.1 --open\" \"tsx watch server/server.ts\"",
+    "dev:frontend": "vite --host 127.0.0.1",
+    "dev:server": "tsx watch server/server.ts",
+    "check": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "build": "npm run prisma:generate && tsc --noEmit && vite build && tsc -p tsconfig.server.json",
+    "start": "node server-dist/server.js",
     "preview": "vite preview --host 127.0.0.1",
-    "desktop:compile": "tsc -p tsconfig.electron.json",
-    "desktop:dev": "npm run desktop:compile && node scripts/desktop-dev.mjs",
-    "desktop:build": "npm run build && npm run desktop:compile",
-    "desktop:start": "npm run desktop:build && node scripts/desktop-start.mjs"
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:studio": "prisma studio",
+    "admin:bootstrap": "tsx server/scripts/bootstrap-admin.ts"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "26.6.4",
-    "electron": "44.6.0",
+    "concurrently": "^9.2.1",
+    "prisma": "6.19.0",
+    "tsx": "^4.23.15",
     "typescript": "7.0.2",
     "vite": "8.3.3"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.0",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^18.0.6",
+    "express": "^5.2.1"
   }
 }
