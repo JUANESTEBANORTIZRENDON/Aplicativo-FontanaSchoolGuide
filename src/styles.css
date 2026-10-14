@@ -488,6 +488,14 @@ h4  {
 .story-card { position: relative; min-height: 320px; overflow: hidden; }
 .story-content { animation: appear .6s ease; }
 .story-number { color: var(--red); font-size: 12px; font-weight: 700; }
+.story-milestone {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--red);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
 .story-next { display: block; margin-top: 22px; }
 .story-curtain {
   position: absolute;
@@ -532,6 +540,23 @@ h4  {
 .story-card.is-open .story-curtain::before { transform: translateX(-102%); }
 .story-card.is-open .story-curtain::after { transform: translateX(102%); }
 .story-card.is-open .curtain-face { opacity: 0; }
+/* Las tarjetas abiertas comparten el papel crema y los acentos Fontana. */
+.story-grid .story-card.is-open {
+  background:
+    radial-gradient(ellipse at 100% 0%, #d4af3730, transparent 65%),
+    linear-gradient(145deg, #fffaf0, #f3e6cb);
+  border-color: #d4af3766;
+  box-shadow: inset 0 1px 0 #ffffffd9, inset 3px 0 0 #d4af3755, 0 10px 30px #78551e12;
+}
+.story-card .story-content h4 {
+  color: var(--red);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 25px;
+}
+.story-card .story-content p { color: var(--navy); }
+.story-card .story-content small { color: #626052; }
+.story-card .story-content a { color: var(--red); text-underline-offset: 3px; }
 .panel-footer  {
   grid-column: 1/-1;
   display: flex;

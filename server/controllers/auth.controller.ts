@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { Prisma } from '@prisma/client';
 import type { NextFunction, Request, Response } from 'express';
 import { usuarios, esAdministrador, rutaUsuario, usuarioPublico } from '../models/usuario.model.js';
 import { borrarSesion, crearSesion } from '../services/session.service.js';
@@ -71,49 +72,37 @@ export function logout(_request: Request, response: Response): void {
   response.status(204).end();
 }
 
-export async function cambiarPassword(request: Request, response: Response, next: NextFunction): Promise<void> {
-  const actual = request.body?.actual;
-  const nueva = request.body?.nueva;
-  if (typeof actual !== 'string' || typeof nueva !== 'string' || nueva.length < 10 || Buffer.byteLength(nueva, 'utf8') > 72) {
-    response.status(400).json({ message: 'La nueva contraseña debe tener al menos 10 caracteres y como máximo 72 bytes.' }); return;
-  }
-  try {
-    if (!await bcrypt.compare(actual, request.usuario!.passwordHash)) {
-      response.status(400).json({ message: 'La contraseña actual no coincide.' }); return;
-    }
-    const usuario = await usuarios.update({ where: { id: request.usuario!.id }, data: { passwordHash: await bcrypt.hash(nueva, 12), debeCambiarPassword: false, fechaActualizacion: new Date() } });
-    response.json({ usuario: serializar(usuario) });
-  } catch (error) { next(error); }
-}
-
 export async function completarDatos(request: Request, response: Response, next: NextFunction): Promise<void> {
   if (request.usuario!.rol !== 'asesor') { response.status(403).json({ message: 'Este formulario es para asesores.' }); return; }
-  const { correo, telefono, tipoDocumento, tieneExperienciaCobranzasDigitales } = request.body ?? {};
-  if (typeof tieneExperienciaCobranzasDigitales !== 'boolean') {
-    response.status(400).json({ message: 'Indica si tienes experiencia en cobranzas digitales.' }); return;
-  }
+  const { correo, telefono } = request.body ?? {};
   const email = texto(correo, 150);
   const phone = texto(telefono, 30);
-  const documentType = texto(tipoDocumento, 10) || 'CC';
-  if (email.length > 150 || phone.length > 30 || documentType.length > 10 || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
-    response.status(400).json({ message: 'Revisa el correo, teléfono y tipo de documento.' }); return;
+  if (!email || email.length > 150 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    response.status(400).json({ message: 'Ingresa un correo válido con @ y dominio, por ejemplo nombre@empresa.com.' }); return;
+  }
+  if (phone.length > 30) {
+    response.status(400).json({ message: 'El teléfono debe tener como máximo 30 caracteres.' }); return;
   }
   try {
     const usuario = await usuarios.update({
       where: { id: request.usuario!.id },
       data: {
-        correo: email || null,
+        correo: email,
         telefono: phone || null,
-        tipoDocumento: documentType,
-        tieneExperienciaCobranzasDigitales,
-        fechaRespuestaExperiencia: new Date(),
         debeCompletarDatos: false,
+        debeCambiarPassword: false,
         fechaDatosCompletados: new Date(),
         fechaActualizacion: new Date(),
       },
     });
     response.json({ usuario: serializar(usuario) });
-  } catch (error) { next(error); }
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      response.status(409).json({ message: 'Este correo ya está registrado en otra cuenta. Usa un correo diferente.' });
+      return;
+    }
+    next(error);
+  }
 }
 
 export { usuarioPublico };

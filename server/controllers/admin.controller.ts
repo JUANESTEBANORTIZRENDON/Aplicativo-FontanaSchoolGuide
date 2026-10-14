@@ -44,7 +44,7 @@ export async function crearAsesor(request: Request, response: Response, next: Ne
         rol: 'asesor',
         estado: 'activo',
         debeCompletarDatos: true,
-        debeCambiarPassword: true,
+        debeCambiarPassword: false,
         creadoPor: request.usuario!.id,
       },
       select: usuarioPublico,

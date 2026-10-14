@@ -18,7 +18,7 @@ export async function asegurarAdministrador(): Promise<{ documento: string; pass
       rol: 'administrador',
       estado: 'activo',
       debeCompletarDatos: false,
-      debeCambiarPassword: true,
+      debeCambiarPassword: false,
     },
   });
   return { documento, password };

@@ -19,15 +19,34 @@ function escapar(value: string | null | undefined): string {
 }
 
 async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`/api${path}`, {
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  });
+  const unavailable = 'No se pudo conectar con el servidor. Verifica que Fontana School esté iniciado e intenta nuevamente.';
+  let response: Response;
+  try {
+    response = await fetch(`/api${path}`, {
+      ...options,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+    });
+  } catch {
+    throw new Error(unavailable);
+  }
   if (response.status === 204) return undefined as T;
-  const body = await response.json() as T & { message?: string };
-  if (!response.ok) throw new Error(body.message ?? 'No se pudo completar la solicitud.');
-  return body;
+  if (response.status === 401 && path !== '/auth/login' && path !== '/auth/me') {
+    location.assign('/login');
+    throw new Error('Tu sesión venció. Inicia sesión nuevamente para continuar.');
+  }
+  const text = await response.text();
+  let body: unknown;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    throw new Error(response.status >= 500 ? unavailable : 'El servidor devolvió una respuesta no válida. Intenta nuevamente.');
+  }
+  if (!response.ok) {
+    const message = body && typeof body === 'object' && 'message' in body ? body.message : undefined;
+    throw new Error(typeof message === 'string' ? message : 'No se pudo completar la solicitud.');
+  }
+  return body as T;
 }
 
 function mensaje(texto: string, error = false): void {
@@ -91,50 +110,47 @@ function formularioLogin(): void {
   });
 }
 
-function cambiarContrasena(usuario: Usuario): void {
-  shell('Protege tu cuenta', 'Antes de continuar, crea una contraseña personal de al menos 10 caracteres.', `
-    <section class="auth-card narrow"><form id="password-form" class="auth-form">
-      <label>Contraseña actual<input name="actual" type="password" autocomplete="current-password" required></label>
-      <label>Nueva contraseña<input name="nueva" type="password" autocomplete="new-password" minlength="10" required></label>
-      <button class="primary-action">Guardar y continuar</button><p id="feedback" class="feedback" role="alert" hidden></p>
-    </form></section>`, usuario);
-  document.querySelector<HTMLFormElement>('#password-form')!.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const form = event.currentTarget as HTMLFormElement;
-    try {
-      const result = await api<{ usuario: Usuario }>('/auth/cambiar-contrasena', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(form))) });
-      location.assign(result.usuario.ruta);
-    } catch (error) { mensaje((error as Error).message, true); }
-  });
-}
-
 function llenaTusDatos(usuario: Usuario): void {
-  shell('Llena tus datos', 'Completa tu perfil e indícanos tu experiencia para asignarte la inducción adecuada.', `
+  shell('Llena tus datos', 'Completa tus datos de contacto para continuar con la inducción.', `
     <section class="auth-card narrow"><div class="profile-summary"><strong>${escapar(usuario.nombreCompleto)}</strong><span>Documento ${escapar(usuario.numeroDocumento)}</span></div>
       <form id="profile-form" class="auth-form">
-        <label>Tipo de documento<select name="tipoDocumento"><option value="CC">Cédula de ciudadanía</option><option value="CE">Cédula de extranjería</option><option value="PA">Pasaporte</option><option value="TI">Tarjeta de identidad</option></select></label>
-        <label>Correo electrónico <small>Opcional</small><input name="correo" type="email" maxlength="150" value="${escapar(usuario.correo)}" autocomplete="email"></label>
+        <label>Correo electrónico<input name="correo" type="email" required maxlength="150" value="${escapar(usuario.correo)}" autocomplete="email" placeholder="nombre@empresa.com"></label>
         <label>Teléfono <small>Opcional</small><input name="telefono" type="tel" maxlength="30" value="${escapar(usuario.telefono)}" autocomplete="tel"></label>
-        <fieldset class="experience-choice"><legend>¿Tienes experiencia en cobranzas digitales?</legend>
-          <label><input type="radio" name="experiencia" value="true" required> Sí, tengo experiencia</label>
-          <label><input type="radio" name="experiencia" value="false" required> No, estoy comenzando</label>
-        </fieldset>
         <button class="primary-action">Guardar y continuar</button><p id="feedback" class="feedback" role="alert" hidden></p>
       </form>
     </section>`, usuario);
-  const select = document.querySelector<HTMLSelectElement>('[name="tipoDocumento"]')!;
-  select.value = usuario.tipoDocumento;
+  const profileForm = document.querySelector<HTMLFormElement>('#profile-form')!;
+  const draftKey = `fontana-profile-draft:${usuario.id}`;
+  const correoInput = profileForm.elements.namedItem('correo') as HTMLInputElement;
+  const telefonoInput = profileForm.elements.namedItem('telefono') as HTMLInputElement;
+  try {
+    const draft = JSON.parse(sessionStorage.getItem(draftKey) ?? 'null') as { correo?: unknown; telefono?: unknown } | null;
+    if (typeof draft?.correo === 'string') correoInput.value = draft.correo;
+    if (typeof draft?.telefono === 'string') telefonoInput.value = draft.telefono;
+  } catch { /* El formulario sigue funcionando si el navegador bloquea el almacenamiento. */ }
+  const correo = document.querySelector<HTMLInputElement>('[name="correo"]')!;
+  correo.addEventListener('input', () => {
+    correo.setCustomValidity(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.value.trim())
+      ? '' : 'Ingresa un correo válido con @ y dominio, por ejemplo nombre@empresa.com.');
+  });
+  correo.addEventListener('invalid', () => {
+    correo.setCustomValidity('Ingresa un correo válido con @ y dominio, por ejemplo nombre@empresa.com.');
+  });
   document.querySelector<HTMLFormElement>('#profile-form')!.addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
+    if (!form.reportValidity()) return;
     const data = Object.fromEntries(new FormData(form));
+    try {
+      sessionStorage.setItem(draftKey, JSON.stringify({ correo: data.correo, telefono: data.telefono }));
+    } catch { /* Guardar el perfil no depende del almacenamiento del navegador. */ }
     try {
       const result = await api<{ usuario: Usuario }>('/auth/completar-datos', {
         method: 'POST', body: JSON.stringify({
-          correo: data.correo, telefono: data.telefono, tipoDocumento: data.tipoDocumento,
-          tieneExperienciaCobranzasDigitales: data.experiencia === 'true',
+          correo: data.correo, telefono: data.telefono,
         }),
       });
+      try { sessionStorage.removeItem(draftKey); } catch { /* Sin almacenamiento disponible. */ }
       location.assign(result.usuario.ruta);
     } catch (error) { mensaje((error as Error).message, true); }
   });
@@ -242,11 +258,10 @@ export async function iniciarInterfaz(): Promise<void> {
   const route = usuario.ruta;
   if (location.pathname !== route && location.pathname !== '/app') { location.replace(route); return; }
   if (route === '/admin') { admin(usuario); return; }
-  if (route === '/cambiar-contrasena') { cambiarContrasena(usuario); return; }
   if (route === '/llena-tus-datos') { llenaTusDatos(usuario); return; }
   if (location.pathname !== route) { location.replace(route); return; }
   document.body.hidden = false;
-  document.body.insertAdjacentHTML('afterbegin', `<div class="training-session"><span>${escapar(usuario.nombreCompleto)} · ${usuario.tieneExperienciaCobranzasDigitales ? 'Ruta con experiencia' : 'Ruta sin experiencia'}</span><button id="training-logout" type="button">Cerrar sesión</button></div>`);
+  document.body.insertAdjacentHTML('afterbegin', `<div class="training-session"><span>${escapar(usuario.nombreCompleto)} · Inducción Fontana</span><button id="training-logout" type="button">Cerrar sesión</button></div>`);
   document.querySelector('#training-logout')!.addEventListener('click', async () => { await api('/auth/logout', { method: 'POST' }); location.assign('/login'); });
   await import('./training');
 }

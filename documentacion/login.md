@@ -18,11 +18,10 @@ Ya existe una cuenta administradora y una asesora activas. Por eso el comando de
 ## Primer acceso del asesor
 
 1. El administrador crea el asesor con nombre completo, documento y contraseña temporal.
-2. Completa “Llena tus datos”: tipo de documento, correo opcional, teléfono opcional y experiencia obligatoria.
-3. El asesor cambia su contraseña temporal.
-4. Si indicó experiencia, entra a `/induccion/con-experiencia`. En caso contrario, entra a `/induccion/sin-experiencia`.
+2. Completa “Llena tus datos”: correo obligatorio con formato válido y teléfono opcional.
+3. Continúa directamente a `/induccion`, sin confirmar ni cambiar la contraseña.
 
-La experiencia queda en `tiene_experiencia_cobranzas_digitales`; la fecha de respuesta y la finalización del perfil también se guardan en sus columnas existentes. Actualmente ambas rutas muestran el módulo formativo disponible; los módulos específicos de cada ruta quedan para una fase posterior.
+El formulario no solicita experiencia ni modifica los valores históricos de esa columna. La finalización del perfil se guarda en las columnas existentes; todos los asesores acceden al mismo módulo de inducción.
 
 ## Panel administrador
 
@@ -47,7 +46,6 @@ Si ya existe un administrador, se informa sin modificarlo ni crear otro. La base
 | POST | `/api/auth/login` | Público |
 | GET | `/api/auth/me` | Usuario autenticado |
 | POST | `/api/auth/logout` | Usuario autenticado |
-| POST | `/api/auth/cambiar-contrasena` | Usuario autenticado |
 | POST | `/api/auth/completar-datos` | Asesor autenticado |
 | GET | `/api/admin/asesores` | Administrador |
 | POST | `/api/admin/asesores` | Administrador |

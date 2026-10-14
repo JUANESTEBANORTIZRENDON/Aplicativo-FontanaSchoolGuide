@@ -28,7 +28,6 @@ export function rutaUsuario(usuario: {
   tieneExperienciaCobranzasDigitales: boolean | null;
 }): string {
   if (esAdministrador(usuario.rol)) return '/admin';
-  if (usuario.debeCompletarDatos || usuario.tieneExperienciaCobranzasDigitales === null) return '/llena-tus-datos';
-  if (usuario.debeCambiarPassword) return '/cambiar-contrasena';
-  return usuario.tieneExperienciaCobranzasDigitales ? '/induccion/con-experiencia' : '/induccion/sin-experiencia';
+  if (usuario.debeCompletarDatos) return '/llena-tus-datos';
+  return '/induccion';
 }
