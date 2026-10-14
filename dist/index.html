@@ -9,8 +9,8 @@
     <meta name="description" content="Conoce la empresa y explora el recorrido de trabajo de cobranza.">
     <link rel="icon" type="image/png" href="./imagenes/fontana-logo.png">
     <meta name="theme-color" content="#f9f9f9">
-    <script type="module" crossorigin src="./assets/index-C88YFrkI.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-DvAsMSYb.css">
+    <script type="module" crossorigin src="./assets/index-DOoM8N6_.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Gn7NtcKH.css">
   </head>
   <body>
 
@@ -64,9 +64,11 @@
 
           <!-- IMÁGENES: cambia los valores src por archivos de la carpeta imagenes. -->
           <div class="slides">
-            <img class="slide is-active" src="./imagenes/equipo-call-center.png" alt="Agentes atendiendo llamadas" aria-hidden="false">
-            <img class="slide" src="./imagenes/trabajo-en-equipo.png" alt="Compañeros uniendo sus manos" aria-hidden="true">
-            <img class="slide" src="./imagenes/equipo-atencion.png" alt="Equipo de agentes con auriculares" aria-hidden="true">
+            <img class="slide slide-fontana-team is-active" src="./imagenes/equipo-fontana.png" alt="Cuatro integrantes del equipo de Fontana en la oficina" aria-hidden="false">
+            <img class="slide slide-fontana-union" src="./imagenes/union-equipo-fontana.png" alt="Integrantes del equipo de Fontana uniendo sus manos en la oficina" aria-hidden="true">
+            <img class="slide slide-fontana-reception" src="./imagenes/recepcion-fontana.png" alt="Integrante del equipo atendiendo en la recepción de Fontana" aria-hidden="true">
+            <img class="slide slide-fontana-colleagues" src="./imagenes/companeros-fontana.png" alt="Dos compañeros de Fontana estrechando sus manos en la oficina" aria-hidden="true">
+            <img class="slide slide-city" src="./imagenes/vista-ciudad.png" alt="Vista de edificios y una avenida de la ciudad bajo un cielo azul" aria-hidden="true">
           </div>
 
           <!-- LOGO PEQUEÑO: se muestra sobre todas las fotos del carrusel. -->
@@ -89,6 +91,10 @@
               <button aria-label="Ver imagen 2" aria-pressed="false" data-slide="1">
               </button>
               <button aria-label="Ver imagen 3" aria-pressed="false" data-slide="2">
+              </button>
+              <button aria-label="Ver imagen 4" aria-pressed="false" data-slide="3">
+              </button>
+              <button aria-label="Ver imagen 5" aria-pressed="false" data-slide="4">
               </button>
             </div>
           </div>
@@ -131,18 +137,13 @@
                 <br>
                 hay un equipo.
               </h3>
+              <p class="history-summary">Descubre nuestros inicios, lo que nos guía y el equipo que construye nuestro presente.</p>
             </div>
           </div>
-          <div class="history-copy">
-            <p>Este espacio reunirá la historia de Fontana: sus inicios, su trayectoria y los valores que orientan al equipo.</p>
-            <div class="pending">
-              <span class="pending-icon">i</span>
-              <div>
-                <strong>Historia oficial pendiente</strong>
-                <p>El contenido se completará con la información suministrada por la empresa.</p>
-              </div>
-            </div>
-          </div>
+          <figure class="history-photo">
+            <img src="./imagenes/historia-equipo-fontana.png" alt="Integrante del equipo con auriculares trabajando frente a su computador" loading="lazy">
+            <figcaption>Nuestra gente, nuestra historia.</figcaption>
+          </figure>
 
           <!-- TARJETAS DE HISTORIA: inicios, misión y valores, y presente de la empresa. -->
           <div class="story-grid">
@@ -194,12 +195,9 @@
                 <h4 tabindex="-1">Nuestro presente</h4>
                 <p>El equipo, los servicios y la forma en que trabajamos hoy.</p>
                 <small>Por completar</small>
+                <button class="primary story-next" id="finish-story">Finalizar historia</button>
               </div>
             </article>
-          </div>
-          <div class="panel-footer">
-            <span id="story-progress" role="status">Abre la tarjeta 01 para comenzar el recorrido.</span>
-            <button class="primary" id="go-method" disabled>Explorar el método</button>
           </div>
         </div>
 
@@ -300,6 +298,20 @@
         <span>Conoce la empresa / Módulo 01</span>
       </footer>
     </main>
+
+    <!-- AVISO: aparece al finalizar las tres partes de Nuestra historia. -->
+    <dialog id="story-complete-dialog" class="completion-dialog" aria-labelledby="completion-title" aria-describedby="completion-description">
+      <button class="completion-close" id="close-completion" aria-label="Cerrar aviso">×</button>
+      <div class="completion-emblem" aria-hidden="true">
+        <img src="./imagenes/fontana-logo.png" alt="">
+        <span>✓</span>
+      </div>
+      <p class="eyebrow">TRES PARTES · UN NUEVO COMIENZO</p>
+      <h2 id="completion-title">Ya conoces nuestra historia.</h2>
+      <p id="completion-description">Ahora da el siguiente paso en Fontana: descubre cómo trabajamos, una gestión a la vez.</p>
+      <div class="completion-milestones" aria-label="3 de 3 partes completadas"><span>01 ✓</span><span>02 ✓</span><span>03 ✓</span></div>
+      <button class="primary" id="completion-go-method" autofocus>Explorar el método de trabajo →</button>
+    </dialog>
 
     <!-- INTERACCIONES: src/main.ts controla las pestañas, etapas y el carrusel cada 2 segundos. -->
   </body>

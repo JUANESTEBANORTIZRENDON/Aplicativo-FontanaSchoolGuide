@@ -190,6 +190,11 @@ h1  {
 .slide.is-active  {
   opacity: 1;
 }
+.slide-fontana-team { object-position: center 28%; }
+.slide-fontana-union { object-position: center 30%; }
+.slide-fontana-reception { object-position: center 43%; }
+.slide-fontana-colleagues { object-position: center top; }
+.slide-city { object-position: center center; }
 .carousel::before  {
   content: '';
   position: absolute;
@@ -358,16 +363,60 @@ h1  {
 .history-title .eyebrow  {
   margin-bottom: 10px;
 }
+.history-summary {
+  max-width: 40ch;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+#history { padding-top: 22px; gap: 24px; }
 h3  {
   font-size: 27px;
   font-weight: 600;
   line-height: 1.3;
   letter-spacing: -.6px;
 }
-.history-copy>p  {
-  font-size: 16px;
-  color: var(--muted);
-  margin-bottom: 16px;
+.history-photo {
+  position: relative;
+  margin: 0;
+  width: min(100%, var(--carousel-width, 100%));
+  height: var(--carousel-height, 330px);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #dce4eb;
+  box-shadow: 0 10px 30px #1f2a3712;
+}
+.history-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 48%;
+}
+.history-photo figcaption {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 42px 22px 18px;
+  background: linear-gradient(transparent, #111827cc);
+  color: #fff5dc;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 20px;
+  font-style: italic;
+}
+/* Encabezado y pestañas comparten fila para aprovechar el ancho disponible. */
+@media(min-width:1100px) {
+  .learning { display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
+  .learning > .section-heading { grid-column: 2; grid-row: 1; padding: 26px 34px 16px 12px; }
+  .learning > .tabs { grid-column: 1; grid-row: 1; justify-content: flex-start; padding: 26px 12px 16px 34px; gap: 10px; }
+  .learning > .panel { grid-column: 1 / -1; }
+}
+@media(min-width:761px) {
+  #history > .history-photo { grid-column: 1; grid-row: 1; }
+  #history > .history-title { grid-column: 2; grid-row: 1; }
+}
+@media(max-width:760px) {
+  #history { gap: 20px; }
 }
 .pending  {
   display: flex;
@@ -1005,3 +1054,29 @@ input:focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
 @media(max-width:650px) { .experience-section { padding: 24px 20px; } }
 .experience-section .primary { border-color: #b76279; }
 .experience-section input:focus-visible, .experience-section button:focus-visible { outline-color: #d4af37; }
+
+/* Aviso de historia completada: ventana nativa con foco y cierre por Escape. */
+.completion-dialog {
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 36px 30px 30px;
+  border: 1px solid #d4af3766;
+  border-radius: 26px;
+  color: var(--navy);
+  text-align: center;
+  background: radial-gradient(ellipse at 50% 0%, #d4af3730, transparent 65%), linear-gradient(145deg, #fffdf6, #eef3f7);
+  box-shadow: 0 24px 80px #11182740, inset 0 1px 0 #fff;
+}
+.completion-dialog[open] { animation: appear .35s ease; }
+.completion-dialog::backdrop { background: #11182780; backdrop-filter: blur(5px); }
+.completion-close { position: absolute; top: 10px; right: 12px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: #1f2a3709; color: var(--navy); font-size: 25px; line-height: 1; }
+.completion-emblem { position: relative; width: 112px; height: 112px; margin: 0 auto 24px; padding: 14px; border-radius: 50%; border: 1px solid #d4af3780; background: #fffcf2; box-shadow: 0 0 0 8px #d4af3710, 0 8px 24px #d4af3720; }
+.completion-emblem img { width: 100%; height: 100%; object-fit: contain; }
+.completion-emblem span { position: absolute; bottom: 0; right: -1px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 3px solid #fffaf0; background: var(--red); color: #fff3cf; }
+.completion-dialog .eyebrow { font-size: 10px; letter-spacing: 1.3px; }
+.completion-dialog h2 { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(26px, 4vw, 32px); font-style: italic; line-height: 1.2; color: var(--red); margin-bottom: 14px; }
+.completion-dialog > p:not(.eyebrow) { color: #526070; font-size: 15px; }
+.completion-milestones { display: flex; justify-content: center; gap: 12px; margin: 22px 0; }
+.completion-milestones span { padding: 5px 14px; border-radius: 20px; border: 1px solid #d4af3750; background: #d4af3718; color: #78551e; font-size: 12px; font-weight: 600; }
+.completion-dialog > .primary { width: 100%; }

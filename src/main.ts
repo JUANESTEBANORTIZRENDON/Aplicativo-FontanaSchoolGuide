@@ -55,14 +55,15 @@ function focusContent(): void {
 
 // HISTORIA: abre una cortina y pulsa Siguiente para habilitar la próxima.
 const storyCards = [...document.querySelectorAll<HTMLElement>('[data-story]')];
-const goMethod = element<HTMLButtonElement>('#go-method');
-const storyProgress = element('#story-progress');
 const openedStories = new Set<number>();
+const completionDialog = element<HTMLDialogElement>('#story-complete-dialog');
+const finishStory = element<HTMLButtonElement>('#finish-story');
+let storyCompleted = false;
 let highestUnlockedStory = 0;
 storyCards.forEach((card, index) => {
   const curtain = card.querySelector<HTMLButtonElement>('.story-curtain')!;
   const content = card.querySelector<HTMLElement>('.story-content')!;
-  const advance = card.querySelector<HTMLButtonElement>('.story-next');
+  const advance = card.querySelector<HTMLButtonElement>('.story-next:not(#finish-story)');
   curtain.addEventListener('click', () => {
     if (index > highestUnlockedStory || openedStories.has(index)) return;
     openedStories.add(index);
@@ -72,11 +73,6 @@ storyCards.forEach((card, index) => {
     curtain.inert = true;
     card.classList.add('is-open');
     content.querySelector<HTMLElement>('h4')!.focus({ preventScroll: true });
-    const allOpened = openedStories.size === storyCards.length;
-    goMethod.disabled = !allOpened;
-    storyProgress.textContent = allOpened
-      ? 'Has abierto las tres partes de la historia. Ya puedes explorar el método.'
-      : `Historia ${String(index + 1).padStart(2, '0')} abierta. Pulsa Siguiente para habilitar la próxima.`;
   });
   advance?.addEventListener('click', () => {
     if (!openedStories.has(index) || index !== highestUnlockedStory) return;
@@ -87,21 +83,34 @@ storyCards.forEach((card, index) => {
     nextCurtain.disabled = false;
     nextCurtain.querySelector<HTMLElement>('.curtain-status')!.textContent = 'Haz clic para descubrir';
     advance.hidden = true;
-    storyProgress.textContent = `Tarjeta ${String(index + 2).padStart(2, '0')} habilitada. Haz clic en su cortina para abrirla.`;
     nextCurtain.focus({ preventScroll: true });
     nextCard.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'nearest' });
   });
 });
 
-// La pestaña se habilita únicamente al continuar desde Nuestra historia.
-goMethod.addEventListener('click', () => {
+// Finalizar permite abrir el aviso de nuevo si el usuario lo cierra.
+finishStory.addEventListener('click', () => {
   if (openedStories.size !== storyCards.length) return;
+  storyCompleted = true;
+  finishStory.textContent = 'Continuar al método →';
+  completionDialog.showModal();
+});
+element('#close-completion').addEventListener('click', () => completionDialog.close());
+completionDialog.addEventListener('close', () => {
+  if (!methodUnlocked) finishStory.focus({ preventScroll: true });
+});
+
+// El botón del aviso abre el recorrido conservando el avance entre etapas.
+function exploreMethod(): void {
+  if (!storyCompleted) return;
   methodUnlocked = true;
+  if (completionDialog.open) completionDialog.close();
   methodTab.disabled = false;
   methodTab.removeAttribute('title');
   selectTab(tabs.indexOf(methodTab));
   focusContent();
-});
+}
+element('#completion-go-method').addEventListener('click', exploreMethod);
 
 // ETAPAS DEL MÉTODO DE TRABAJO
 const stepButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-step]')];
@@ -175,6 +184,13 @@ experienceForm.addEventListener('submit', (event: SubmitEvent) => {
 // CARRUSEL: cambia CAROUSEL_INTERVAL para ajustar el tiempo, en milisegundos.
 const CAROUSEL_INTERVAL = 2000;
 const carousel = element('.carousel');
+// La foto de Nuestra historia conserva las mismas medidas del carrusel.
+const carouselResizeObserver = new ResizeObserver(() => {
+  const { width, height } = carousel.getBoundingClientRect();
+  document.documentElement.style.setProperty('--carousel-width', `${width}px`);
+  document.documentElement.style.setProperty('--carousel-height', `${height}px`);
+});
+carouselResizeObserver.observe(carousel);
 const slides = [...carousel.querySelectorAll<HTMLImageElement>('.slide')];
 const dots = [...carousel.querySelectorAll<HTMLButtonElement>('[data-slide]')];
 let activeSlide = 0;
@@ -204,4 +220,5 @@ startCarousel();
 if (import.meta.hot) import.meta.hot.dispose(() => {
   window.clearInterval(carouselTimer);
   pathResizeObserver.disconnect();
+  carouselResizeObserver.disconnect();
 });
