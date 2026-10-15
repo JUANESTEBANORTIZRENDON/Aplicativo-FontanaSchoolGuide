@@ -1,5 +1,6 @@
 /* Destinos del módulo 02, preparados para incorporar los ejercicios después. */
 .practice-screen .learning-path { position: relative; top: auto; z-index: auto; }
+.practice-screen .training-route { max-width: none; margin: 0 0 28px; padding: 0; }
 .practice-shell { padding: 38px; border: 1px solid #d4af3733; border-radius: 24px; background: radial-gradient(ellipse at 100% 0%, #b9cfe240, transparent 65%), linear-gradient(145deg, #fffaf0, #f2f5f7); margin-bottom: 28px; }
 .practice-shell h1 { margin: 0 0 18px; font: italic 600 clamp(29px, 3.5vw, 40px)/1.2 Georgia, serif; color: var(--red); letter-spacing: -.6px; }
 .practice-shell > p:not(.eyebrow) { color: var(--muted); max-width: 60ch; font-size: 16px; }

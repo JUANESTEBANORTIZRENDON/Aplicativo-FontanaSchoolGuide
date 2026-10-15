@@ -1,5 +1,6 @@
 import './styles.css';
 import { stages } from './content';
+import { api } from './http';
 import { showAppLoading } from './loading';
 
 // Obtiene un elemento obligatorio y detecta referencias HTML incorrectas.
@@ -48,6 +49,16 @@ tabs.forEach((tab, index) => {
     destinationTab.focus();
   });
 });
+// El avance se guarda la primera vez que se termina cada parte; si falla, se reintenta al volver a terminarla.
+const savedProgress = { historia: false, metodo: false };
+function saveProgress(paso: 'historia' | 'metodo'): void {
+  if (savedProgress[paso]) return;
+  savedProgress[paso] = true;
+  if (paso === 'metodo') savedProgress.historia = true;
+  api('/auth/induccion/avance', { method: 'POST', body: JSON.stringify({ paso }) }).catch(() => {
+    savedProgress[paso] = false;
+  });
+}
 function focusContent(): void {
   const content = element('#learning');
   content.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
@@ -61,18 +72,24 @@ const completionDialog = element<HTMLDialogElement>('#story-complete-dialog');
 const finishStory = element<HTMLButtonElement>('#finish-story');
 let storyCompleted = false;
 let highestUnlockedStory = 0;
+function openStory(index: number): void {
+  const card = storyCards[index];
+  const curtain = card.querySelector<HTMLButtonElement>('.story-curtain')!;
+  openedStories.add(index);
+  card.querySelector<HTMLElement>('.story-content')!.hidden = false;
+  curtain.disabled = false;
+  curtain.setAttribute('aria-expanded', 'true');
+  curtain.setAttribute('aria-hidden', 'true');
+  curtain.inert = true;
+  card.classList.add('is-open');
+}
 storyCards.forEach((card, index) => {
   const curtain = card.querySelector<HTMLButtonElement>('.story-curtain')!;
   const content = card.querySelector<HTMLElement>('.story-content')!;
   const advance = card.querySelector<HTMLButtonElement>('.story-next:not(#finish-story)');
   curtain.addEventListener('click', () => {
     if (index > highestUnlockedStory || openedStories.has(index)) return;
-    openedStories.add(index);
-    content.hidden = false;
-    curtain.setAttribute('aria-expanded', 'true');
-    curtain.setAttribute('aria-hidden', 'true');
-    curtain.inert = true;
-    card.classList.add('is-open');
+    openStory(index);
     content.querySelector<HTMLElement>('h4')!.focus({ preventScroll: true });
   });
   advance?.addEventListener('click', () => {
@@ -92,7 +109,10 @@ storyCards.forEach((card, index) => {
 // Finalizar permite abrir el aviso de nuevo si el usuario lo cierra.
 finishStory.addEventListener('click', () => {
   if (openedStories.size !== storyCards.length) return;
+  // Al repasar, el método ya está desbloqueado y se abre directamente.
+  if (methodUnlocked) { exploreMethod(); return; }
   storyCompleted = true;
+  saveProgress('historia');
   finishStory.textContent = 'Continuar al método →';
   completionDialog.showModal();
 });
@@ -159,6 +179,7 @@ next.addEventListener('click', () => {
   const destination = currentStage + 1;
   if (destination >= stages.length) return;
   highestUnlockedStage = Math.max(highestUnlockedStage, destination);
+  if (highestUnlockedStage === stages.length - 1) saveProgress('metodo');
   showStage(destination);
 });
 showStage(0);
@@ -213,6 +234,34 @@ experienceForm.addEventListener('submit', async (event: SubmitEvent) => {
     savingExperience = false;
   }
 });
+
+// Al volver, lo que el asesor ya completó queda desbloqueado: los bloqueos solo aplican la primera vez.
+export function restoreProgress(progress: { historia: boolean; metodo: boolean; experiencia: boolean | null }): void {
+  const historia = progress.historia || progress.metodo || progress.experiencia !== null;
+  const metodo = progress.metodo || progress.experiencia !== null;
+  if (historia) {
+    savedProgress.historia = true;
+    storyCards.forEach((_, index) => openStory(index));
+    highestUnlockedStory = storyCards.length - 1;
+    document.querySelectorAll<HTMLButtonElement>('.story-next:not(#finish-story)').forEach((button) => { button.hidden = true; });
+    storyCompleted = true;
+    methodUnlocked = true;
+    finishStory.textContent = 'Continuar al método →';
+    methodTab.disabled = false;
+    methodTab.removeAttribute('title');
+  }
+  if (metodo) {
+    savedProgress.metodo = true;
+    highestUnlockedStage = stages.length - 1;
+    showStage(currentStage);
+  }
+  if (progress.experiencia !== null) {
+    // Muestra la respuesta guardada; puede cambiarla y volver a confirmar.
+    companyRead.checked = true;
+    experienceForm.querySelector<HTMLInputElement>(`input[value="${progress.experiencia ? 'experienced' : 'new'}"]`)!.checked = true;
+    updateExperienceAccess();
+  }
+}
 
 // CARRUSEL: cambia CAROUSEL_INTERVAL para ajustar el tiempo, en milisegundos.
 const CAROUSEL_INTERVAL = 2000;

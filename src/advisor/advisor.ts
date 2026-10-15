@@ -54,15 +54,16 @@ function card(module: ModuleView): string {
     </li>`;
 }
 
-// Sección "Tu ruta de formación" dentro de /induccion, antes del recorrido existente.
+// Sección "Tu ruta de formación" en la práctica, justo debajo de "Tu camino en Fontana".
 export async function mountLearningPath(): Promise<void> {
   const main = document.querySelector('main');
   if (!main) return;
+  const camino = main.querySelector('.learning-path');
   const section = document.createElement('section');
   section.className = 'training-route';
   section.setAttribute('aria-labelledby', 'training-route-title');
   section.innerHTML = '<div class="training-route-head"><h2 id="training-route-title">Tu ruta de formación</h2><p>Avanza módulo por módulo. Cada uno se desbloquea al aprobar el anterior.</p></div><p class="training-route-loading">Cargando tus módulos…</p>';
-  main.prepend(section);
+  if (camino) camino.after(section); else main.prepend(section);
   try {
     const { data } = await api<{ data: ModuleView[] }>('/advisor/modules');
     section.querySelector('.training-route-loading')!.remove();
@@ -73,7 +74,7 @@ export async function mountLearningPath(): Promise<void> {
 }
 
 // Rutas /induccion/modulos/:slug y /induccion/certificado: el servidor valida el acceso.
-export async function renderModulePage(container: HTMLElement): Promise<void> {
+export async function renderModulePage(container: HTMLElement, backHref = '/induccion'): Promise<void> {
   const slug = location.pathname === '/induccion/certificado' ? 'certificado' : decodeURIComponent(location.pathname.split('/')[3] ?? '');
   container.innerHTML = '<section class="auth-card narrow module-page"><p>Cargando módulo…</p></section>';
   const page = container.querySelector<HTMLElement>('.module-page')!;
@@ -84,13 +85,13 @@ export async function renderModulePage(container: HTMLElement): Promise<void> {
       <h2>${escapar(data.module.name)}</h2>
       <div class="module-placeholder"><strong>${escapar(data.content.message)}</strong><p>Este espacio mostrará las actividades del módulo cuando estén listas.</p></div>
       ${data.activities.length ? `<ul class="module-activities">${data.activities.map((activity) => `<li>${escapar(activity.title)}${activity.enabled ? '' : ` · <em>${escapar(activity.blockedReason)}</em>`}</li>`).join('')}</ul>` : ''}
-      <a class="secondary-link" href="/induccion">← Volver a tu ruta</a>`;
+      <a class="secondary-link" href="${escapar(backHref)}">← Volver a tu ruta</a>`;
   } catch (error) {
     const reason = error instanceof ApiError && typeof error.details?.blockedReason === 'string' ? error.details.blockedReason : (error as Error).message;
     page.innerHTML = `
       <p class="auth-kicker">ACCESO NO DISPONIBLE</p>
       <h2>Todavía no puedes entrar a este módulo</h2>
       <p class="feedback feedback-error">${escapar(reason)}</p>
-      <a class="secondary-link" href="/induccion">← Volver a tu ruta</a>`;
+      <a class="secondary-link" href="${escapar(backHref)}">← Volver a tu ruta</a>`;
   }
 }

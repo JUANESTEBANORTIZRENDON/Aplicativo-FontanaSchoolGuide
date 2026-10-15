@@ -16,6 +16,8 @@ export const usuarioSesionSelect = {
   debeCompletarDatos: true,
   debeCambiarPassword: true,
   tieneExperienciaCobranzasDigitales: true,
+  fechaHistoriaCompletada: true,
+  fechaMetodoCompletado: true,
   versionSesion: true,
 } as const satisfies Prisma.UsuarioSelect;
 

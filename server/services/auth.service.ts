@@ -5,7 +5,7 @@ import { esAdministrador, Role, UserStatus } from '../domain/enums.js';
 import { ConflictError, ForbiddenError, UnauthorizedError } from '../domain/errors.js';
 import type { AuthUser } from '../domain/usuario.js';
 import { findForLogin, touchLastAccess, usuarioSesionSelect } from '../repositories/usuario.repository.js';
-import type { CompletarDatosBody, ExperienciaBody, LoginBody } from '../validators/auth.validator.js';
+import type { AvanceInduccionBody, CompletarDatosBody, ExperienciaBody, LoginBody } from '../validators/auth.validator.js';
 import { Prisma } from '@prisma/client';
 
 const GENERIC_FAILURE = 'Credenciales incorrectas o cuenta inactiva.';
@@ -50,9 +50,28 @@ export async function registrarExperiencia(usuario: AuthUser, input: Experiencia
   if (usuario.debeCompletarDatos) throw new ForbiddenError('Completa tu perfil de asesor antes de continuar.', 'PROFILE_INCOMPLETE');
   return prisma.usuario.update({
     where: { id: usuario.id },
-    data: { tieneExperienciaCobranzasDigitales: input.tieneExperienciaCobranzasDigitales, fechaRespuestaExperiencia: new Date() },
+    data: {
+      tieneExperienciaCobranzasDigitales: input.tieneExperienciaCobranzasDigitales,
+      fechaRespuestaExperiencia: new Date(),
+      // Responder la experiencia implica haber terminado la historia y el método.
+      fechaHistoriaCompletada: usuario.fechaHistoriaCompletada ?? new Date(),
+      fechaMetodoCompletado: usuario.fechaMetodoCompletado ?? new Date(),
+    },
     select: usuarioSesionSelect,
   });
+}
+
+// Marca como terminada la historia o el método la primera vez; después sus bloqueos no se reactivan.
+// Terminar el método implica haber terminado la historia.
+export async function registrarAvanceInduccion(usuario: AuthUser, input: AvanceInduccionBody): Promise<AuthUser> {
+  if (usuario.debeCompletarDatos) throw new ForbiddenError('Completa tu perfil de asesor antes de continuar.', 'PROFILE_INCOMPLETE');
+  const now = new Date();
+  const data = {
+    ...(usuario.fechaHistoriaCompletada ? {} : { fechaHistoriaCompletada: now }),
+    ...(input.paso === 'metodo' && !usuario.fechaMetodoCompletado ? { fechaMetodoCompletado: now } : {}),
+  };
+  if (!Object.keys(data).length) return usuario;
+  return prisma.usuario.update({ where: { id: usuario.id }, data, select: usuarioSesionSelect });
 }
 
 export async function completarDatos(usuario: AuthUser, input: CompletarDatosBody): Promise<AuthUser> {

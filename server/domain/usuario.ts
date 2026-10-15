@@ -13,6 +13,8 @@ export type AuthUser = {
   debeCompletarDatos: boolean;
   debeCambiarPassword: boolean;
   tieneExperienciaCobranzasDigitales: boolean | null;
+  fechaHistoriaCompletada: Date | null;
+  fechaMetodoCompletado: Date | null;
   versionSesion: number;
 };
 
@@ -46,6 +48,9 @@ export function serializarUsuario(usuario: AuthUser) {
     debeCompletarDatos: usuario.debeCompletarDatos,
     debeCambiarPassword: usuario.debeCambiarPassword,
     tieneExperienciaCobranzasDigitales: usuario.tieneExperienciaCobranzasDigitales,
+    // Avance en "Conoce la empresa": lo ya completado no vuelve a bloquearse.
+    historiaCompletada: usuario.fechaHistoriaCompletada !== null,
+    metodoCompletado: usuario.fechaMetodoCompletado !== null,
     ruta: rutaUsuario(usuario),
   };
 }

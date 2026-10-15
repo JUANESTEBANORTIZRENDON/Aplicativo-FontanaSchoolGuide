@@ -139,6 +139,28 @@ describe('autenticación', () => {
     expect((await other.agent.post('/api/auth/experiencia').set(ORIGIN).send({ tieneExperienciaCobranzasDigitales: false })).status).toBe(403);
   });
 
+  it('guarda el avance de la inducción una sola vez y lo conserva al volver', async () => {
+    const user = await createTestUser(SUITE);
+    const { agent } = await loginAgent(user.numeroDocumento, 'asesor');
+    const inicial = (await agent.get('/api/auth/me')).body.usuario;
+    expect(inicial).toMatchObject({ historiaCompletada: false, metodoCompletado: false });
+    expect((await agent.post('/api/auth/induccion/avance').set(ORIGIN).send({ paso: 'otro' })).status).toBe(400);
+    const historia = await agent.post('/api/auth/induccion/avance').set(ORIGIN).send({ paso: 'historia' });
+    expect(historia.status).toBe(200);
+    expect(historia.body.usuario).toMatchObject({ historiaCompletada: true, metodoCompletado: false, ruta: '/induccion' });
+    const primera = (await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } })).fechaHistoriaCompletada;
+    // Repetirlo no cambia la fecha de la primera vez.
+    await agent.post('/api/auth/induccion/avance').set(ORIGIN).send({ paso: 'historia' });
+    expect((await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } })).fechaHistoriaCompletada).toEqual(primera);
+    const metodo = await agent.post('/api/auth/induccion/avance').set(ORIGIN).send({ paso: 'metodo' });
+    expect(metodo.body.usuario).toMatchObject({ historiaCompletada: true, metodoCompletado: true });
+    // Responder la experiencia marca ambas partes como completadas aunque no se hayan registrado antes.
+    const directo = await createTestUser(SUITE);
+    const otro = await loginAgent(directo.numeroDocumento, 'asesor');
+    const saved = await otro.agent.post('/api/auth/experiencia').set(ORIGIN).send({ tieneExperienciaCobranzasDigitales: false });
+    expect(saved.body.usuario).toMatchObject({ historiaCompletada: true, metodoCompletado: true, ruta: '/practica/nuevo' });
+  });
+
   it('rechaza escrituras de otro origen (CSRF)', async () => {
     const response = await request(app).post('/api/auth/login').set({ Origin: 'https://otro-sitio.test', Host: '127.0.0.1:3000' }).send({ identificador: 'x', password: 'y', tipo: 'asesor' });
     expect(response.status).toBe(403);

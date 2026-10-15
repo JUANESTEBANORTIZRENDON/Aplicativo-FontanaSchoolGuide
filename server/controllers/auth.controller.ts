@@ -5,7 +5,7 @@ import { validBody } from '../middleware/validate.js';
 import { loginLimiter } from '../middleware/rateLimit.js';
 import * as authService from '../services/auth.service.js';
 import { borrarSesion, crearSesion } from '../services/session.service.js';
-import type { CompletarDatosBody, ExperienciaBody, LoginBody } from '../validators/auth.validator.js';
+import type { AvanceInduccionBody, CompletarDatosBody, ExperienciaBody, LoginBody } from '../validators/auth.validator.js';
 
 export async function login(request: Request, response: Response): Promise<void> {
   const body = validBody<LoginBody>(request);
@@ -38,6 +38,11 @@ export async function logoutEverywhere(request: Request, response: Response): Pr
 
 export async function completarDatos(request: Request, response: Response): Promise<void> {
   const usuario = await authService.completarDatos(request.usuario!, validBody<CompletarDatosBody>(request));
+  response.json({ usuario: serializarUsuario(usuario) });
+}
+
+export async function registrarAvanceInduccion(request: Request, response: Response): Promise<void> {
+  const usuario = await authService.registrarAvanceInduccion(request.usuario!, validBody<AvanceInduccionBody>(request));
   response.json({ usuario: serializarUsuario(usuario) });
 }
 

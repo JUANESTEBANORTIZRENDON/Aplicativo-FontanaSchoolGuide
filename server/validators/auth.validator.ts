@@ -19,3 +19,8 @@ export const experienciaBody = z.object({
   tieneExperienciaCobranzasDigitales: z.boolean({ message: 'Selecciona si tienes experiencia en cobranzas digitales.' }),
 }).strict();
 export type ExperienciaBody = z.infer<typeof experienciaBody>;
+
+export const avanceInduccionBody = z.object({
+  paso: z.enum(['historia', 'metodo'], { message: 'Indica si completaste la historia o el método.' }),
+});
+export type AvanceInduccionBody = z.infer<typeof avanceInduccionBody>;
