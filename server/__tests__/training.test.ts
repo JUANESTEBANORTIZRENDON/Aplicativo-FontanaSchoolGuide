@@ -4,7 +4,7 @@ import { prisma } from '../config/prisma.js';
 import { computeAvailability } from '../domain/progress.js';
 import * as attemptService from '../services/attempt.service.js';
 import { completeModule } from '../services/progress.service.js';
-import { activityIds, cleanupSuite, createTestUser, loginAgent, ORIGIN } from './helpers.js';
+import { activityIds, cleanupSuite, createTestUser, loginAgent, ORIGIN, passOfficeModule } from './helpers.js';
 
 const SUITE = 'train';
 const MIN = 60_000;
@@ -22,7 +22,7 @@ describe('módulos y acceso', () => {
     const data = response.body.data as Array<Record<string, unknown>>;
     expect(data.map((row) => row.slug)).toEqual(['ofimatica-mecanografia', 'simulador-cobranzas', 'tipificacion-llamadas', 'certificado']);
     expect(data[0]).toMatchObject({ status: 'AVAILABLE', actionLabel: 'Continuar', enabled: true, blockedReason: null, progressPercent: '0.00', route: '/induccion/modulos/ofimatica-mecanografia' });
-    expect(data[1]).toMatchObject({ status: 'BLOCKED', enabled: false, blockedReason: 'Aprueba Ofimática y mecanografía para continuar' });
+    expect(data[1]).toMatchObject({ status: 'BLOCKED', enabled: false, blockedReason: 'Aprueba Ofimática para tus cobranzas para continuar' });
     expect(data[3]).toMatchObject({ status: 'BLOCKED', enabled: false });
     expect(data[3]!.missingSeals).toHaveLength(3);
   });
@@ -32,7 +32,7 @@ describe('módulos y acceso', () => {
     const { agent } = await loginAgent(user.numeroDocumento, 'asesor');
     const blocked = await agent.get('/api/advisor/modules/simulador-cobranzas');
     expect(blocked.status).toBe(403);
-    expect(blocked.body.details.blockedReason).toBe('Aprueba Ofimática y mecanografía para continuar');
+    expect(blocked.body.details.blockedReason).toBe('Aprueba Ofimática para tus cobranzas para continuar');
     const open = await agent.get('/api/advisor/modules/ofimatica-mecanografia');
     expect(open.status).toBe(200);
     expect(open.body.data.content.message).toBe('Contenido en preparación');
@@ -88,16 +88,26 @@ describe('progreso e intentos', () => {
     expect(again.attempt.id).toBe(first.attempt.id);
   });
 
-  it('aplica el tiempo de espera tras un intento fallido', async () => {
+  it('aplica el tiempo de espera tras un intento fallido (Simulador: 30 minutos)', async () => {
+    const user = await createTestUser(SUITE);
+    await passOfficeModule(user.id);
+    const at = new Date(Date.now() - 5 * MIN);
+    const { attempt } = await attemptService.startAttempt(user.id, ids.a2, { now: at });
+    await attemptService.submitAttempt(user.id, attempt.id, { score: 10, now: new Date(at.getTime() + MIN) });
+    const error = await attemptService.startAttempt(user.id, ids.a2).catch((reason: unknown) => reason);
+    expect(error).toMatchObject({ code: 'WAIT_ACTIVE' });
+    expect((error as { details: { waitUntil: string } }).details.waitUntil).toBeTruthy();
+    const later = await attemptService.startAttempt(user.id, ids.a2, { now: new Date(at.getTime() + 40 * MIN) });
+    expect(later.attempt.number).toBe(2);
+  });
+
+  it('la mecanografía del módulo 1 no tiene espera entre intentos', async () => {
     const user = await createTestUser(SUITE);
     const at = new Date(Date.now() - 5 * MIN);
     const { attempt } = await attemptService.startAttempt(user.id, ids.a1, { now: at });
     await attemptService.submitAttempt(user.id, attempt.id, { score: 10, now: new Date(at.getTime() + MIN) });
-    const error = await attemptService.startAttempt(user.id, ids.a1).catch((reason: unknown) => reason);
-    expect(error).toMatchObject({ code: 'WAIT_ACTIVE' });
-    expect((error as { details: { waitUntil: string } }).details.waitUntil).toBeTruthy();
-    const later = await attemptService.startAttempt(user.id, ids.a1, { now: new Date(at.getTime() + 40 * MIN) });
-    expect(later.attempt.number).toBe(2);
+    const next = await attemptService.startAttempt(user.id, ids.a1);
+    expect(next.attempt.number).toBe(2);
   });
 
   it('calcula la nota con Decimal y redondeo a dos decimales', async () => {
@@ -115,9 +125,14 @@ describe('progreso e intentos', () => {
 
   it('desbloquea el siguiente módulo, emite un solo sello y persiste tras cerrar sesión', async () => {
     const user = await createTestUser(SUITE);
-    const { attempt } = await attemptService.startAttempt(user.id, ids.a1);
-    const result = await attemptService.submitAttempt(user.id, attempt.id, { score: 95 });
-    expect(result.passed).toBe(true);
+    // Con una sola actividad aprobada el módulo sigue en curso: el sello exige las tres obligatorias.
+    const first = await attemptService.startAttempt(user.id, ids.a1);
+    expect((await attemptService.submitAttempt(user.id, first.attempt.id, { score: 100, passed: true })).passed).toBe(true);
+    expect(await prisma.seal.count({ where: { userId: user.id } })).toBe(0);
+    for (const activityId of [ids.office.excel, ids.office.dictation]) {
+      const { attempt } = await attemptService.startAttempt(user.id, activityId);
+      await attemptService.submitAttempt(user.id, attempt.id, { score: 100 });
+    }
     await prisma.$transaction((tx) => completeModule(tx, user.id, ids.modules.m1.id));
     expect(await prisma.seal.count({ where: { userId: user.id, moduleId: ids.modules.m1.id, status: 'ACTIVE' } })).toBe(1);
 
@@ -125,7 +140,8 @@ describe('progreso e intentos', () => {
     await session.agent.post('/api/auth/logout').set(ORIGIN);
     const again = await loginAgent(user.numeroDocumento, 'asesor');
     const data = (await again.agent.get('/api/advisor/modules')).body.data;
-    expect(data[0]).toMatchObject({ status: 'PASSED', actionLabel: 'Completado', progressPercent: '100.00', enabled: false });
+    // El módulo 1 tiene pantalla de resultado: aprobado sigue abierto para repasarlo.
+    expect(data[0]).toMatchObject({ status: 'PASSED', actionLabel: 'Completado', progressPercent: '100.00', enabled: true });
     expect(data[1]).toMatchObject({ status: 'AVAILABLE', enabled: true, actionLabel: 'Continuar' });
     expect(data[2]).toMatchObject({ status: 'BLOCKED', blockedReason: 'Aprueba Simulador de cobranzas para continuar' });
     const summary = (await again.agent.get('/api/advisor/progress')).body.data;

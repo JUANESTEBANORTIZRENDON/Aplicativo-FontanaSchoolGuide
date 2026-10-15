@@ -104,7 +104,12 @@ export async function prepareAttempt(userId: string, now = new Date()) {
     await progressRow(tx, userId, activityId);
     await lockActivityProgress(tx, userId, activityId);
 
+    // Primero los límites de siempre (acceso, intentos, excepciones): sin intentos no tiene sentido pedir práctica.
+    const { attempt, resumed } = await startAttemptTx(tx, userId, activityId, { now });
+    if (resumed) throw new ConflictError('Ya tienes una prueba de mecanografía en curso.', 'TYPING_ATTEMPT_OPEN');
+
     // Práctica obligatoria tras un intento fallido: el servidor no prepara otro hasta registrarla.
+    // Si falta, la transacción se revierte y el intento recién creado no llega a existir.
     const failedAt = await lastFailedAt(tx, userId, activityId);
     if (failedAt) {
       const progress = await progressRow(tx, userId, activityId);
@@ -112,9 +117,6 @@ export async function prepareAttempt(userId: string, now = new Date()) {
         throw new ConflictError('Antes de repetir la prueba, completa la práctica breve.', 'PRACTICE_REQUIRED');
       }
     }
-
-    const { attempt, resumed } = await startAttemptTx(tx, userId, activityId, { now });
-    if (resumed) throw new ConflictError('Ya tienes una prueba de mecanografía en curso.', 'TYPING_ATTEMPT_OPEN');
     const text = await pickText(tx, userId);
     const nonce = randomBytes(32).toString('base64url');
     const expiresAt = new Date(now.getTime() + config.typingAttemptTtlMinutes * 60_000);
@@ -194,7 +196,7 @@ export async function completeAttempt(userId: string, attemptId: string, input: 
       },
     });
     await submitAttemptTx(tx, userId, attemptId, { score, passed, durationSeconds: Math.round(duration), now });
-    return { late: false as const, metrics, passed, number: attempt.number, activityId: attempt.evaluationId };
+    return { late: false as const, metrics, passed, number: attempt.number };
   });
   if (outcome.late) throw new ConflictError('Se acabó el tiempo de la prueba. El intento se cerró sin resultado.', 'TYPING_TIME_EXPIRED');
   const snapshot = await loadSnapshot(prisma, userId, now);

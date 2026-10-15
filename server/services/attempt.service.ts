@@ -16,7 +16,8 @@ type Tx = Prisma.TransactionClient;
 
 async function availabilityFor(tx: Tx, userId: string, activityId: string, evaluation: Parameters<typeof computeAvailability>[0] & { id: string }, now: Date): Promise<Availability> {
   const [attempts, overrides] = await Promise.all([
-    tx.attempt.findMany({ where: { userId, evaluationId: evaluation.id }, select: { id: true, number: true, status: true, overrideId: true, submittedAt: true, startedAt: true } }),
+    // Todas las versiones de la evaluación: un cambio de configuración no reinicia los intentos usados.
+    tx.attempt.findMany({ where: { userId, evaluation: { activityId } }, select: { id: true, number: true, status: true, overrideId: true, submittedAt: true, startedAt: true } }),
     overridesForUser(tx, userId).then((rows) => rows.filter((row) => row.activityId === activityId)),
   ]);
   return computeAvailability(evaluation, attempts, overrides, now);

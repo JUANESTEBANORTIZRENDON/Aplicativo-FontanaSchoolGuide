@@ -54,12 +54,12 @@ export async function loadSnapshot(db: Db, userId: string, now = new Date(), opt
     overridesForUser(db, userId),
     activeEvaluations(db, activityIds),
   ]);
-  const attempts = await attemptsForUser(db, userId, [...evaluations.values()].map((evaluation) => evaluation.id));
+  const attempts = await attemptsForUser(db, userId, [...evaluations.keys()]);
   const availability = new Map<string, Availability>();
   for (const [activityId, evaluation] of evaluations) {
     availability.set(activityId, computeAvailability(
       evaluation,
-      attempts.filter((attempt) => attempt.evaluationId === evaluation.id),
+      attempts.filter((attempt) => attempt.evaluation.activityId === activityId),
       overrides.filter((override) => override.activityId === activityId),
       now,
     ));

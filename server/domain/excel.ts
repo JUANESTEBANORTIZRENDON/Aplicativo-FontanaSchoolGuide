@@ -258,3 +258,22 @@ export function gradeExcel(scenario: ExcelScenario, key: ExcelAnswerKey, steps: 
 export function describeCell(ref: string): { column: number; row: number } | null {
   return parseRef(ref.toUpperCase());
 }
+
+// Respuestas correctas de un escenario. Solo lo usan las pruebas y los datos demo (el navegador nunca
+// recibe esto). Útil para generar intentos reales sin escribir las respuestas a mano.
+export function solveScenario(scenario: ExcelScenario): StepInput[] {
+  const { tasks, sheets } = scenario;
+  const dates = new Map<string, string>(sheets.volver.rows.map((row) => [row.id, row.fecha as string]));
+  dates.set(VOLVER_NEW_ROW_ID, tasks.callback.fecha);
+  const order = [...dates.entries()].sort((a, b) => a[1].localeCompare(b[1])).map(([id]) => id).join(',');
+  return [
+    { questionId: 'busquedas.filtro', value: tasks.company },
+    { questionId: 'busquedas.localizar', value: tasks.clientCedula },
+    { questionId: 'volver.registrar', value: { ...tasks.callback } },
+    { questionId: 'volver.ordenar', value: order },
+    { questionId: 'acuerdos.completar', value: { valor: tasks.agreement.valor, estado: tasks.agreement.estado, fecha: tasks.agreement.fecha } },
+    { questionId: 'pagos.faltante', value: '=H2-I2' },
+    { questionId: 'pagos.total', value: '=SUMA(C2:C500)' },
+    { questionId: 'pagos.moneda', value: 'cop' },
+  ];
+}

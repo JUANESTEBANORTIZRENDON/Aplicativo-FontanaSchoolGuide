@@ -27,7 +27,7 @@ function average(value: string | null): { value: string | null; sinDatos: boolea
 export async function summary(query: MetricsQuery, now = new Date()) {
   const filters = filtersOf(query);
   const days = query.days ?? env.STALLED_DAYS;
-  const [advisors, progress, approval, distribution, attempts, timeModules, timeActivities, stalled, typing, outcome, byAction, byReason, byActivity, byAdmin, location] = await Promise.all([
+  const [advisors, progress, approval, distribution, attempts, timeModules, timeActivities, stalled, typing, outcome, byAction, byReason, byActivity, byAdmin, location, dictation, dictationErrors, excel, excelSteps] = await Promise.all([
     metrics.activeAdvisors(),
     metrics.overallProgress(filters),
     metrics.approvalByModule(filters),
@@ -43,6 +43,10 @@ export async function summary(query: MetricsQuery, now = new Date()) {
     metrics.reactivationsBy('activity', filters),
     metrics.reactivationsBy('admin', filters),
     metrics.currentLocation(filters, query.limit, null),
+    metrics.dictationStats(filters),
+    metrics.dictationErrors(filters),
+    metrics.excelStats(filters),
+    metrics.excelSteps(filters),
   ]);
   const stalledItems = stalled.items.slice(0, query.limit);
   const lastStalled = stalledItems.at(-1);
@@ -60,8 +64,19 @@ export async function summary(query: MetricsQuery, now = new Date()) {
     },
     typing: {
       results: typing.results, advisors: typing.advisors, sinDatos: typing.results === 0,
-      avgWpm: typing.avgWpm, avgAccuracy: typing.avgAccuracy, avgErrors: typing.avgErrors,
-      approvalRate: ratio(typing.passed, typing.linked),
+      // avgWpm se conserva por compatibilidad: son las palabras por minuto (PPM) de la prueba interna.
+      avgWpm: typing.avgPpm, avgPpm: typing.avgPpm, avgCorrectCpm: typing.avgCorrectCpm, avgAccuracy: typing.avgAccuracy, avgErrors: typing.avgErrors,
+      approvalRate: ratio(typing.passed, typing.results),
+    },
+    excel: {
+      results: excel.results, advisors: excel.advisors, sinDatos: excel.results === 0, avgScore: average(excel.avgScore),
+      approvalRate: ratio(excel.passed, excel.results),
+      steps: excelSteps.map((step) => ({ ...step, successRate: ratio(step.correct, step.attempts) })),
+    },
+    dictation: {
+      results: dictation.results, advisors: dictation.advisors, sinDatos: dictation.results === 0, avgScore: average(dictation.avgScore),
+      avgWordMatch: average(dictation.avgWordMatch), approvalRate: ratio(dictation.passed, dictation.results),
+      topErrors: dictationErrors,
     },
     reactivations: {
       total: outcome.total, byAction, byReason, byActivity, byAdmin,
