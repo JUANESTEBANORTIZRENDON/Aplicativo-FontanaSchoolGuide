@@ -75,6 +75,13 @@ function shell(title: string, subtitle: string, content: string, usuario?: Usuar
   });
 }
 
+// Identidad compartida por el acceso y el formulario del primer ingreso.
+function aplicarEstiloAcceso(): void {
+  document.body.classList.add('auth-login', 'login-motion');
+  document.querySelector('.auth-intro')!.remove();
+  document.querySelector('.auth-brand')!.innerHTML = '<img src="/imagenes/fontana-logo.png" alt="Fontana"><span>Aula de formación</span>';
+}
+
 function formularioLogin(): void {
   shell('', '', `
     <div class="login-panel">
@@ -105,9 +112,7 @@ function formularioLogin(): void {
         <p id="feedback" class="feedback" role="alert" hidden></p>
       </form>
     </section></div>`);
-  document.body.classList.add('auth-login', 'login-motion');
-  document.querySelector('.auth-intro')!.remove();
-  document.querySelector('.auth-brand')!.innerHTML = '<img src="/imagenes/fontana-logo.png" alt="Fontana"><span>Aula de formación</span>';
+  aplicarEstiloAcceso();
   const form = document.querySelector<HTMLFormElement>('#login-form')!;
   const passwordInput = form.elements.namedItem('password') as HTMLInputElement;
   const passwordToggle = form.querySelector<HTMLButtonElement>('.password-toggle')!;
@@ -151,18 +156,41 @@ function formularioLogin(): void {
 }
 
 function llenaTusDatos(usuario: Usuario): void {
-  shell('Llena tus datos', 'Completa tus datos de contacto para continuar con la inducción.', `
-    <section class="auth-card narrow"><div class="profile-summary"><strong>${escapar(usuario.nombreCompleto)}</strong><span>Documento ${escapar(usuario.numeroDocumento)}</span></div>
+  shell('', '', `
+    <div class="login-panel">
+      <section class="auth-card narrow login-card" aria-labelledby="profile-title">
+      <h1 id="profile-title">Completa tus datos</h1>
+      <p class="profile-intro">Un último paso antes de comenzar tu inducción.</p>
+      <div class="profile-summary"><strong>${escapar(usuario.nombreCompleto)}</strong><span>Documento ${escapar(usuario.numeroDocumento)}</span></div>
       <form id="profile-form" class="auth-form">
         <label>Correo electrónico<input name="correo" type="email" required maxlength="150" value="${escapar(usuario.correo)}" autocomplete="email" placeholder="nombre@empresa.com"></label>
         <label>Teléfono <small>Opcional</small><input name="telefono" type="tel" maxlength="30" value="${escapar(usuario.telefono)}" autocomplete="tel"></label>
         <button class="primary-action">Guardar y continuar</button><p id="feedback" class="feedback" role="alert" hidden></p>
       </form>
-    </section>`, usuario);
+      <button type="button" class="profile-back" id="profile-back-login">← Volver al inicio de sesión</button>
+    </section></div>`, usuario);
+  aplicarEstiloAcceso();
+  document.body.classList.add('auth-profile');
+  document.querySelector('.auth-account')?.remove();
   const profileForm = document.querySelector<HTMLFormElement>('#profile-form')!;
   const draftKey = `fontana-profile-draft:${usuario.id}`;
   const correoInput = profileForm.elements.namedItem('correo') as HTMLInputElement;
   const telefonoInput = profileForm.elements.namedItem('telefono') as HTMLInputElement;
+  const backToLogin = document.querySelector<HTMLButtonElement>('#profile-back-login')!;
+  backToLogin.addEventListener('click', async () => {
+    if (backToLogin.disabled) return;
+    backToLogin.disabled = true;
+    backToLogin.textContent = 'Cerrando sesión…';
+    try {
+      await api('/auth/logout', { method: 'POST' });
+      showAppLoading('Volviendo al inicio de sesión…');
+      location.replace('/login');
+    } catch (error) {
+      mensaje((error as Error).message, true);
+      backToLogin.disabled = false;
+      backToLogin.textContent = '← Volver al inicio de sesión';
+    }
+  });
   try {
     const draft = JSON.parse(sessionStorage.getItem(draftKey) ?? 'null') as { correo?: unknown; telefono?: unknown } | null;
     if (typeof draft?.correo === 'string') correoInput.value = draft.correo;

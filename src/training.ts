@@ -128,11 +128,11 @@ let highestUnlockedStage = 0;
 function updateExperienceAccess(): void {
   const lastStage = currentStage === stages.length - 1;
   const unlocked = lastStage && companyRead.checked;
-  // La experiencia ya se registró en "Llena tus datos" antes de llegar a la inducción.
-  readingConfirmation.hidden = true;
-  experienceSection.hidden = true;
-  experienceFields.disabled = true;
-  void unlocked;
+  // La confirmación de lectura se muestra únicamente al terminar las cinco etapas.
+  readingConfirmation.hidden = !lastStage;
+  // La casilla habilita las opciones de experiencia dentro de la última etapa.
+  experienceSection.hidden = !unlocked;
+  experienceFields.disabled = !unlocked;
 }
 function showStage(index: number): void {
   const stage = stages[index];

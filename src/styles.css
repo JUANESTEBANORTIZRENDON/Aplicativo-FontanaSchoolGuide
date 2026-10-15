@@ -1072,6 +1072,34 @@ input:focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
 .experience-option { display: flex; align-items: flex-start; gap: 12px; padding: 20px; border: 1px solid #ffffff40; border-radius: 18px; background: linear-gradient(135deg, #fffffff5, #e7eef5e6); box-shadow: 0 6px 24px 4px #bdcede12; color: var(--ink); cursor: pointer; }
 .experience-option:has(input:checked) { border-color: #d4af3780; background: linear-gradient(135deg, #fffaf0, #f3e8ceeF); box-shadow: inset 3px 0 #d4af37, 0 0 24px #d4af3720; }
 .experience-option:focus-within { border-color: var(--red); }
+.experience-option {
+  position: relative;
+  overflow: hidden;
+  transition: transform .2s, border-color .2s, box-shadow .2s;
+}
+.experience-option::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(110deg, transparent, #e9c87338, transparent);
+  transform: translateX(-110%);
+  transition: transform .6s ease;
+}
+.experience-option:hover:not(:has(input:disabled)) {
+  transform: translateY(-2px);
+  border-color: #d4af3780;
+  box-shadow: 0 9px 22px #11182730;
+}
+.experience-option:has(input:checked):hover {
+  box-shadow: inset 3px 0 #d4af37, 0 9px 22px #d4af3720;
+}
+.experience-option:hover:not(:has(input:disabled))::before { transform: translateX(110%); }
+.experience-option:active:not(:has(input:disabled)) { transform: translateY(0); }
+@media(prefers-reduced-motion:reduce) {
+  .experience-option:hover:not(:has(input:disabled)) { transform: none; }
+}
 .experience-option strong { display: block; font-size: 16px; font-weight: 600; }
 .experience-option small { display: block; font-size: 14px; color: var(--muted); margin-top: 5px; }
 .experience-result { margin-top: 18px; padding: 15px 18px; border-radius: 8px; background: #faf3df; color: var(--navy); font-size: 14px; }
@@ -1079,6 +1107,40 @@ input:focus-visible { outline: 2px solid var(--red); outline-offset: 4px; }
 @media(max-width:650px) { .experience-section { padding: 24px 20px; } }
 .experience-section .primary { border-color: #b76279; }
 .experience-section input:focus-visible, .experience-section button:focus-visible { outline-color: #d4af37; }
+
+/* Interacciones del módulo: el mismo reflejo dorado de los botones del acceso.
+   ::before deja libre el subrayado ::after de las pestañas. */
+.learning :is(.tabs button, .step, .primary, .step-controls > button) {
+  position: relative;
+  overflow: hidden;
+  transition: background .2s, border-color .2s, color .2s, transform .2s, box-shadow .2s;
+}
+.learning :is(.tabs button, .step, .primary, .step-controls > button)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent, #e9c87338, transparent);
+  transform: translateX(-110%);
+  transition: transform .6s ease;
+}
+.learning :is(.tabs button, .step, .primary, .step-controls > button):hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 9px 22px #8b153830;
+}
+.learning .step.is-active:hover:not(:disabled) {
+  box-shadow: inset 3px 0 var(--red), 0 9px 22px #8b153830;
+}
+.learning :is(.tabs button, .step, .primary, .step-controls > button):hover:not(:disabled)::before {
+  transform: translateX(110%);
+}
+.learning :is(.tabs button, .step, .primary, .step-controls > button):active:not(:disabled) {
+  transform: translateY(0);
+}
+@media(prefers-reduced-motion:reduce) {
+  .learning :is(.tabs button, .step, .primary, .step-controls > button):hover:not(:disabled) { transform: none; }
+}
 
 /* Aviso de historia completada: ventana nativa con foco y cierre por Escape. */
 .completion-dialog {

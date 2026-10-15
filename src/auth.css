@@ -115,6 +115,25 @@ body.auth-login {
 .auth-login .auth-form label { color: #ecf0f5; font-size: 13px; }
 .auth-login .auth-form input { min-height: 49px; border: 1px solid #a8bbd04d; border-radius: 10px; font-family: 'Segoe UI', Arial, sans-serif; font-weight: 400; background: #ffffff0a; color: #f9fafb; color-scheme: dark; }
 .auth-login .auth-form input::placeholder { color: #b5c3d2; }
+.auth-profile .auth-header { justify-content: center; }
+.auth-profile .auth-main { max-width: 620px; }
+.auth-profile .login-panel { grid-template-columns: minmax(0, 1fr); }
+.auth-profile .auth-account { color: #fff4dc; }
+.auth-profile .auth-account .text-button { color: #efd58d; padding: 9px 12px; border: 1px solid #d4af3750; border-radius: 9px; background: #11182725; }
+.auth-profile .auth-account .text-button:hover { background: #d4af3720; }
+.profile-intro { margin: -8px 0 22px; color: #c4d0dd; font-size: 14px; line-height: 1.6; }
+.auth-profile .profile-summary { gap: 5px; padding: 14px 16px; margin: 0 0 22px; border: 1px solid #d4af3730; border-radius: 12px; background: linear-gradient(120deg, #ffffff09, #d4af3708); }
+.auth-profile .profile-summary strong { color: #fff1cf; font-size: 15px; }
+.auth-profile .profile-summary span, .auth-profile .auth-form label small { color: #bac9da; }
+.profile-back { display: block; margin: 20px auto 0; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: #dcc68f; font: 13px 'Segoe UI', Arial, sans-serif; cursor: pointer; text-underline-offset: 4px; }
+.profile-back:hover:not(:disabled) { color: #fff0bf; text-decoration: underline; }
+.profile-back:disabled { opacity: .65; cursor: wait; }
+@media(max-width:600px) {
+  .auth-profile .auth-header { gap: 12px; }
+  .auth-profile .auth-brand { font-size: 17px; gap: 8px; }
+  .auth-profile .auth-brand img { width: 38px; height: 38px; }
+  .auth-profile .auth-account .text-button { font-size: 12px; padding: 8px; white-space: nowrap; }
+}
 .auth-login .auth-form input:-webkit-autofill { -webkit-text-fill-color: #f9fafb; box-shadow: inset 0 0 0 1000px #2b3b4e; caret-color: #f9fafb; }
 .auth-login .primary-action { margin-top: 3px; min-height: 49px; border-radius: 11px; background: linear-gradient(120deg, #8b1538, #70112c); box-shadow: 0 5px 16px #8b153818; font-family: 'Segoe UI', Arial, sans-serif; }
 .auth-login .primary-action:hover:not(:disabled) { background: #70112c; }
