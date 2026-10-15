@@ -14,3 +14,8 @@ export const completarDatosBody = z.object({
   telefono: z.string().trim().max(30, 'El teléfono debe tener como máximo 30 caracteres.').optional().default(''),
 });
 export type CompletarDatosBody = z.infer<typeof completarDatosBody>;
+
+export const experienciaBody = z.object({
+  tieneExperienciaCobranzasDigitales: z.boolean({ message: 'Selecciona si tienes experiencia en cobranzas digitales.' }),
+}).strict();
+export type ExperienciaBody = z.infer<typeof experienciaBody>;

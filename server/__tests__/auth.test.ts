@@ -123,6 +123,22 @@ describe('autenticación', () => {
     expect(me.body.permisos).toContain('admin:auditoria');
   });
 
+  it('guarda la experiencia y envía al asesor a su ruta de práctica', async () => {
+    const user = await createTestUser(SUITE);
+    const { agent } = await loginAgent(user.numeroDocumento, 'asesor');
+    expect((await agent.post('/api/auth/experiencia').set(ORIGIN).send({ tieneExperienciaCobranzasDigitales: 'si' })).status).toBe(400);
+    const saved = await agent.post('/api/auth/experiencia').set(ORIGIN).send({ tieneExperienciaCobranzasDigitales: true });
+    expect(saved.status).toBe(200);
+    expect(saved.body.usuario.ruta).toBe('/practica/experiencia');
+    expect((await agent.get('/api/auth/me')).body.usuario.ruta).toBe('/practica/experiencia');
+    // La ruta de formación sigue disponible para el asesor con práctica asignada.
+    expect((await agent.get('/api/advisor/modules')).status).toBe(200);
+    const pending = await createTestUser(SUITE);
+    await prisma.usuario.update({ where: { id: pending.id }, data: { debeCompletarDatos: true } });
+    const other = await loginAgent(pending.numeroDocumento, 'asesor');
+    expect((await other.agent.post('/api/auth/experiencia').set(ORIGIN).send({ tieneExperienciaCobranzasDigitales: false })).status).toBe(403);
+  });
+
   it('rechaza escrituras de otro origen (CSRF)', async () => {
     const response = await request(app).post('/api/auth/login').set({ Origin: 'https://otro-sitio.test', Host: '127.0.0.1:3000' }).send({ identificador: 'x', password: 'y', tipo: 'asesor' });
     expect(response.status).toBe(403);

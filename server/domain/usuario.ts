@@ -16,9 +16,13 @@ export type AuthUser = {
   versionSesion: number;
 };
 
-export function rutaUsuario(usuario: { rol: string; debeCompletarDatos: boolean }): string {
+// Con la experiencia ya respondida, el asesor llega a su ruta de práctica (módulo 02).
+export function rutaUsuario(usuario: { rol: string; debeCompletarDatos: boolean; tieneExperienciaCobranzasDigitales: boolean | null }): string {
   if (esAdministrador(usuario.rol)) return '/admin';
   if (usuario.debeCompletarDatos) return '/llena-tus-datos';
+  if (usuario.tieneExperienciaCobranzasDigitales !== null) {
+    return usuario.tieneExperienciaCobranzasDigitales ? '/practica/experiencia' : '/practica/nuevo';
+  }
   return '/induccion';
 }
 

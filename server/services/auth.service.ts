@@ -2,10 +2,10 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../config/prisma.js';
 import { BCRYPT_ROUNDS } from '../config/security.js';
 import { esAdministrador, Role, UserStatus } from '../domain/enums.js';
-import { ConflictError, UnauthorizedError } from '../domain/errors.js';
+import { ConflictError, ForbiddenError, UnauthorizedError } from '../domain/errors.js';
 import type { AuthUser } from '../domain/usuario.js';
 import { findForLogin, touchLastAccess, usuarioSesionSelect } from '../repositories/usuario.repository.js';
-import type { CompletarDatosBody, LoginBody } from '../validators/auth.validator.js';
+import type { CompletarDatosBody, ExperienciaBody, LoginBody } from '../validators/auth.validator.js';
 import { Prisma } from '@prisma/client';
 
 const GENERIC_FAILURE = 'Credenciales incorrectas o cuenta inactiva.';
@@ -43,6 +43,16 @@ export async function login(input: LoginBody, context: LoginContext): Promise<Au
 // "Cerrar todas las sesiones": invalida todas las cookies emitidas para el usuario.
 export async function logoutEverywhere(userId: string): Promise<void> {
   await prisma.usuario.update({ where: { id: userId }, data: { versionSesion: { increment: 1 } } });
+}
+
+// Respuesta de experiencia al terminar la inducción: define la ruta de práctica del asesor.
+export async function registrarExperiencia(usuario: AuthUser, input: ExperienciaBody): Promise<AuthUser> {
+  if (usuario.debeCompletarDatos) throw new ForbiddenError('Completa tu perfil de asesor antes de continuar.', 'PROFILE_INCOMPLETE');
+  return prisma.usuario.update({
+    where: { id: usuario.id },
+    data: { tieneExperienciaCobranzasDigitales: input.tieneExperienciaCobranzasDigitales, fechaRespuestaExperiencia: new Date() },
+    select: usuarioSesionSelect,
+  });
 }
 
 export async function completarDatos(usuario: AuthUser, input: CompletarDatosBody): Promise<AuthUser> {

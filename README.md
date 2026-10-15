@@ -42,6 +42,10 @@ Navegador ── /api/* ──► routes ──► middleware (requestId, mismaP
 - Inicio de sesión: el asesor usa su documento; el administrador, documento o correo. Nunca por nombre. Las respuestas de error son genéricas y se limita a 5 fallos por IP + identificador y 25 por IP cada 15 minutos (en memoria, una instancia).
 - Todas las fechas se guardan en UTC y se presentan en `APP_TIMEZONE` (America/Bogota). Notas y porcentajes usan `Decimal(5,2)` calculados en el servidor.
 
+### Experiencia y ruta de práctica
+
+Al terminar las cinco etapas de `/induccion`, la confirmación de lectura habilita la pregunta de experiencia. Al responder, `POST /api/auth/experiencia` guarda `tiene_experiencia_cobranzas_digitales` y `fecha_respuesta_experiencia`; desde entonces el asesor entra a `/practica/experiencia` o `/practica/nuevo` (destino del módulo 02, todavía sin ejercicios). Puede volver a `/induccion` para repasar, donde también ve "Tu ruta de formación". El servidor exige sesión, rol asesor, perfil completo y un valor booleano.
+
 ### Reglas de la ruta de formación
 
 - Catálogo inicial: 1 Ofimática y mecanografía → 2 Simulador de cobranzas → 3 Tipificación de llamadas → 4 Certificado (requiere los tres sellos).
@@ -193,6 +197,7 @@ npm.cmd test
 | `POST /api/auth/logout-all` | Cerrar todas las sesiones del usuario. | Autenticado |
 | `GET /api/auth/me` | Usuario, ruta y permisos. | Autenticado |
 | `POST /api/auth/completar-datos` | Correo y teléfono del asesor. | Asesor |
+| `POST /api/auth/experiencia` | Guarda la experiencia y asigna la ruta de práctica. | Asesor con perfil completo |
 | `GET /api/advisor/modules` | Ruta, progreso y botones. | Asesor |
 | `GET /api/advisor/modules/:slug` | Acceso validado a un módulo (403 con `blockedReason`). | Asesor |
 | `GET /api/advisor/progress` | Resumen personal. | Asesor |
