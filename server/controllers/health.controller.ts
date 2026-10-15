@@ -1,15 +1,12 @@
-import type { NextFunction, Request, Response } from 'express';
-import { databaseModel } from '../models/database.model.js';
+import type { Request, Response } from 'express';
+import { checkConnection } from '../config/prisma.js';
 
-export async function getHealth(
-  _request: Request,
-  response: Response,
-  next: NextFunction,
-): Promise<void> {
+export async function getHealth(request: Request, response: Response): Promise<void> {
   try {
-    await databaseModel.checkConnection();
+    await checkConnection();
     response.status(200).json({ status: 'ok', database: 'connected' });
-  } catch (error: unknown) {
-    next(error);
+  } catch (error) {
+    console.error(JSON.stringify({ event: 'health_failed', requestId: request.requestId, error: error instanceof Error ? error.message : String(error) }));
+    response.status(503).json({ status: 'error', code: 'SERVICE_UNAVAILABLE', message: 'El servicio no está disponible temporalmente.', details: {}, requestId: request.requestId });
   }
 }
