@@ -9,8 +9,15 @@
     "skipLibCheck": true,
     "rootDir": "server",
     "outDir": "server-dist",
-    "types": ["node"],
+    "types": [
+      "node"
+    ],
     "sourceMap": true
   },
-  "include": ["server/**/*.ts"]
+  "include": [
+    "server/**/*.ts"
+  ],
+  "exclude": [
+    "server/__tests__/**"
+  ]
 }

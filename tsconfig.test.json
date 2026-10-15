@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.server.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "server/**/*.ts",
+    "prisma/**/*.ts",
+    "vitest.config.ts"
+  ],
+  "exclude": []
+}
