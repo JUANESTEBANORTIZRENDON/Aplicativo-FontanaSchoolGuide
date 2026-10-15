@@ -1,5 +1,6 @@
 import './styles.css';
 import { stages } from './content';
+import { showAppLoading } from './loading';
 
 // Obtiene un elemento obligatorio y detecta referencias HTML incorrectas.
 function element<T extends HTMLElement>(selector: string): T {
@@ -162,7 +163,7 @@ next.addEventListener('click', () => {
 });
 showStage(0);
 
-// Confirmación de lectura y formulario: respuesta solo en la sesión actual.
+// La experiencia se guarda en el perfil antes de abrir la práctica asignada.
 companyRead.addEventListener('change', () => {
   if (!companyRead.checked) {
     experienceForm.reset();
@@ -172,15 +173,45 @@ companyRead.addEventListener('change', () => {
   updateExperienceAccess();
 });
 experienceForm.addEventListener('change', () => { experienceResult.hidden = true; });
-experienceForm.addEventListener('submit', (event: SubmitEvent) => {
+let savingExperience = false;
+experienceForm.addEventListener('submit', async (event: SubmitEvent) => {
   event.preventDefault();
-  if (currentStage !== stages.length - 1 || !companyRead.checked || !experienceForm.reportValidity()) return;
+  if (savingExperience || currentStage !== stages.length - 1 || !companyRead.checked || !experienceForm.reportValidity()) return;
   const response = new FormData(experienceForm).get('experience');
   if (response !== 'experienced' && response !== 'new') return;
-  experienceResult.textContent = response === 'experienced'
-    ? 'Has indicado que tienes experiencia en cobranzas digitales. Respuesta confirmada en esta sesión.'
-    : 'Has indicado que eres completamente nuevo en cobranzas digitales. Respuesta confirmada en esta sesión.';
-  experienceResult.hidden = false;
+  savingExperience = true;
+  const submit = experienceForm.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+  const originalLabel = submit.textContent;
+  submit.disabled = true;
+  submit.textContent = 'Preparando tu práctica…';
+  experienceFields.disabled = true;
+  companyRead.disabled = true;
+  experienceResult.hidden = true;
+  try {
+    const result = await fetch('/api/auth/experiencia', {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tieneExperienciaCobranzasDigitales: response === 'experienced' }),
+    });
+    if (result.status === 401) { location.assign('/login'); return; }
+    if (result.status === 404) throw new Error('El servidor necesita actualizarse para guardar tu respuesta. Reinicia el servidor de Fontana e intenta nuevamente.');
+    if (!result.ok) {
+      const body: unknown = await result.json().catch(() => null);
+      const message = body && typeof body === 'object' && 'message' in body ? body.message : undefined;
+      throw new Error(typeof message === 'string' ? message : 'No pudimos guardar tu respuesta. Intenta nuevamente.');
+    }
+    showAppLoading('Preparando tu módulo de práctica…');
+    location.assign(response === 'experienced' ? '/practica/experiencia' : '/practica/nuevo');
+  } catch (error) {
+    experienceResult.textContent = error instanceof TypeError
+      ? 'No pudimos conectar con el servidor. Revisa tu conexión e intenta nuevamente.'
+      : error instanceof Error ? error.message : 'No pudimos guardar tu respuesta. Intenta nuevamente.';
+    experienceResult.hidden = false;
+    companyRead.disabled = false;
+    experienceFields.disabled = false;
+    submit.disabled = false;
+    submit.textContent = originalLabel;
+    savingExperience = false;
+  }
 });
 
 // CARRUSEL: cambia CAROUSEL_INTERVAL para ajustar el tiempo, en milisegundos.

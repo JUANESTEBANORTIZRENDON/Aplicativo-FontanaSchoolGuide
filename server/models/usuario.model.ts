@@ -29,5 +29,8 @@ export function rutaUsuario(usuario: {
 }): string {
   if (esAdministrador(usuario.rol)) return '/admin';
   if (usuario.debeCompletarDatos) return '/llena-tus-datos';
+  if (usuario.tieneExperienciaCobranzasDigitales !== null) {
+    return usuario.tieneExperienciaCobranzasDigitales ? '/practica/experiencia' : '/practica/nuevo';
+  }
   return '/induccion';
 }

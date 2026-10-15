@@ -23,6 +23,15 @@ Ya existe una cuenta administradora y una asesora activas. Por eso el comando de
 
 El formulario no solicita experiencia ni modifica los valores históricos de esa columna. La finalización del perfil se guarda en las columnas existentes; todos los asesores acceden al mismo módulo de inducción.
 
+## Selección de la ruta de práctica
+
+En la etapa 05 de la inducción, la confirmación de lectura habilita la pregunta de experiencia. Al confirmar, se guarda `tiene_experiencia_cobranzas_digitales` y la fecha de respuesta en la cuenta autenticada:
+
+- Sin experiencia: `/practica/nuevo`.
+- Con experiencia: `/practica/experiencia`.
+
+Al volver a ingresar se conserva la ruta guardada. Ambas muestran por ahora un destino del módulo 02 sin ejercicios. Desde allí se puede volver a `/induccion` para repasar o cambiar la respuesta. El servidor valida la sesión, el rol asesor, el perfil completo y que el valor recibido sea booleano.
+
 ## Panel administrador
 
 En `/admin` se pueden crear, buscar, revisar, editar y desactivar asesores. La desactivación conserva el registro y bloquea de inmediato el acceso. Un asesor desactivado puede reactivarse desde el mismo panel.
@@ -47,6 +56,7 @@ Si ya existe un administrador, se informa sin modificarlo ni crear otro. La base
 | GET | `/api/auth/me` | Usuario autenticado |
 | POST | `/api/auth/logout` | Usuario autenticado |
 | POST | `/api/auth/completar-datos` | Asesor autenticado |
+| POST | `/api/auth/experiencia` | Asesor autenticado con perfil completo |
 | GET | `/api/admin/asesores` | Administrador |
 | POST | `/api/admin/asesores` | Administrador |
 | PUT | `/api/admin/asesores/:id` | Administrador |

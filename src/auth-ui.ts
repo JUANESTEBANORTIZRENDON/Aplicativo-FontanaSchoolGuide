@@ -324,10 +324,18 @@ export async function iniciarInterfaz(): Promise<void> {
   try { usuario = (await api<{ usuario: Usuario }>('/auth/me')).usuario; } catch { /* Sin sesión. */ }
   if (!usuario) { formularioLogin(); await revealApp(); return; }
   const route = usuario.ruta;
-  if (location.pathname !== route && location.pathname !== '/app') { location.replace(route); return; }
+  const practiceRoute = route === '/practica/nuevo' || route === '/practica/experiencia';
+  const reviewing = practiceRoute && location.pathname === '/induccion';
+  if (location.pathname !== route && location.pathname !== '/app' && !reviewing) { location.replace(route); return; }
   if (route === '/admin') { admin(usuario); await revealApp(); return; }
   if (route === '/llena-tus-datos') { llenaTusDatos(usuario); await revealApp(); return; }
-  if (location.pathname !== route) { location.replace(route); return; }
+  if (practiceRoute && !reviewing) {
+    const { mostrarPractica } = await import('./practice');
+    mostrarPractica(usuario.nombreCompleto, usuario.tieneExperienciaCobranzasDigitales === true);
+    await revealApp();
+    return;
+  }
+  if (location.pathname !== route && !reviewing) { location.replace(route); return; }
   document.querySelector('#app-content')!.insertAdjacentHTML('afterbegin', `<div class="training-session"><span>${escapar(usuario.nombreCompleto)} · Inducción Fontana</span><button id="training-logout" type="button">Cerrar sesión</button></div>`);
   document.querySelector('#training-logout')!.addEventListener('click', async () => { await api('/auth/logout', { method: 'POST' }); location.assign('/login'); });
   await import('./training');

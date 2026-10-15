@@ -105,4 +105,21 @@ export async function completarDatos(request: Request, response: Response, next:
   }
 }
 
+export async function registrarExperiencia(request: Request, response: Response, next: NextFunction): Promise<void> {
+  if (request.usuario!.rol !== 'asesor' || request.usuario!.debeCompletarDatos) {
+    response.status(403).json({ message: 'Completa tu perfil de asesor antes de continuar.' }); return;
+  }
+  const experiencia = request.body?.tieneExperienciaCobranzasDigitales;
+  if (typeof experiencia !== 'boolean') {
+    response.status(400).json({ message: 'Selecciona si tienes experiencia en cobranzas digitales.' }); return;
+  }
+  try {
+    const usuario = await usuarios.update({
+      where: { id: request.usuario!.id },
+      data: { tieneExperienciaCobranzasDigitales: experiencia, fechaRespuestaExperiencia: new Date(), fechaActualizacion: new Date() },
+    });
+    response.json({ usuario: serializar(usuario) });
+  } catch (error) { next(error); }
+}
+
 export { usuarioPublico };
