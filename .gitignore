@@ -14,3 +14,6 @@ desktop/
 
 # Credenciales locales de usuarios demo (no se versionan)
 /credenciales-demo.local.md
+
+# Lanzador local de cada equipo (la version del repositorio se conserva; los cambios locales no se suben)
+/Iniciar-FontanaSchool.cmd
