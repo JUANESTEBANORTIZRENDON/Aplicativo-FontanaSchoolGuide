@@ -11,6 +11,7 @@ import { advisorRouter } from './routes/advisor.routes.js';
 import { authRouter } from './routes/auth.routes.js';
 import { officeRouter } from './routes/training-office.routes.js';
 import { healthRouter } from './routes/health.routes.js';
+import { mediaRouter } from './routes/media.routes.js';
 import { mountWebView } from './views/web.view.js';
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -36,6 +37,7 @@ app.use('/api/health', healthRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/advisor', advisorRouter);
 app.use('/api/training/office', officeRouter);
+app.use('/api/media', mediaRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api', apiNotFound);
 

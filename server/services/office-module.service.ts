@@ -7,6 +7,7 @@ import {
 } from '../domain/office.js';
 import { activeConfig, officeActivities, recordView, viewsOf } from '../repositories/office.repository.js';
 import { loadSnapshot } from './progress.service.js';
+import { describeNext } from './office-dictation.service.js';
 import { practicePending } from './office-typing.service.js';
 
 export type SectionStatus = 'COMPLETED' | 'PENDING' | 'NO_ATTEMPTS';
@@ -60,7 +61,7 @@ export async function getModuleState(userId: string, now = new Date()) {
     : null;
   const seal = view.hasSeal ? await prisma.seal.findFirst({ where: { userId, moduleId: activities.moduleId, status: 'ACTIVE' }, orderBy: { issuedAt: 'desc' } }) : null;
   const next = snapshot.views.find((item) => item.slug === 'simulador-cobranzas');
-  const dictation = await prisma.dictationExercise.count({ where: { status: 'ACTIVE' } });
+  const dictation = await describeNext(userId).catch(() => null);
   const excel = await prisma.excelActivity.count({ where: { status: 'ACTIVE' } });
 
   return {
@@ -81,7 +82,8 @@ export async function getModuleState(userId: string, now = new Date()) {
       openAttempt: openTyping ? { attemptId: openTyping.attemptId, expiresAt: openTyping.expiresAt.toISOString(), started: Boolean(openTyping.startedOfficialAt) } : null,
     },
     excelAvailable: excel > 0,
-    dictationAvailable: dictation > 0,
+    dictation,
+    dictationAvailable: Boolean(dictation),
     devTts: env.DICTATION_DEV_TTS,
     seal: seal ? { issuedAt: seal.issuedAt.toISOString() } : null,
     nextModule: next ? { slug: next.slug, name: next.name, enabled: next.enabled, route: next.route, blockedReason: next.blockedReason } : null,

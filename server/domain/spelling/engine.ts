@@ -15,6 +15,7 @@ export type SpellingRuleInput = {
   // Pares no ordenados: [esperado, confusión frecuente] o al revés.
   pairs: [string, string][];
   explanation: string;
+  examples?: { incorrect: string; correct: string }[];
 };
 
 export type DetectedError = {

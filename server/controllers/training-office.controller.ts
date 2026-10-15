@@ -1,10 +1,12 @@
 import type { NextFunction, Request, Response } from 'express';
 import { OFFICE_MODULE_SLUG, type OfficeSection } from '../domain/office.js';
-import { validBody, validParams } from '../middleware/validate.js';
+import { validBody, validParams, validQuery } from '../middleware/validate.js';
+import * as dictationService from '../services/office-dictation.service.js';
+import * as excelService from '../services/office-excel.service.js';
 import * as moduleService from '../services/office-module.service.js';
 import * as typingService from '../services/office-typing.service.js';
 import { getAccessibleModule } from '../services/progress.service.js';
-import type { TypingCompleteBody } from '../validators/office.validator.js';
+import type { DictationSubmitBody, ExcelSubmitBody, TypingCompleteBody } from '../validators/office.validator.js';
 
 // El acceso lo decide el servidor en cada solicitud: un módulo bloqueado responde 403 con su motivo
 // también al entrar por URL directa. Un módulo aprobado sigue abierto para ver el resultado.
@@ -52,4 +54,52 @@ export async function typingPractice(request: Request, response: Response): Prom
 
 export async function typingPracticeTexts(_request: Request, response: Response): Promise<void> {
   response.json({ data: { texts: typingService.practiceTexts() } });
+}
+
+// ---- Excel ----
+export async function excelActivity(request: Request, response: Response): Promise<void> {
+  response.json({ data: await excelService.getActivity(request.usuario!.id) });
+}
+
+export async function excelStart(request: Request, response: Response): Promise<void> {
+  const { id } = validParams<{ id: string }>(request);
+  response.status(201).json({ data: await excelService.startPractice(request.usuario!.id, id) });
+}
+
+export async function excelSubmit(request: Request, response: Response): Promise<void> {
+  const { id } = validParams<{ id: string }>(request);
+  const body = validBody<ExcelSubmitBody>(request);
+  response.json({ data: await excelService.submitPractice(request.usuario!.id, id, body) });
+}
+
+// ---- Dictado ----
+export async function dictationNext(request: Request, response: Response): Promise<void> {
+  response.json({ data: { exercise: await dictationService.describeNext(request.usuario!.id) } });
+}
+
+export async function dictationLessons(_request: Request, response: Response): Promise<void> {
+  response.json({ data: { lessons: await dictationService.lessons() } });
+}
+
+export async function dictationMeta(request: Request, response: Response): Promise<void> {
+  const { id } = validParams<{ id: string }>(request);
+  const { attemptId } = validQuery<{ attemptId: string }>(request);
+  response.json({ data: await dictationService.getMetadata(request.usuario!.id, id, attemptId) });
+}
+
+export async function dictationStart(request: Request, response: Response): Promise<void> {
+  const { id } = validParams<{ id: string }>(request);
+  response.status(201).json({ data: await dictationService.startDictation(request.usuario!.id, id) });
+}
+
+export async function dictationPlay(request: Request, response: Response): Promise<void> {
+  const { id } = validParams<{ id: string }>(request);
+  const { attemptId } = validBody<{ attemptId: string }>(request);
+  response.json({ data: await dictationService.requestPlay(request.usuario!.id, id, attemptId) });
+}
+
+export async function dictationSubmit(request: Request, response: Response): Promise<void> {
+  const { id } = validParams<{ id: string }>(request);
+  const body = validBody<DictationSubmitBody>(request);
+  response.json({ data: await dictationService.submitDictation(request.usuario!.id, id, body, { requestId: request.requestId }) });
 }
