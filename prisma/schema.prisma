@@ -9,6 +9,11 @@ datasource db {
   schemas   = ["induccion"]
 }
 
+// rol ('asesor' | 'administrador') y estado ('activo' | 'inactivo' | 'bloqueado') son varchar
+// protegidos por los CHECK chk_usuarios_rol y chk_usuarios_estado (ver 0_baseline_usuarios).
+// Sus valores están centralizados en server/domain/enums.ts.
+// La experiencia previa sigue en tieneExperienciaCobranzasDigitales; AdvisorProfile.experienceLevel
+// la detalla cuando se conozca, sin duplicarla.
 model Usuario {
   id                                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   nombreCompleto                     String    @map("nombre_completo") @db.VarChar(150)
@@ -21,6 +26,8 @@ model Usuario {
   estado                             String    @default("activo") @db.VarChar(20)
   tieneExperienciaCobranzasDigitales Boolean?  @map("tiene_experiencia_cobranzas_digitales")
   fechaRespuestaExperiencia          DateTime? @map("fecha_respuesta_experiencia") @db.Timestamptz(6)
+  fechaHistoriaCompletada            DateTime? @map("fecha_historia_completada") @db.Timestamptz(6)
+  fechaMetodoCompletado              DateTime? @map("fecha_metodo_completado") @db.Timestamptz(6)
   debeCompletarDatos                 Boolean   @default(true) @map("debe_completar_datos")
   fechaDatosCompletados              DateTime? @map("fecha_datos_completados") @db.Timestamptz(6)
   debeCambiarPassword                Boolean   @default(false) @map("debe_cambiar_password")
@@ -28,11 +35,440 @@ model Usuario {
   fechaCreacion                      DateTime  @default(now()) @map("fecha_creacion") @db.Timestamptz(6)
   fechaActualizacion                 DateTime  @default(now()) @map("fecha_actualizacion") @db.Timestamptz(6)
   ultimoAcceso                       DateTime? @map("ultimo_acceso") @db.Timestamptz(6)
+  versionSesion                      Int       @default(0) @map("version_sesion")
   creador                            Usuario?  @relation("UsuarioCreador", fields: [creadoPor], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_usuarios_creado_por")
   creados                            Usuario[] @relation("UsuarioCreador")
 
+  perfilAsesor        AdvisorProfile?
+  progresoModulos     UserModuleProgress[]
+  progresoActividad   UserActivityProgress[]
+  intentos            Attempt[]
+  resultadosTyping    TypingResult[]
+  resultadosSimulador SimulatorResult[]
+  sellos              Seal[]
+  certificados        Certificate[]
+  excepciones         UserActivityOverride[] @relation("ExcepcionUsuario")
+  excepcionesCreadas  UserActivityOverride[] @relation("ExcepcionCreador")
+  auditoria           AdminAuditLog[]
+
   @@index([estado], map: "idx_usuarios_estado")
   @@index([rol], map: "idx_usuarios_rol")
+  @@index([rol, estado], map: "idx_usuarios_rol_estado")
+  @@index([fechaCreacion(sort: Desc), id(sort: Desc)], map: "idx_usuarios_fecha_creacion_id")
   @@map("usuarios")
+  @@schema("induccion")
+}
+
+enum CatalogStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+
+  @@schema("induccion")
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  AVAILABLE
+  IN_PROGRESS
+  PASSED
+  FAILED
+  BLOCKED
+
+  @@schema("induccion")
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  PASSED
+  FAILED
+  CANCELLED
+
+  @@schema("induccion")
+}
+
+enum CertificateStatus {
+  ACTIVE
+  REVOKED
+  REISSUED
+
+  @@schema("induccion")
+}
+
+enum SealStatus {
+  ACTIVE
+  REVOKED
+
+  @@schema("induccion")
+}
+
+enum OverrideAction {
+  REACTIVATE
+  UNLOCK
+  EXTRA_ATTEMPT
+  RESET_WAIT
+  REOPEN_MODULE
+
+  @@schema("induccion")
+}
+
+enum ActivityType {
+  PLACEHOLDER
+  LESSON
+  QUIZ
+  TYPING
+  SIMULATOR
+  TYPIFICATION
+
+  @@schema("induccion")
+}
+
+enum WebhookStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  IGNORED
+
+  @@schema("induccion")
+}
+
+enum ExperienceLevel {
+  NONE
+  BASIC
+  INTERMEDIATE
+  ADVANCED
+
+  @@schema("induccion")
+}
+
+model AdvisorProfile {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String           @unique @map("user_id") @db.Uuid
+  experienceLevel ExperienceLevel? @map("experience_level")
+  area            String?          @db.VarChar(100)
+  notes           String?
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user            Usuario          @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("perfiles_asesor")
+  @@schema("induccion")
+}
+
+model TrainingModule {
+  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug          String               @unique @db.VarChar(80)
+  name          String               @db.VarChar(150)
+  description   String?
+  order         Int                  @unique @map("order")
+  status        CatalogStatus        @default(DRAFT)
+  isRequired    Boolean              @default(true) @map("is_required")
+  route         String               @db.VarChar(200)
+  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  activities    Activity[]
+  prerequisites ModulePrerequisite[] @relation("ModuloDependiente")
+  dependents    ModulePrerequisite[] @relation("ModuloRequisito")
+  progress      UserModuleProgress[]
+  seals         Seal[]
+
+  @@map("modulos_formacion")
+  @@schema("induccion")
+}
+
+model ModulePrerequisite {
+  moduleId             String         @map("module_id") @db.Uuid
+  prerequisiteModuleId String         @map("prerequisite_module_id") @db.Uuid
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  module               TrainingModule @relation("ModuloDependiente", fields: [moduleId], references: [id], onDelete: Restrict)
+  prerequisite         TrainingModule @relation("ModuloRequisito", fields: [prerequisiteModuleId], references: [id], onDelete: Restrict)
+
+  @@id([moduleId, prerequisiteModuleId])
+  @@index([prerequisiteModuleId])
+  @@map("prerrequisitos_modulo")
+  @@schema("induccion")
+}
+
+model Activity {
+  id          String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  moduleId    String                 @map("module_id") @db.Uuid
+  type        ActivityType
+  order       Int                    @map("order")
+  status      CatalogStatus          @default(DRAFT)
+  title       String                 @db.VarChar(150)
+  isRequired  Boolean                @default(true) @map("is_required")
+  route       String?                @db.VarChar(200)
+  version     Int                    @default(1)
+  createdAt   DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  module      TrainingModule         @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+  evaluations Evaluation[]
+  progress    UserActivityProgress[]
+  overrides   UserActivityOverride[]
+
+  @@unique([moduleId, order])
+  @@index([moduleId, status])
+  @@map("actividades")
+  @@schema("induccion")
+}
+
+model UserModuleProgress {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  moduleId       String         @map("module_id") @db.Uuid
+  status         ProgressStatus @default(NOT_STARTED)
+  percent        Decimal        @default(0) @db.Decimal(5, 2)
+  startedAt      DateTime?      @map("started_at") @db.Timestamptz(6)
+  completedAt    DateTime?      @map("completed_at") @db.Timestamptz(6)
+  lastActivityAt DateTime?      @map("last_activity_at") @db.Timestamptz(6)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user           Usuario        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  module         TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, moduleId])
+  @@index([moduleId, status])
+  @@index([lastActivityAt])
+  @@map("progreso_modulo")
+  @@schema("induccion")
+}
+
+model UserActivityProgress {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  activityId     String         @map("activity_id") @db.Uuid
+  status         ProgressStatus @default(NOT_STARTED)
+  attemptsUsed   Int            @default(0) @map("attempts_used")
+  startedAt      DateTime?      @map("started_at") @db.Timestamptz(6)
+  completedAt    DateTime?      @map("completed_at") @db.Timestamptz(6)
+  lastActivityAt DateTime?      @map("last_activity_at") @db.Timestamptz(6)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user           Usuario        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  activity       Activity       @relation(fields: [activityId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, activityId])
+  @@index([activityId, status])
+  @@map("progreso_actividad")
+  @@schema("induccion")
+}
+
+// Una configuración evaluable nueva crea otra versión; una versión con intentos nunca se edita.
+model Evaluation {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  activityId   String        @map("activity_id") @db.Uuid
+  version      Int
+  title        String?       @db.VarChar(150)
+  minimumScore Decimal       @map("minimum_score") @db.Decimal(5, 2)
+  maxAttempts  Int           @map("max_attempts")
+  waitMinutes  Int           @default(0) @map("wait_minutes")
+  status       CatalogStatus @default(DRAFT)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  activity     Activity      @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  attempts     Attempt[]
+
+  @@unique([activityId, version])
+  @@index([activityId, status])
+  @@map("evaluaciones")
+  @@schema("induccion")
+}
+
+model Attempt {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String                @map("user_id") @db.Uuid
+  evaluationId        String                @map("evaluation_id") @db.Uuid
+  number              Int
+  score               Decimal?              @db.Decimal(5, 2)
+  status              AttemptStatus         @default(IN_PROGRESS)
+  startedAt           DateTime              @default(now()) @map("started_at") @db.Timestamptz(6)
+  submittedAt         DateTime?             @map("submitted_at") @db.Timestamptz(6)
+  durationSeconds     Int?                  @map("duration_seconds")
+  overrideId          String?               @map("override_id") @db.Uuid
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  user                Usuario               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  evaluation          Evaluation            @relation(fields: [evaluationId], references: [id], onDelete: Restrict)
+  override            UserActivityOverride? @relation(fields: [overrideId], references: [id], onDelete: Restrict)
+  answers             AttemptAnswer[]
+  typingResults       TypingResult[]
+  simulatorResults    SimulatorResult[]
+  typificationResults TypificationResult[]
+  seals               Seal[]
+
+  @@unique([userId, evaluationId, number])
+  @@index([userId, evaluationId, createdAt])
+  @@index([evaluationId, status])
+  @@map("intentos")
+  @@schema("induccion")
+}
+
+// questionId/optionId son texto sin FK: el banco de preguntas todavía no existe.
+model AttemptAnswer {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attemptId    String   @map("attempt_id") @db.Uuid
+  questionId   String   @map("question_id") @db.VarChar(100)
+  optionId     String?  @map("option_id") @db.VarChar(100)
+  isCorrect    Boolean? @map("is_correct")
+  awardedScore Decimal? @map("awarded_score") @db.Decimal(5, 2)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  attempt      Attempt  @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+
+  @@index([attemptId])
+  @@map("respuestas_intento")
+  @@schema("induccion")
+}
+
+model TypingResult {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  attemptId       String?  @map("attempt_id") @db.Uuid
+  providerEventId String   @unique @map("provider_event_id") @db.VarChar(150)
+  wpm             Int
+  accuracy        Decimal  @db.Decimal(5, 2)
+  errors          Int
+  rawPayload      Json     @map("raw_payload")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user            Usuario  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  attempt         Attempt? @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@map("resultados_mecanografia")
+  @@schema("induccion")
+}
+
+model SimulatorResult {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  attemptId       String   @map("attempt_id") @db.Uuid
+  scenarioVersion String   @map("scenario_version") @db.VarChar(50)
+  errors          Int
+  durationSeconds Int      @map("duration_seconds")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user            Usuario  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  attempt         Attempt  @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+
+  @@index([attemptId])
+  @@map("resultados_simulador")
+  @@schema("induccion")
+}
+
+model TypificationResult {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attemptId      String   @map("attempt_id") @db.Uuid
+  catalogVersion String   @map("catalog_version") @db.VarChar(50)
+  category       String   @db.VarChar(100)
+  subcategory    String?  @db.VarChar(100)
+  observation    String?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  attempt        Attempt  @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+
+  @@index([attemptId])
+  @@map("resultados_tipificacion")
+  @@schema("induccion")
+}
+
+// Un solo sello ACTIVE por usuario y módulo: índice único parcial uq_sellos_activo (SQL manual).
+model Seal {
+  id                String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String         @map("user_id") @db.Uuid
+  moduleId          String         @map("module_id") @db.Uuid
+  issuedAt          DateTime       @default(now()) @map("issued_at") @db.Timestamptz(6)
+  status            SealStatus     @default(ACTIVE)
+  evidenceAttemptId String?        @map("evidence_attempt_id") @db.Uuid
+  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user              Usuario        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  module            TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+  evidenceAttempt   Attempt?       @relation(fields: [evidenceAttemptId], references: [id], onDelete: Restrict)
+
+  @@index([userId, status])
+  @@index([moduleId, status])
+  @@map("sellos")
+  @@schema("induccion")
+}
+
+model Certificate {
+  id                    String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String            @map("user_id") @db.Uuid
+  code                  String            @unique @db.VarChar(40)
+  status                CertificateStatus @default(ACTIVE)
+  issuedAt              DateTime          @default(now()) @map("issued_at") @db.Timestamptz(6)
+  revokedAt             DateTime?         @map("revoked_at") @db.Timestamptz(6)
+  revokeReason          String?           @map("revoke_reason")
+  fileUrl               String?           @map("file_url")
+  previousCertificateId String?           @unique @map("previous_certificate_id") @db.Uuid
+  createdAt             DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                  Usuario           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  previousCertificate   Certificate?      @relation("Reemision", fields: [previousCertificateId], references: [id], onDelete: Restrict)
+  nextCertificate       Certificate?      @relation("Reemision")
+
+  @@index([userId, status])
+  @@map("certificados")
+  @@schema("induccion")
+}
+
+// Vigente = revokedAt IS NULL AND (expiresAt IS NULL OR expiresAt > now()).
+model UserActivityOverride {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  activityId     String         @map("activity_id") @db.Uuid
+  action         OverrideAction
+  extraAttempts  Int            @default(0) @map("extra_attempts")
+  reason         String
+  expiresAt      DateTime?      @map("expires_at") @db.Timestamptz(6)
+  revokedAt      DateTime?      @map("revoked_at") @db.Timestamptz(6)
+  revokeReason   String?        @map("revoke_reason")
+  consumedAt     DateTime?      @map("consumed_at") @db.Timestamptz(6)
+  createdById    String         @map("created_by_id") @db.Uuid
+  idempotencyKey String         @unique @map("idempotency_key") @db.VarChar(100)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  user           Usuario        @relation("ExcepcionUsuario", fields: [userId], references: [id], onDelete: Restrict)
+  activity       Activity       @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  createdBy      Usuario        @relation("ExcepcionCreador", fields: [createdById], references: [id], onDelete: Restrict)
+  attempts       Attempt[]
+
+  @@index([userId, activityId, revokedAt, expiresAt])
+  @@index([createdById, createdAt])
+  @@map("excepciones_actividad")
+  @@schema("induccion")
+}
+
+// Solo inserción: ningún servicio la actualiza ni la borra.
+// beforeJson/afterJson nunca incluyen passwordHash ni versionSesion.
+model AdminAuditLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorUserId String   @map("actor_user_id") @db.Uuid
+  action      String   @db.VarChar(80)
+  entityType  String   @map("entity_type") @db.VarChar(60)
+  entityId    String   @map("entity_id") @db.VarChar(100)
+  beforeJson  Json?    @map("before_json")
+  afterJson   Json?    @map("after_json")
+  reason      String?
+  requestId   String?  @map("request_id") @db.VarChar(100)
+  ip          String?  @db.VarChar(64)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  actor       Usuario  @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([actorUserId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([action, createdAt])
+  @@map("auditoria_admin")
+  @@schema("induccion")
+}
+
+model WebhookEvent {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provider        String        @db.VarChar(50)
+  providerEventId String        @map("provider_event_id") @db.VarChar(150)
+  receivedAt      DateTime      @default(now()) @map("received_at") @db.Timestamptz(6)
+  processedAt     DateTime?     @map("processed_at") @db.Timestamptz(6)
+  status          WebhookStatus @default(RECEIVED)
+  payload         Json
+  error           String?
+
+  @@unique([provider, providerEventId])
+  @@map("eventos_webhook")
   @@schema("induccion")
 }

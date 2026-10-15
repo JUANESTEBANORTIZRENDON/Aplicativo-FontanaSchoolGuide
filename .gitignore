@@ -8,3 +8,9 @@ server-dist/
 !.env.example
 
 desktop/
+
+# Documentación local del proyecto
+/documentacion/
+
+# Credenciales locales de usuarios demo (no se versionan)
+/credenciales-demo.local.md
