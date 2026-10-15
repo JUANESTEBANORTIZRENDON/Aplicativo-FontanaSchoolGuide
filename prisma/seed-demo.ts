@@ -7,8 +7,12 @@ import { assertSafeDatabase } from './guard.js';
 // nombres "Demo · ...", motivos e idempotencyKey "demo-..." y certificados "FSG-DEMO-...".
 // Uso: npm run db:seed:demo  |  npm run db:seed:demo:clean -- --yes
 
+// Contraseñas por defecto para bases locales. En una base compartida se pasan DEMO_PASSWORD y
+// DEMO_ADMIN_PASSWORD por entorno para no usar valores publicados en el repositorio.
 export const DEMO_PASSWORD = 'FontanaDemo2026!';
 export const DEMO_ADMIN_PASSWORD = 'FontanaAdminDemo2026!';
+const advisorPassword = () => process.env.DEMO_PASSWORD || DEMO_PASSWORD;
+const adminPassword = () => process.env.DEMO_ADMIN_PASSWORD || DEMO_ADMIN_PASSWORD;
 export const DEMO_DOC_MIN = 1000000100;
 export const DEMO_DOC_MAX = 1000000199;
 export const DEMO_EVALUATION_TITLE = 'Demo · evaluación de prueba';
@@ -80,7 +84,7 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
     admin = await prisma.usuario.create({
       data: {
         nombreCompleto: adminRow.nombre, numeroDocumento: adminRow.documento, correo: `demo.${adminRow.documento}@demo.fontana.test`,
-        passwordHash: await bcrypt.hash(DEMO_ADMIN_PASSWORD, 12), rol: 'administrador', estado: 'activo', debeCompletarDatos: false,
+        passwordHash: await bcrypt.hash(adminPassword(), 12), rol: 'administrador', estado: 'activo', debeCompletarDatos: false,
       },
     });
     await audit(prisma, { actorUserId: admin.id, requestId: 'demo-seed', ip: '127.0.0.1' }, {
@@ -103,7 +107,7 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
     const existing = await prisma.usuario.findUnique({ where: { numeroDocumento: documento }, select: { id: true } });
     if (existing) return { id: existing.id, created: false };
     const user = await userService.createUser({
-      nombreCompleto: nombre, numeroDocumento: documento, rol: 'asesor', password: DEMO_PASSWORD, correo: `demo.${documento}@demo.fontana.test`,
+      nombreCompleto: nombre, numeroDocumento: documento, rol: 'asesor', password: advisorPassword(), correo: `demo.${documento}@demo.fontana.test`,
     }, ctx);
     if (options.completeProfile !== false) {
       const session = await findSessionUser(user.id);
