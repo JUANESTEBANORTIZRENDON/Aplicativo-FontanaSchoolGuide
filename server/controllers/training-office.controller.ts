@@ -1,0 +1,55 @@
+import type { NextFunction, Request, Response } from 'express';
+import { OFFICE_MODULE_SLUG, type OfficeSection } from '../domain/office.js';
+import { validBody, validParams } from '../middleware/validate.js';
+import * as moduleService from '../services/office-module.service.js';
+import * as typingService from '../services/office-typing.service.js';
+import { getAccessibleModule } from '../services/progress.service.js';
+import type { TypingCompleteBody } from '../validators/office.validator.js';
+
+// El acceso lo decide el servidor en cada solicitud: un módulo bloqueado responde 403 con su motivo
+// también al entrar por URL directa. Un módulo aprobado sigue abierto para ver el resultado.
+export async function officeAccess(request: Request, _response: Response, next: NextFunction): Promise<void> {
+  await getAccessibleModule(request.usuario!.id, OFFICE_MODULE_SLUG, { allowCompleted: true });
+  next();
+}
+
+export async function moduleState(request: Request, response: Response): Promise<void> {
+  response.json({ data: await moduleService.getModuleState(request.usuario!.id) });
+}
+
+export async function content(request: Request, response: Response): Promise<void> {
+  const { section } = request.params as { section: OfficeSection };
+  response.json({ data: moduleService.getContent(section) });
+}
+
+export async function registerView(request: Request, response: Response): Promise<void> {
+  const { sectionKey } = validParams<{ sectionKey: string }>(request);
+  response.status(201).json({ data: await moduleService.registerView(request.usuario!.id, sectionKey) });
+}
+
+export async function result(request: Request, response: Response): Promise<void> {
+  response.json({ data: await moduleService.getResult(request.usuario!.id) });
+}
+
+export async function typingPrepare(request: Request, response: Response): Promise<void> {
+  response.status(201).json({ data: await typingService.prepareAttempt(request.usuario!.id) });
+}
+
+export async function typingStart(request: Request, response: Response): Promise<void> {
+  const { id } = validParams<{ id: string }>(request);
+  response.json({ data: await typingService.startOfficial(request.usuario!.id, id) });
+}
+
+export async function typingComplete(request: Request, response: Response): Promise<void> {
+  const { id } = validParams<{ id: string }>(request);
+  const body = validBody<TypingCompleteBody>(request);
+  response.json({ data: await typingService.completeAttempt(request.usuario!.id, id, body) });
+}
+
+export async function typingPractice(request: Request, response: Response): Promise<void> {
+  response.json({ data: await typingService.completePractice(request.usuario!.id) });
+}
+
+export async function typingPracticeTexts(_request: Request, response: Response): Promise<void> {
+  response.json({ data: { texts: typingService.practiceTexts() } });
+}

@@ -87,11 +87,12 @@ export async function computeModuleState(userId: string, db: Db = prisma, option
 }
 
 // Acceso directo por URL: el servidor decide, no el botón del frontend.
-export async function getAccessibleModule(userId: string, slug: string) {
+// allowCompleted: el asesor puede repasar un módulo aprobado que tiene pantalla de resultados.
+export async function getAccessibleModule(userId: string, slug: string, options: { allowCompleted?: boolean } = {}) {
   const snapshot = await loadSnapshot(prisma, userId, new Date(), { sync: true });
   const view = snapshot.views.find((module) => module.slug === slug);
   if (!view) throw new NotFoundError('El módulo no existe.', 'MODULE_NOT_FOUND');
-  if (!view.enabled) {
+  if (!view.enabled && !(options.allowCompleted && view.status === 'PASSED')) {
     const reason = view.blockedReason ?? (view.status === 'PASSED' ? 'Ya completaste este módulo. La pantalla de resultados estará disponible próximamente.' : 'Módulo no disponible.');
     throw new ForbiddenError(reason, 'MODULE_BLOCKED', { blockedReason: reason, module: view });
   }

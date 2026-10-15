@@ -23,6 +23,7 @@
     "db:seed:demo": "tsx prisma/seed-demo.ts",
     "db:seed:demo:clean": "tsx prisma/seed-demo.ts --clean",
     "test": "vitest run",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:watch": "vitest"
   },
   "devDependencies": {

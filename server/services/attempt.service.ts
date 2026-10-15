@@ -23,8 +23,13 @@ async function availabilityFor(tx: Tx, userId: string, activityId: string, evalu
 }
 
 export async function startAttempt(userId: string, activityId: string, options: { now?: Date } = {}) {
+  return prisma.$transaction((tx) => startAttemptTx(tx, userId, activityId, options));
+}
+
+// Versión para usar dentro de una transacción mayor (módulo de Ofimática: guarda su resultado junto al intento).
+export async function startAttemptTx(tx: Tx, userId: string, activityId: string, options: { now?: Date } = {}) {
   const now = options.now ?? new Date();
-  return prisma.$transaction(async (tx) => {
+  {
     const user = await tx.usuario.findUnique({ where: { id: userId }, select: { rol: true, estado: true } });
     if (!user || user.rol !== Role.ADVISOR || user.estado !== UserStatus.ACTIVE) throw new ForbiddenError('El usuario no puede iniciar intentos.', 'USER_NOT_ALLOWED');
     const activity = await findActivityById(tx, activityId);
@@ -76,11 +81,12 @@ export async function startAttempt(userId: string, activityId: string, options: 
       lastActivityAt: now,
     });
     return { attempt, resumed: false };
-  });
+  }
 }
 
 export type AnswerInput = { questionId: string; optionId?: string | null; isCorrect?: boolean | null; awardedScore?: number | string | null };
-export type SubmitInput = { answers?: AnswerInput[]; score?: number | string; durationSeconds?: number; now?: Date };
+// passed, si viene, decide el resultado (mecanografía y dictado aprueban por reglas propias, no por la nota).
+export type SubmitInput = { answers?: AnswerInput[]; score?: number | string; durationSeconds?: number; passed?: boolean; now?: Date };
 
 // Nota en Decimal(5,2): puntaje explícito, suma de puntajes otorgados o proporción de aciertos.
 export function scoreFrom(input: SubmitInput): Prisma.Decimal {
@@ -95,15 +101,19 @@ export function scoreFrom(input: SubmitInput): Prisma.Decimal {
 }
 
 export async function submitAttempt(userId: string, attemptId: string, input: SubmitInput) {
+  return prisma.$transaction((tx) => submitAttemptTx(tx, userId, attemptId, input));
+}
+
+export async function submitAttemptTx(tx: Tx, userId: string, attemptId: string, input: SubmitInput) {
   const now = input.now ?? new Date();
-  return prisma.$transaction(async (tx) => {
+  {
     await tx.$queryRaw`SELECT id FROM induccion.intentos WHERE id = ${attemptId}::uuid FOR UPDATE`;
     const attempt = await tx.attempt.findUnique({ where: { id: attemptId }, include: { evaluation: { include: { activity: true } } } });
     if (!attempt || attempt.userId !== userId) throw new NotFoundError('Intento no encontrado.', 'ATTEMPT_NOT_FOUND');
     if (attempt.status !== 'IN_PROGRESS') throw new ConflictError('El intento ya fue enviado.', 'ATTEMPT_CLOSED');
 
     const score = scoreFrom(input);
-    const passed = score.greaterThanOrEqualTo(attempt.evaluation.minimumScore);
+    const passed = input.passed ?? score.greaterThanOrEqualTo(attempt.evaluation.minimumScore);
     const durationSeconds = input.durationSeconds ?? Math.max(0, Math.round((now.getTime() - attempt.startedAt.getTime()) / 1000));
     if (input.answers?.length) {
       await tx.attemptAnswer.createMany({ data: input.answers.map((answer) => ({
@@ -138,5 +148,5 @@ export async function submitAttempt(userId: string, attemptId: string, input: Su
       });
     }
     return { attempt: closed, passed };
-  });
+  }
 }
