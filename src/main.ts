@@ -1,5 +1,5 @@
 import './auth.css';
 import { iniciarInterfaz } from './auth-ui';
+import { showAppLoadingError } from './loading';
 
-document.body.hidden = true;
-void iniciarInterfaz();
+void iniciarInterfaz().catch(showAppLoadingError);

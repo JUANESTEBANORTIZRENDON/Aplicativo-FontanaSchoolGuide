@@ -1,3 +1,5 @@
+import { revealApp, showAppLoading } from './loading';
+
 type Usuario = {
   id: string;
   nombreCompleto: string;
@@ -59,7 +61,7 @@ function mensaje(texto: string, error = false): void {
 
 function shell(title: string, subtitle: string, content: string, usuario?: Usuario): void {
   document.body.className = 'auth-screen';
-  document.body.innerHTML = `
+  document.querySelector<HTMLElement>('#app-content')!.innerHTML = `
     <header class="auth-header">
       <a class="auth-brand" href="/"><img src="/imagenes/fontana-logo.png" alt=""><span>FONTANA <small>SCHOOL</small></span></a>
       ${usuario ? `<div class="auth-account"><span>${escapar(usuario.nombreCompleto)}</span><button type="button" id="logout" class="text-button">Cerrar sesión</button></div>` : ''}
@@ -74,8 +76,15 @@ function shell(title: string, subtitle: string, content: string, usuario?: Usuar
 }
 
 function formularioLogin(): void {
-  shell('Bienvenido de nuevo', 'Ingresa con las credenciales asignadas a tu perfil.', `
-    <section class="auth-card narrow">
+  shell('', '', `
+    <div class="login-panel">
+    <section class="login-welcome" aria-label="Bienvenida a Fontana">
+      <figure class="login-photo">
+        <img src="/imagenes/fontana-school-login.png" alt="Fontana School, identidad dorada sobre fondo vino">
+      </figure>
+    </section>
+    <section class="auth-card narrow login-card" aria-labelledby="login-title">
+      <h1 id="login-title">Inicia tu sesión</h1>
       <div class="role-tabs" role="tablist" aria-label="Tipo de acceso">
         <button type="button" class="role-tab active" data-role="asesor" aria-selected="true">Soy asesor</button>
         <button type="button" class="role-tab" data-role="administrador" aria-selected="false">Administración</button>
@@ -83,12 +92,41 @@ function formularioLogin(): void {
       <form id="login-form" class="auth-form">
         <input type="hidden" name="tipo" value="asesor">
         <label><span id="identity-label">Número de documento</span><input name="identificador" required autocomplete="username" maxlength="150" placeholder="Escribe tu documento"></label>
-        <label>Contraseña<input name="password" type="password" required autocomplete="current-password" placeholder="Escribe tu contraseña"></label>
-        <button class="primary-action" type="submit">Ingresar <span aria-hidden="true">→</span></button>
+        <div class="password-field">
+          <label for="login-password">Contraseña</label>
+          <div class="password-control">
+            <input id="login-password" name="password" type="password" required autocomplete="current-password" placeholder="Escribe tu contraseña">
+            <button class="password-toggle" type="button" aria-label="Mostrar contraseña" aria-pressed="false" aria-controls="login-password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="eye-slash" d="M3 3l18 18"/></svg>
+            </button>
+          </div>
+        </div>
+        <button class="primary-action" type="submit"><span class="login-submit-label" aria-live="polite">Ingresar</span><span class="login-submit-arrow" aria-hidden="true">→</span><span class="login-spinner" aria-hidden="true" hidden></span></button>
         <p id="feedback" class="feedback" role="alert" hidden></p>
       </form>
-    </section>`);
+    </section></div>`);
+  document.body.classList.add('auth-login');
+  document.querySelector('.auth-intro')!.remove();
+  document.querySelector('.auth-brand')!.innerHTML = '<img src="/imagenes/fontana-logo.png" alt="Fontana"><span>Aula de formación</span>';
   const form = document.querySelector<HTMLFormElement>('#login-form')!;
+  const passwordInput = form.elements.namedItem('password') as HTMLInputElement;
+  const passwordToggle = form.querySelector<HTMLButtonElement>('.password-toggle')!;
+  passwordToggle.addEventListener('click', () => {
+    const visible = passwordInput.type === 'password';
+    passwordInput.type = visible ? 'text' : 'password';
+    passwordToggle.setAttribute('aria-pressed', String(visible));
+    passwordToggle.setAttribute('aria-label', visible ? 'Ocultar contraseña' : 'Mostrar contraseña');
+  });
+  let submitting = false;
+  function setSubmitting(busy: boolean): void {
+    submitting = busy;
+    form.setAttribute('aria-busy', String(busy));
+    form.querySelector<HTMLButtonElement>('button[type="submit"]')!.disabled = busy;
+    form.querySelector('.login-submit-label')!.textContent = busy ? 'Ingresando…' : 'Ingresar';
+    form.querySelector<HTMLElement>('.login-submit-arrow')!.hidden = busy;
+    form.querySelector<HTMLElement>('.login-spinner')!.hidden = !busy;
+    document.querySelectorAll<HTMLButtonElement>('.role-tab').forEach((tab) => { tab.disabled = busy; });
+  }
   document.querySelectorAll<HTMLButtonElement>('.role-tab').forEach((button) => button.addEventListener('click', () => {
     document.querySelectorAll<HTMLButtonElement>('.role-tab').forEach((tab) => {
       tab.classList.toggle('active', tab === button);
@@ -100,13 +138,15 @@ function formularioLogin(): void {
   }));
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
-    button.disabled = true;
+    if (submitting) return;
     const data = Object.fromEntries(new FormData(form));
+    setSubmitting(true);
+    document.querySelector<HTMLElement>('#feedback')!.hidden = true;
     try {
       const result = await api<{ usuario: Usuario }>('/auth/login', { method: 'POST', body: JSON.stringify(data) });
+      showAppLoading('Iniciando tu sesión…');
       location.assign(result.usuario.ruta);
-    } catch (error) { mensaje((error as Error).message, true); button.disabled = false; }
+    } catch (error) { mensaje((error as Error).message, true); setSubmitting(false); }
   });
 }
 
@@ -254,14 +294,14 @@ function admin(usuario: Usuario): void {
 export async function iniciarInterfaz(): Promise<void> {
   let usuario: Usuario | null = null;
   try { usuario = (await api<{ usuario: Usuario }>('/auth/me')).usuario; } catch { /* Sin sesión. */ }
-  if (!usuario) { formularioLogin(); return; }
+  if (!usuario) { formularioLogin(); await revealApp(); return; }
   const route = usuario.ruta;
   if (location.pathname !== route && location.pathname !== '/app') { location.replace(route); return; }
-  if (route === '/admin') { admin(usuario); return; }
-  if (route === '/llena-tus-datos') { llenaTusDatos(usuario); return; }
+  if (route === '/admin') { admin(usuario); await revealApp(); return; }
+  if (route === '/llena-tus-datos') { llenaTusDatos(usuario); await revealApp(); return; }
   if (location.pathname !== route) { location.replace(route); return; }
-  document.body.hidden = false;
-  document.body.insertAdjacentHTML('afterbegin', `<div class="training-session"><span>${escapar(usuario.nombreCompleto)} · Inducción Fontana</span><button id="training-logout" type="button">Cerrar sesión</button></div>`);
+  document.querySelector('#app-content')!.insertAdjacentHTML('afterbegin', `<div class="training-session"><span>${escapar(usuario.nombreCompleto)} · Inducción Fontana</span><button id="training-logout" type="button">Cerrar sesión</button></div>`);
   document.querySelector('#training-logout')!.addEventListener('click', async () => { await api('/auth/logout', { method: 'POST' }); location.assign('/login'); });
   await import('./training');
+  await revealApp();
 }

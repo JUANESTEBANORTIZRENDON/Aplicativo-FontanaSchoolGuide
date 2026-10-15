@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" class="app-loading">
 
   <!-- CONFIGURACIÓN: título de la pestaña, descripción, icono y archivo de estilos. -->
   <head>
@@ -9,8 +9,27 @@
     <meta name="description" content="Conoce la empresa y explora el recorrido de trabajo de cobranza.">
     <link rel="icon" type="image/png" href="/imagenes/fontana-logo.png">
     <meta name="theme-color" content="#f9f9f9">
+    <!-- Estilos críticos: visibles antes de descargar los módulos de la app. -->
+    <style>
+      html.app-loading { background: #f7efdf; }
+      html.app-loading body { margin: 0; overflow: hidden; }
+      html.app-loading body > :not(#app-loader) { visibility: hidden; }
+      #app-loader { position: fixed; inset: 0; z-index: 2147483647; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 30%, #d4af3720, transparent 65%), #f7efdf; color: #1f2a37; text-align: center; font: 15px/1.6 'Segoe UI', Arial, sans-serif; }
+      #app-loader[hidden] { display: none !important; }
+      #app-loader img { display: block; width: 76px; height: 76px; object-fit: contain; margin: 0 auto 18px; }
+      #app-loader p { margin: 0 0 20px; }
+      .app-loader-ring { display: block; width: 26px; height: 26px; margin: auto; border: 2px solid #d4af3740; border-top-color: #8b1538; border-radius: 50%; animation: app-loader-spin 1s linear infinite; }
+      #app-loader button { padding: 10px 20px; border: 0; border-radius: 9px; background: #8b1538; color: #fff; font: inherit; cursor: pointer; }
+      #app-loader [hidden] { display: none !important; }
+      @keyframes app-loader-spin { to { transform: rotate(360deg); } }
+      @media(prefers-reduced-motion:reduce) { .app-loader-ring { animation: none; } }
+    </style>
   </head>
   <body>
+    <div id="app-loader" role="status" aria-live="polite">
+      <div><img src="/imagenes/fontana-logo.png" alt="Fontana"><p id="app-loader-message">Preparando tu aula…</p><span class="app-loader-ring" aria-hidden="true"></span><button id="app-loader-retry" type="button" hidden>Reintentar</button></div>
+    </div>
+    <div id="app-content" inert>
 
     <!-- ENCABEZADO: logo y nombre de la plataforma. -->
     <header>
@@ -314,7 +333,8 @@
       <button class="primary" id="completion-go-method" autofocus>Explorar el método de trabajo →</button>
     </dialog>
 
-    <!-- INTERACCIONES: src/main.ts controla las pestañas, etapas y el carrusel cada 2 segundos. -->
+    </div>
+    <!-- INTERACCIONES: src/main.ts inicia la sesión y carga la interfaz correspondiente. -->
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
