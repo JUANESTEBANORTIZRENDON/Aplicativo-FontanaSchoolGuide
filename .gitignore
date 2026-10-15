@@ -8,3 +8,6 @@ server-dist/
 !.env.example
 
 desktop/
+
+# Documentación local del proyecto
+/documentacion/
