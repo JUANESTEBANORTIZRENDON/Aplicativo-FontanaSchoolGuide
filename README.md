@@ -48,13 +48,61 @@ Al terminar las cinco etapas de `/induccion`, la confirmación de lectura habili
 
 ### Reglas de la ruta de formación
 
-- Catálogo inicial: 1 Ofimática y mecanografía → 2 Simulador de cobranzas → 3 Tipificación de llamadas → 4 Certificado (requiere los tres sellos).
+- Catálogo inicial: 1 Ofimática para tus cobranzas → 2 Simulador de cobranzas → 3 Tipificación de llamadas → 4 Certificado (requiere los tres sellos).
 - `computeModuleViews` (dominio) calcula el estado efectivo de cada módulo combinando el estado del catálogo, prerrequisitos, sellos, progreso, intentos y excepciones vigentes. La usan el área del asesor, el panel y la sincronización que alimenta las métricas.
-- Un módulo `INACTIVE` se muestra "No disponible", con el botón deshabilitado. Un módulo aprobado muestra "Completado" (sin pantalla de resultados todavía).
+- Un módulo `INACTIVE` se muestra "No disponible", con el botón deshabilitado. Un módulo aprobado muestra "Completado"; el módulo 1 tiene pantalla de resultado y sigue abierto para repasarlo (los demás se habilitarán cuando tengan la suya).
 - Intentos: numeración consecutiva con bloqueo de fila, límite `maxAttempts` más excepciones vigentes y espera `waitMinutes` tras un fallo. Una configuración evaluable nueva crea otra versión; nunca se edita una versión existente.
 - Excepciones individuales (`REACTIVATE`, `UNLOCK`, `EXTRA_ATTEMPT`, `RESET_WAIT`, `REOPEN_MODULE`): motivo obligatorio, encabezado `Idempotency-Key` (UUID), nunca se borran; se revocan o vencen. `REOPEN_MODULE` no revoca sellos ni certificados.
 - Certificados sin PDF: código `FSG-AAAA-XXXXXX`, anulación y reemisión enlazada. La emisión automática está detrás de `CERTIFICATES_ENABLED=false`.
 - Intentos, resultados, sellos, certificados, excepciones y auditoría usan `onDelete: Restrict`; la auditoría solo se inserta.
+
+## Módulo Ofimática
+
+"Ofimática para tus cobranzas" es el módulo 1 de la ruta (`slug` `ofimatica-mecanografia`). Tiene cinco secciones que son actividades del catálogo:
+
+| Orden | Sección | Tipo | Obligatoria | Ruta |
+| --- | --- | --- | --- | --- |
+| 10 | Bienvenida | `LESSON` | No | `/induccion/modulos/ofimatica-mecanografia/bienvenida` |
+| 20 | Mecanografía | `TYPING` | Sí | `.../mecanografia` |
+| 30 | Excel para cobranzas | `EXCEL_PRACTICE` | Sí | `.../excel` |
+| 40 | Ortografía aplicada | `DICTATION` | Sí | `.../ortografia` |
+| 50 | Resultado y sello | `LESSON` | No | `.../resultado` |
+
+El sello se emite cuando las tres actividades obligatorias están aprobadas, una sola vez, y desbloquea el Simulador de cobranzas. El placeholder anterior (orden 1) queda `ARCHIVED` y se conserva.
+
+- **El servidor decide.** El navegador nunca calcula una nota que cuente, nunca aprueba una sección ni emite el sello.
+- **Mecanografía propia** (sin proveedores externos): el servidor entrega el texto y un `nonce` (solo se guarda su SHA-256), registra el inicio oficial y calcula caracteres correctos por minuto, PPM, precisión y errores al cerrar. Un intento ya cerrado, de otro asesor, con `nonce` inválido o fuera de ventana se rechaza. Un intento abandonado o vencido cuenta como fallido. Tras fallar hay que completar una práctica breve (`last_practice_at`).
+- **Excel con datos ficticios**: la mini hoja es accesible y las fórmulas pasan por un evaluador propio (solo `=REF-REF`, `=REF+REF` y `SUMA/SUM`; sin `eval`). Cada intento usa una semilla reproducible y la clave de respuestas nunca viaja al navegador.
+- **Dictado con sistema experto determinístico** (`server/domain/spelling/`): nota = 100 menos el peso de cada error; aprueba con la nota mínima y sin errores críticos. **Ollama nunca califica**: solo redacta recomendaciones sobre un resultado ya calculado; si falla o está desactivado se usa la plantilla.
+- **Configuración versionada** (`config_modulo_ofimatica`): cada cambio crea una versión nueva, archiva la anterior, sincroniza las evaluaciones y se audita con motivo. Cada intento guarda su `configSnapshot`. Se administra en el panel: **Ofimática** → *Configuración*.
+- **Audios e imágenes** en almacenamiento privado (`STORAGE_DIR`), entregados por `GET /api/media/:key?exp&sig` con firma HMAC, vencimiento corto y sesión activa. Las 6 imágenes se generan una sola vez (ver `docs-assets/ofimatica/IMAGENES.md`) y se suben desde el panel.
+
+### Variables del módulo
+
+| Variable | Uso |
+| --- | --- |
+| `STORAGE_DIR` | Carpeta de audios e imágenes. Fuera del repositorio y de `dist/`, en almacenamiento persistente. |
+| `MEDIA_SIGNING_SECRET` | Firma de las URL de archivos (si falta, se usa `SESSION_SECRET`). |
+| `MEDIA_URL_TTL_SECONDS` | Vigencia de una URL firmada. Por defecto 300. |
+| `OLLAMA_ENABLED` | `true` activa las recomendaciones con Ollama local. Por defecto `false`. |
+| `OLLAMA_URL` | URL interna de Ollama (red privada). Nunca llega al navegador. |
+| `OLLAMA_MODEL` | Modelo pequeño local para español. Por defecto `llama3.2:3b`. |
+| `OLLAMA_TIMEOUT_MS` | Tiempo máximo por llamada. Por defecto 5000, con un reintento. |
+| `DICTATION_DEV_TTS` | Solo desarrollo y pruebas: reproduce el dictado con la voz del navegador. Se ignora en producción. |
+| `TRUST_PROXY` | `false` por defecto; con proxy interno, el número de saltos (por ejemplo `1`). |
+
+### Datos y pruebas
+
+```powershell
+npm.cmd run db:seed        # catálogo, actividades, configuración, 6 textos, escenario de Excel, reglas y 3 dictados (borrador)
+npm.cmd run db:seed:demo   # asesores demo con intentos reales sobre las actividades nuevas
+npm.cmd run test:unit      # algoritmos puros (mecanografía, Excel, ortografía, Ollama simulado), sin base de datos
+npm.cmd test               # suite completa con supertest (requiere DATABASE_URL_TEST)
+```
+
+Los ejercicios de dictado quedan en **borrador** hasta subir el audio autorizado desde el panel. En desarrollo, `DICTATION_DEV_TTS=true` los activa con la voz del navegador (la interfaz lo marca como audio de prueba). Asesores demo del módulo: `1000000102` (en curso), `1000000103` (aprobado), `1000000104` (sin intentos), `1000000146` (mecanografía aprobada), `1000000147` (práctica pendiente), `1000000148` (dictado con error crítico), `1000000149` (módulo completo), `1000000150` (intento vencido).
+
+Para probarlo: inicia sesión con un asesor demo → "Tu ruta de formación" → **Ofimática para tus cobranzas**.
 
 ## Desarrollo local
 
@@ -79,6 +127,7 @@ npm.cmd run dev
 | `npm run dev` | Frontend y backend con recarga. |
 | `npm run check` | Tipos del frontend, del servidor y de pruebas/seeds. |
 | `npm test` | Pruebas (requiere `DATABASE_URL_TEST`). |
+| `npm run test:unit` | Pruebas de algoritmos puros, sin base de datos. |
 | `npm run build` | Genera Prisma Client y compila todo. |
 | `npm start` | Ejecuta `server-dist/server.js`. |
 | `npm run db:seed` | Catálogo inicial y asesor de prueba. |
@@ -96,7 +145,7 @@ Copia `.env.example` como `.env`. `.env` está ignorado por Git y nunca debe sub
 | --- | --- |
 | `DATABASE_URL` | Conexión agrupada (pooler) de la aplicación. |
 | `DIRECT_URL` | Conexión directa para migraciones. |
-| `PORT` | Puerto HTTP (Render lo define). |
+| `PORT` | Puerto HTTP. |
 | `NODE_ENV` | `development`, `production` o `test`. |
 | `SESSION_SECRET` | Firma de cookies; obligatoria (≥ 32 caracteres) en producción. |
 | `APP_TIMEZONE` | Zona de presentación y de los filtros de fecha. Por defecto `America/Bogota`. |

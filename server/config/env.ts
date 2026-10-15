@@ -46,6 +46,14 @@ const parsed = schema.safeParse({
   ...process.env,
   TYPING_WEBHOOK_SECRET: process.env.TYPING_WEBHOOK_SECRET || undefined,
   SESSION_SECRET: process.env.SESSION_SECRET || undefined,
+  // Una variable vacía en .env equivale a no definirla.
+  STORAGE_DIR: process.env.STORAGE_DIR || undefined,
+  MEDIA_SIGNING_SECRET: process.env.MEDIA_SIGNING_SECRET || undefined,
+  MEDIA_URL_TTL_SECONDS: process.env.MEDIA_URL_TTL_SECONDS || undefined,
+  OLLAMA_URL: process.env.OLLAMA_URL || undefined,
+  OLLAMA_MODEL: process.env.OLLAMA_MODEL || undefined,
+  OLLAMA_TIMEOUT_MS: process.env.OLLAMA_TIMEOUT_MS || undefined,
+  TRUST_PROXY: process.env.TRUST_PROXY || undefined,
 });
 
 if (!parsed.success) {

@@ -8,6 +8,10 @@ import { Role } from '../domain/enums.js';
 import { NotFoundError, UnauthorizedError, ValidationError } from '../domain/errors.js';
 import { zodDetails } from '../middleware/errors.js';
 
+// OBSOLETO: la prueba de mecanografía del módulo de Ofimática es interna (server/services/office-typing.service.ts)
+// y no usa proveedores externos. Este webhook y la tabla resultados_mecanografia se conservan sin cambios
+// por compatibilidad y datos históricos; no se usan para calificar.
+//
 // BORRADOR de contrato (sin proveedor real):
 //   POST /api/integrations/typing/webhook
 //   Encabezado X-Typing-Signature: sha256=<hex de HMAC-SHA256(cuerpo crudo, TYPING_WEBHOOK_SECRET)>
