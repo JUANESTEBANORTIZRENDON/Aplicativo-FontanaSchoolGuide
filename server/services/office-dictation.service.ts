@@ -80,6 +80,7 @@ export async function describeNext(userId: string) {
   };
 }
 
+// Las lecciones de ortografía se entregan por /content/ortografia (con imágenes firmadas).
 export async function lessons() {
   return SPELLING_LESSONS.map((lesson) => ({ ...lesson, image: OFFICE_IMAGES[lesson.image] ?? null }));
 }

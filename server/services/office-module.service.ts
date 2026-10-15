@@ -5,7 +5,9 @@ import { EXCEL_LESSONS, EXCEL_LESSON_KEYS, OFFICE_IMAGES, SPELLING_LESSONS, SPEL
 import {
   GRADED_SECTIONS, OFFICE_MODULE_SLUG, OFFICE_SECTIONS, SECTION_TITLE, type GradedSection, type OfficeSection,
 } from '../domain/office.js';
+import { getStorage } from '../integrations/storage.js';
 import { activeConfig, officeActivities, recordView, viewsOf } from '../repositories/office.repository.js';
+import { signedUrl } from './media.service.js';
 import { loadSnapshot } from './progress.service.js';
 import { describeNext } from './office-dictation.service.js';
 import { practicePending } from './office-typing.service.js';
@@ -90,12 +92,17 @@ export async function getModuleState(userId: string, now = new Date()) {
   };
 }
 
-// Contenido de lecciones por sección (texto e imágenes con su texto alternativo).
-export function getContent(section: OfficeSection) {
-  const withImage = (lesson: (typeof EXCEL_LESSONS)[number]) => ({ ...lesson, image: OFFICE_IMAGES[lesson.image] ?? null });
+// Contenido de lecciones por sección. Cada imagen trae su texto alternativo y, si ya se cargó en el
+// almacenamiento privado, una URL firmada de corta duración; si falta, la interfaz muestra un marcador.
+export async function getContent(section: OfficeSection, userId: string) {
+  const withImage = async (lesson: (typeof EXCEL_LESSONS)[number]) => {
+    const image = OFFICE_IMAGES[lesson.image];
+    const uploaded = image ? await getStorage().exists(image.key) : false;
+    return { ...lesson, image: image ? { ...image, url: uploaded ? signedUrl(image.key, userId).url : null } : null };
+  };
   if (section === 'bienvenida') return { welcome: WELCOME };
-  if (section === 'excel') return { lessons: EXCEL_LESSONS.map(withImage) };
-  if (section === 'ortografia') return { lessons: SPELLING_LESSONS.map(withImage) };
+  if (section === 'excel') return { lessons: await Promise.all(EXCEL_LESSONS.map(withImage)) };
+  if (section === 'ortografia') return { lessons: await Promise.all(SPELLING_LESSONS.map(withImage)) };
   return {};
 }
 

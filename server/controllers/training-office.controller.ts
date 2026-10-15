@@ -21,7 +21,7 @@ export async function moduleState(request: Request, response: Response): Promise
 
 export async function content(request: Request, response: Response): Promise<void> {
   const { section } = request.params as { section: OfficeSection };
-  response.json({ data: moduleService.getContent(section) });
+  response.json({ data: await moduleService.getContent(section, request.usuario!.id) });
 }
 
 export async function registerView(request: Request, response: Response): Promise<void> {

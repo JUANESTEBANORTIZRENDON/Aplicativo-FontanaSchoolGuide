@@ -205,10 +205,19 @@ export async function iniciarInterfaz(): Promise<void> {
   const practiceRoute = route === '/practica/nuevo' || route === '/practica/experiencia';
   const reviewing = practiceRoute && location.pathname === '/induccion';
   // Subrutas de la ruta de formación: el servidor valida el acceso a cada módulo.
-  const advisorSubroute = (route === '/induccion' || practiceRoute) && /^\/induccion\/(modulos\/[a-z0-9-]+|certificado)\/?$/.test(location.pathname);
-  if (location.pathname !== route && location.pathname !== '/app' && !reviewing && !advisorSubroute) { location.replace(route); return; }
+  // Módulo 1 (Ofimática para tus cobranzas): tiene su propia aplicación con cinco secciones.
+  const officeMatch = /^\/induccion\/modulos\/ofimatica-mecanografia(?:\/(bienvenida|mecanografia|excel|ortografia|resultado))?\/?$/.exec(location.pathname);
+  const officeRoute = Boolean(officeMatch) && (route === '/induccion' || practiceRoute);
+  const advisorSubroute = !officeRoute && (route === '/induccion' || practiceRoute) && /^\/induccion\/(modulos\/[a-z0-9-]+|certificado)\/?$/.test(location.pathname);
+  if (location.pathname !== route && location.pathname !== '/app' && !reviewing && !advisorSubroute && !officeRoute) { location.replace(route); return; }
   if (route === '/admin') { await admin(usuario); await revealApp(); return; }
   if (route === '/llena-tus-datos') { llenaTusDatos(usuario); await revealApp(); return; }
+  if (officeRoute) {
+    const { mountOffice } = await import('./office/office');
+    await mountOffice(usuario.nombreCompleto, (officeMatch![1] as import('./office/api').SectionKey | undefined) ?? null, route);
+    await revealApp();
+    return;
+  }
   if (advisorSubroute) {
     shell('Tu ruta de formación', 'Fontana School · Inducción', '<div id="module-page"></div>', usuario);
     const { renderModulePage } = await import('./advisor/advisor');
