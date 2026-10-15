@@ -105,7 +105,7 @@ function formularioLogin(): void {
         <p id="feedback" class="feedback" role="alert" hidden></p>
       </form>
     </section></div>`);
-  document.body.classList.add('auth-login');
+  document.body.classList.add('auth-login', 'login-motion');
   document.querySelector('.auth-intro')!.remove();
   document.querySelector('.auth-brand')!.innerHTML = '<img src="/imagenes/fontana-logo.png" alt="Fontana"><span>Aula de formación</span>';
   const form = document.querySelector<HTMLFormElement>('#login-form')!;
