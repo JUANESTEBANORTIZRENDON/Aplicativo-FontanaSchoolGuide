@@ -1,0 +1,25 @@
+.training-route { max-width: 1220px; margin: 28px auto 8px; padding: 0 24px; font-family: 'DM Sans', Arial, sans-serif; }
+.training-route-head h2 { margin: 0; color: #192840; font: 800 26px 'Manrope', sans-serif; }
+.training-route-head p { margin: 6px 0 18px; color: #657184; font-size: 14px; }
+.training-route-loading { color: #657184; font-size: 14px; }
+.path-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+.path-card { display: grid; grid-template-rows: auto 1fr auto; gap: 12px; padding: 20px; background: #fff; border: 1px solid #e5e8ef; border-radius: 16px; box-shadow: 0 10px 30px rgba(31,42,55,.05); }
+.path-card-order { color: #a47b15; font: 800 13px 'Manrope', sans-serif; letter-spacing: .12em; }
+.path-card-body h3 { margin: 0 0 6px; color: #192840; font: 800 17px 'Manrope', sans-serif; }
+.path-card-status { display: inline-block; padding: 4px 9px; border-radius: 30px; background: #eef1f6; color: #4a5a70; font-size: 11px; font-weight: 800; }
+.path-card[data-status="AVAILABLE"] .path-card-status, .path-card[data-status="IN_PROGRESS"] .path-card-status { background: #fff4dc; color: #8a6510; }
+.path-card[data-status="PASSED"] .path-card-status { background: #e8f7ef; color: #176b40; }
+.path-card[data-status="FAILED"] .path-card-status { background: #fceef0; color: #8c4850; }
+.path-card-bar { height: 7px; margin: 14px 0 4px; border-radius: 7px; background: #eef1f6; overflow: hidden; }
+.path-card-bar span { display: block; height: 100%; background: #8b1538; border-radius: inherit; }
+.path-card-body small { color: #778398; font-size: 12px; }
+.path-card-note { margin: 8px 0 0; color: #657184; font-size: 12.5px; line-height: 1.45; }
+.path-card-action { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 42px; padding: 10px 16px; border: 0; border-radius: 9px; background: #8b1538; color: #fff; font: 700 14px 'DM Sans', sans-serif; text-decoration: none; cursor: pointer; }
+.path-card-action:hover { background: #71102e; }
+.path-card-action:disabled { background: #e4e7ee; color: #7d8898; cursor: not-allowed; }
+.module-page h2 { margin: 6px 0 18px; color: #192840; font: 800 26px 'Manrope', sans-serif; }
+.module-placeholder { padding: 20px; border: 1px dashed #d4af37; border-radius: 12px; background: #fffaf0; }
+.module-placeholder p { margin: 6px 0 0; color: #657184; font-size: 14px; }
+.module-activities { margin: 18px 0 0; padding-left: 18px; color: #344054; font-size: 14px; }
+.secondary-link { display: inline-block; margin-top: 22px; color: #8b1538; font-weight: 700; text-decoration: none; }
+@media (max-width: 600px) { .training-route { padding: 0 16px; } }

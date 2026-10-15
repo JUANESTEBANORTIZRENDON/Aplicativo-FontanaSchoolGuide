@@ -1,3 +1,5 @@
+import { api, escapar } from './http';
+
 type Usuario = {
   id: string;
   nombreCompleto: string;
@@ -12,42 +14,6 @@ type Usuario = {
   tieneExperienciaCobranzasDigitales: boolean | null;
   ruta: string;
 };
-type Asesor = Usuario & { fechaCreacion: string };
-
-function escapar(value: string | null | undefined): string {
-  return (value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
-}
-
-async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const unavailable = 'No se pudo conectar con el servidor. Verifica que Fontana School esté iniciado e intenta nuevamente.';
-  let response: Response;
-  try {
-    response = await fetch(`/api${path}`, {
-      ...options,
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', ...options.headers },
-    });
-  } catch {
-    throw new Error(unavailable);
-  }
-  if (response.status === 204) return undefined as T;
-  if (response.status === 401 && path !== '/auth/login' && path !== '/auth/me') {
-    location.assign('/login');
-    throw new Error('Tu sesión venció. Inicia sesión nuevamente para continuar.');
-  }
-  const text = await response.text();
-  let body: unknown;
-  try {
-    body = JSON.parse(text);
-  } catch {
-    throw new Error(response.status >= 500 ? unavailable : 'El servidor devolvió una respuesta no válida. Intenta nuevamente.');
-  }
-  if (!response.ok) {
-    const message = body && typeof body === 'object' && 'message' in body ? body.message : undefined;
-    throw new Error(typeof message === 'string' ? message : 'No se pudo completar la solicitud.');
-  }
-  return body as T;
-}
 
 function mensaje(texto: string, error = false): void {
   const target = document.querySelector<HTMLElement>('#feedback');
@@ -156,99 +122,9 @@ function llenaTusDatos(usuario: Usuario): void {
   });
 }
 
-function admin(usuario: Usuario): void {
-  shell('Panel de administración', 'Gestiona las cuentas de asesores desde un solo lugar.', `
-    <div class="admin-layout"><aside class="admin-nav"><strong>Gestión de usuarios</strong><a class="selected" href="/admin">Asesores</a><p>Los asesores nuevos quedan activos y completan su perfil al ingresar.</p></aside>
-    <div class="admin-content">
-      <section class="auth-card admin-card"><div class="section-title"><div><h2>Registrar asesor</h2><p>Completa los tres datos obligatorios.</p></div></div>
-        <form id="create-form" class="admin-form">
-          <label>Nombre completo<input name="nombreCompleto" required maxlength="150" autocomplete="name" placeholder="Nombre y apellidos"></label>
-          <label>Número de documento<input name="numeroDocumento" required maxlength="30" inputmode="numeric" placeholder="Cédula"></label>
-          <label>Contraseña temporal<input name="password" type="password" required minlength="10" maxlength="128" autocomplete="new-password" placeholder="Mínimo 10 caracteres"></label>
-          <button class="primary-action">Crear asesor</button>
-        </form><p id="feedback" class="feedback" role="status" hidden></p>
-      </section>
-      <section class="auth-card admin-card"><div class="section-title"><div><h2>Asesores registrados</h2><p id="total-caption">Cargando usuarios...</p></div></div>
-        <form id="search-form" class="search-form"><input name="buscar" type="search" placeholder="Buscar por nombre o documento" aria-label="Buscar asesores"><button type="submit">Buscar</button></form>
-        <div class="table-wrap"><table><thead><tr><th>Asesor</th><th>Documento</th><th>Estado</th><th>Perfil</th><th>Acciones</th></tr></thead><tbody id="advisor-rows"></tbody></table></div>
-        <div class="pagination"><button id="prev-page" type="button">Anterior</button><span id="page-label"></span><button id="next-page" type="button">Siguiente</button></div>
-      </section>
-    </div></div>
-    <dialog id="edit-dialog" class="edit-dialog"><form id="edit-form" class="auth-form">
-      <h2>Editar asesor</h2><p>Actualiza los datos de identificación.</p>
-      <label>Nombre completo<input name="nombreCompleto" required maxlength="150"></label>
-      <label>Número de documento<input name="numeroDocumento" required maxlength="30"></label>
-      <div class="dialog-actions"><button type="button" id="cancel-edit" class="secondary-action">Cancelar</button><button class="primary-action">Guardar cambios</button></div>
-      <p id="edit-feedback" class="feedback feedback-error" role="alert" hidden></p>
-    </form></dialog>`, usuario);
-  const create = document.querySelector<HTMLFormElement>('#create-form')!;
-  const dialog = document.querySelector<HTMLDialogElement>('#edit-dialog')!;
-  const editForm = document.querySelector<HTMLFormElement>('#edit-form')!;
-  let editing: Asesor | null = null;
-  document.querySelector('#cancel-edit')!.addEventListener('click', () => dialog.close());
-  editForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    if (!editing) return;
-    const data = Object.fromEntries(new FormData(editForm));
-    try {
-      await api(`/admin/asesores/${editing.id}`, { method: 'PUT', body: JSON.stringify({ ...data, estado: editing.estado }) });
-      dialog.close(); mensaje('Asesor actualizado.'); await load();
-    } catch (error) {
-      const target = document.querySelector<HTMLElement>('#edit-feedback')!;
-      target.textContent = (error as Error).message;
-      target.hidden = false;
-    }
-  });
-  let page = 1;
-  let search = '';
-  async function load(): Promise<void> {
-    const data = await api<{ asesores: Asesor[]; total: number; paginas: number; pagina: number }>(`/admin/asesores?pagina=${page}&buscar=${encodeURIComponent(search)}`);
-    document.querySelector('#total-caption')!.textContent = `${data.total} asesor${data.total === 1 ? '' : 'es'} registrado${data.total === 1 ? '' : 's'}`;
-    document.querySelector('#page-label')!.textContent = `Página ${data.pagina} de ${data.paginas}`;
-    (document.querySelector<HTMLButtonElement>('#prev-page')!).disabled = page <= 1;
-    (document.querySelector<HTMLButtonElement>('#next-page')!).disabled = page >= data.paginas;
-    const rows = document.querySelector<HTMLTableSectionElement>('#advisor-rows')!;
-    rows.innerHTML = data.asesores.length ? data.asesores.map((item) => `<tr>
-      <td><strong>${escapar(item.nombreCompleto)}</strong></td><td>${escapar(item.numeroDocumento)}</td>
-      <td><span class="status ${item.estado === 'activo' ? 'is-active' : 'is-inactive'}">${escapar(item.estado)}</span></td>
-      <td>${item.debeCompletarDatos ? 'Pendiente' : 'Completo'}</td>
-      <td><button class="row-action" data-action="edit" data-id="${item.id}">Editar</button><button class="row-action" data-action="toggle" data-id="${item.id}">${item.estado === 'activo' ? 'Desactivar' : 'Activar'}</button></td>
-    </tr>`).join('') : '<tr><td colspan="5" class="empty-row">No hay asesores para mostrar.</td></tr>';
-    rows.querySelectorAll<HTMLButtonElement>('[data-action]').forEach((button) => button.addEventListener('click', async () => {
-      const item = data.asesores.find((value) => value.id === button.dataset.id)!;
-      if (button.dataset.action === 'edit') {
-        editing = item;
-        (editForm.elements.namedItem('nombreCompleto') as HTMLInputElement).value = item.nombreCompleto;
-        (editForm.elements.namedItem('numeroDocumento') as HTMLInputElement).value = item.numeroDocumento;
-        document.querySelector<HTMLElement>('#edit-feedback')!.hidden = true;
-        dialog.showModal();
-      } else {
-        const nextState = item.estado === 'activo' ? 'inactivo' : 'activo';
-        if (!confirm(`${nextState === 'inactivo' ? 'Desactivar' : 'Activar'} a ${item.nombreCompleto}?`)) return;
-        try {
-          if (nextState === 'inactivo') await api(`/admin/asesores/${item.id}`, { method: 'DELETE' });
-          else await api(`/admin/asesores/${item.id}`, { method: 'PUT', body: JSON.stringify({ nombreCompleto: item.nombreCompleto, numeroDocumento: item.numeroDocumento, estado: 'activo' }) });
-          mensaje(`Asesor ${nextState === 'activo' ? 'activado' : 'desactivado'}.`); await load();
-        } catch (error) { mensaje((error as Error).message, true); }
-      }
-    }));
-  }
-  create.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const button = create.querySelector<HTMLButtonElement>('button[type="submit"]')!;
-    button.disabled = true;
-    try {
-      await api('/admin/asesores', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(create))) });
-      create.reset(); page = 1; mensaje('Asesor creado y activo. Puede iniciar sesión con su documento y contraseña.'); await load();
-    } catch (error) { mensaje((error as Error).message, true); }
-    finally { button.disabled = false; }
-  });
-  document.querySelector<HTMLFormElement>('#search-form')!.addEventListener('submit', (event) => {
-    event.preventDefault(); search = String(new FormData(event.currentTarget as HTMLFormElement).get('buscar') ?? ''); page = 1; void load().catch((error) => mensaje((error as Error).message, true));
-  });
-  document.querySelector('#prev-page')!.addEventListener('click', () => { page--; void load().catch((error) => mensaje((error as Error).message, true)); });
-  document.querySelector('#next-page')!.addEventListener('click', () => { page++; void load().catch((error) => mensaje((error as Error).message, true)); });
-  void load().catch((error) => mensaje((error as Error).message, true));
+async function admin(usuario: Usuario): Promise<void> {
+  const { renderAdmin } = await import('./admin/admin');
+  renderAdmin((title, subtitle, content) => shell(title, subtitle, content, usuario));
 }
 
 export async function iniciarInterfaz(): Promise<void> {
@@ -256,12 +132,21 @@ export async function iniciarInterfaz(): Promise<void> {
   try { usuario = (await api<{ usuario: Usuario }>('/auth/me')).usuario; } catch { /* Sin sesión. */ }
   if (!usuario) { formularioLogin(); return; }
   const route = usuario.ruta;
-  if (location.pathname !== route && location.pathname !== '/app') { location.replace(route); return; }
-  if (route === '/admin') { admin(usuario); return; }
+  const advisorSubroute = route === '/induccion' && /^\/induccion\/(modulos\/[a-z0-9-]+|certificado)\/?$/.test(location.pathname);
+  if (location.pathname !== route && location.pathname !== '/app' && !advisorSubroute) { location.replace(route); return; }
+  if (route === '/admin') { await admin(usuario); return; }
   if (route === '/llena-tus-datos') { llenaTusDatos(usuario); return; }
+  if (advisorSubroute) {
+    shell('Tu ruta de formación', 'Fontana School · Inducción', '<div id="module-page"></div>', usuario);
+    const { renderModulePage } = await import('./advisor/advisor');
+    await renderModulePage(document.querySelector<HTMLElement>('#module-page')!);
+    return;
+  }
   if (location.pathname !== route) { location.replace(route); return; }
   document.body.hidden = false;
   document.body.insertAdjacentHTML('afterbegin', `<div class="training-session"><span>${escapar(usuario.nombreCompleto)} · Inducción Fontana</span><button id="training-logout" type="button">Cerrar sesión</button></div>`);
   document.querySelector('#training-logout')!.addEventListener('click', async () => { await api('/auth/logout', { method: 'POST' }); location.assign('/login'); });
   await import('./training');
+  const { mountLearningPath } = await import('./advisor/advisor');
+  await mountLearningPath();
 }
