@@ -1,48 +1,47 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Request, Response } from 'express';
+import { env, isProduction } from '../config/env.js';
+import { SESSION_COOKIE, SESSION_LIFETIME_MS } from '../config/security.js';
 
-const cookieName = 'fontana_session';
-const lifetime = 8 * 60 * 60 * 1000;
-const production = process.env.NODE_ENV === 'production';
-if (production && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32)) {
-  throw new Error('SESSION_SECRET debe tener al menos 32 caracteres en producción.');
-}
-const secret = process.env.SESSION_SECRET ?? randomBytes(32).toString('hex');
+// En desarrollo sin SESSION_SECRET se usa una clave temporal: al reiniciar, las sesiones caducan.
+const secret = env.SESSION_SECRET ?? randomBytes(32).toString('hex');
+
+export type SessionData = { userId: string; version: number };
 
 function signature(value: string): string {
   return createHmac('sha256', secret).update(value).digest('base64url');
 }
 
-export function crearSesion(response: Response, userId: string): void {
-  const payload = Buffer.from(JSON.stringify({ userId, expires: Date.now() + lifetime })).toString('base64url');
-  const token = `${payload}.${signature(payload)}`;
-  response.cookie(cookieName, token, {
-    httpOnly: true,
-    secure: production,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: lifetime,
-  });
+function cookieOptions() {
+  return { httpOnly: true, secure: isProduction, sameSite: 'lax' as const, path: '/' };
+}
+
+export function firmarSesion(userId: string, version: number, expires = Date.now() + SESSION_LIFETIME_MS): string {
+  const payload = Buffer.from(JSON.stringify({ userId, version, expires })).toString('base64url');
+  return `${payload}.${signature(payload)}`;
+}
+
+export function crearSesion(response: Response, userId: string, version: number): void {
+  response.cookie(SESSION_COOKIE, firmarSesion(userId, version), { ...cookieOptions(), maxAge: SESSION_LIFETIME_MS });
 }
 
 export function borrarSesion(response: Response): void {
-  response.clearCookie(cookieName, { httpOnly: true, secure: production, sameSite: 'lax', path: '/' });
+  response.clearCookie(SESSION_COOKIE, cookieOptions());
 }
 
-export function leerSesion(request: Request): string | null {
-  const raw = request.headers.cookie?.split(';').map((item) => item.trim()).find((item) => item.startsWith(`${cookieName}=`));
+// Las cookies emitidas antes de existir `version` se consideran inválidas.
+export function leerSesion(request: Request): SessionData | null {
+  const raw = request.headers.cookie?.split(';').map((item) => item.trim()).find((item) => item.startsWith(`${SESSION_COOKIE}=`));
   if (!raw) return null;
-  const [payload, received, extra] = raw.slice(cookieName.length + 1).split('.');
+  const [payload, received, extra] = raw.slice(SESSION_COOKIE.length + 1).split('.');
   if (!payload || !received || extra) return null;
   const expected = Buffer.from(signature(payload));
   const actual = Buffer.from(received);
   if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
   try {
-    const data: unknown = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    if (!data || typeof data !== 'object') return null;
-    const session = data as { userId?: unknown; expires?: unknown };
-    if (typeof session.userId !== 'string' || typeof session.expires !== 'number' || session.expires < Date.now()) return null;
-    return session.userId;
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { userId?: unknown; version?: unknown; expires?: unknown };
+    if (typeof data.userId !== 'string' || !Number.isInteger(data.version) || typeof data.expires !== 'number' || data.expires < Date.now()) return null;
+    return { userId: data.userId, version: data.version as number };
   } catch {
     return null;
   }

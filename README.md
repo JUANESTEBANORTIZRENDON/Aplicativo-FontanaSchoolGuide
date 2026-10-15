@@ -1,85 +1,234 @@
 # Fontana School Guide
 
-Aplicación web construida con TypeScript, Vite, Express y Prisma. Incluye acceso de asesores y administradores, registro de asesores y perfil inicial, usando la tabla existente `induccion.usuarios` en Neon.
+Aplicación web de inducción de Fontana construida con TypeScript, Vite (frontend vanilla), Express 5 y Prisma 6 sobre PostgreSQL en Neon. Incluye acceso de asesores y administradores, la ruta de formación del asesor (módulos, estados, progreso y botones "Continuar") y el panel administrativo (usuarios, catálogo, reactivaciones, certificados, métricas y auditoría).
+
+El contenido de capacitación (cuestionarios, audios, simulaciones y ejercicios definitivos) todavía no existe: cada módulo muestra "Contenido en preparación".
 
 ## Arquitectura
 
+```text
+Navegador ── /api/* ──► routes ──► middleware (requestId, mismaProcedencia, auth, validate)
+                                     │
+                                     ▼
+                                controllers (HTTP: leer request, llamar servicio, responder)
+                                     │
+                                     ▼
+                                services (reglas, transacciones, auditoría)
+                                     │
+                                     ▼
+                                repositories (consultas Prisma, cursor, agregaciones SQL)
+                                     │
+                                     ▼
+                                PostgreSQL (esquema induccion)
+```
+
 | Carpeta | Responsabilidad |
 | --- | --- |
-| `src/` y `public/` | Vista web existente (frontend Vite). |
-| `server/models/` | Acceso a datos mediante Prisma. |
-| `server/controllers/` | Lógica de las solicitudes HTTP. |
-| `server/routes/` | Definición de endpoints. |
-| `server/views/` | Publicación de la vista compilada. |
-| `server/middleware/` | Manejo transversal de errores y rutas. |
-| `prisma/` | Esquema y futuras migraciones de PostgreSQL. |
+| `src/` | Frontend. `auth-ui.ts` (login, perfil y enrutado), `advisor/` (ruta de formación), `admin/` (panel), `http.ts` (cliente de la API), `training.ts` y `content.ts` (recorrido existente). |
+| `server/config/` | `env.ts` (variables validadas con zod), `prisma.ts` (cliente único), `security.ts` (constantes de seguridad). |
+| `server/domain/` | Constantes de rol y estado (`enums.ts`), errores (`errors.ts`), reglas puras de progreso (`progress.ts`) y del usuario. |
+| `server/middleware/` | `auth` (requireAuth, requireRole, CSRF), `errors`, `rateLimit`, `requestId`, `validate`. |
+| `server/validators/` | Esquemas zod por recurso (`.strict()` rechaza campos no permitidos). |
+| `server/services/` | Reglas de negocio. Toda escritura administrativa va en transacción con `AdminAuditLog`. |
+| `server/repositories/` | Consultas Prisma y SQL agregado. Los controladores no llaman a Prisma. |
+| `server/integrations/` | Webhook de mecanografía (borrador) e interfaz de almacenamiento. |
+| `server/__tests__/` | Pruebas con vitest y supertest. |
+| `prisma/` | Esquema, migraciones, seeds y guardián de entorno. |
+
+### Roles, estados y sesiones
+
+- `usuarios.rol` (`asesor`, `administrador`) y `usuarios.estado` (`activo`, `inactivo`, `bloqueado`) siguen siendo varchar protegidos por los CHECK existentes en la base. Sus valores están en `server/domain/enums.ts`.
+- La cookie `fontana_session` es HttpOnly, SameSite=Lax, firmada con HMAC y dura 8 horas. Lleva `{ userId, version, expires }`: desactivar, bloquear, cambiar el rol o restablecer la contraseña incrementa `version_sesion` y las sesiones abiertas dejan de servir de inmediato. "Cerrar todas las sesiones" (`POST /api/auth/logout-all`) hace lo mismo.
+- Inicio de sesión: el asesor usa su documento; el administrador, documento o correo. Nunca por nombre. Las respuestas de error son genéricas y se limita a 5 fallos por IP + identificador y 25 por IP cada 15 minutos (en memoria, una instancia).
+- Todas las fechas se guardan en UTC y se presentan en `APP_TIMEZONE` (America/Bogota). Notas y porcentajes usan `Decimal(5,2)` calculados en el servidor.
+
+### Experiencia y ruta de práctica
+
+Al terminar las cinco etapas de `/induccion`, la confirmación de lectura habilita la pregunta de experiencia. Al responder, `POST /api/auth/experiencia` guarda `tiene_experiencia_cobranzas_digitales` y `fecha_respuesta_experiencia`; desde entonces el asesor entra a `/practica/experiencia` o `/practica/nuevo` (destino del módulo 02, todavía sin ejercicios). Puede volver a `/induccion` para repasar, donde también ve "Tu ruta de formación". El servidor exige sesión, rol asesor, perfil completo y un valor booleano.
+
+### Reglas de la ruta de formación
+
+- Catálogo inicial: 1 Ofimática y mecanografía → 2 Simulador de cobranzas → 3 Tipificación de llamadas → 4 Certificado (requiere los tres sellos).
+- `computeModuleViews` (dominio) calcula el estado efectivo de cada módulo combinando el estado del catálogo, prerrequisitos, sellos, progreso, intentos y excepciones vigentes. La usan el área del asesor, el panel y la sincronización que alimenta las métricas.
+- Un módulo `INACTIVE` se muestra "No disponible", con el botón deshabilitado. Un módulo aprobado muestra "Completado" (sin pantalla de resultados todavía).
+- Intentos: numeración consecutiva con bloqueo de fila, límite `maxAttempts` más excepciones vigentes y espera `waitMinutes` tras un fallo. Una configuración evaluable nueva crea otra versión; nunca se edita una versión existente.
+- Excepciones individuales (`REACTIVATE`, `UNLOCK`, `EXTRA_ATTEMPT`, `RESET_WAIT`, `REOPEN_MODULE`): motivo obligatorio, encabezado `Idempotency-Key` (UUID), nunca se borran; se revocan o vencen. `REOPEN_MODULE` no revoca sellos ni certificados.
+- Certificados sin PDF: código `FSG-AAAA-XXXXXX`, anulación y reemisión enlazada. La emisión automática está detrás de `CERTIFICATES_ENABLED=false`.
+- Intentos, resultados, sellos, certificados, excepciones y auditoría usan `onDelete: Restrict`; la auditoría solo se inserta.
 
 ## Desarrollo local
 
-Requiere Node.js 22.12 o superior.
-
-En Windows, ejecuta `Iniciar-FontanaSchool.cmd` con doble clic o desde la terminal:
+Requiere Node.js 22.12 o superior. En Windows:
 
 ```powershell
 .\Iniciar-FontanaSchool.cmd
 ```
 
-El lanzador comprueba el entorno, instala las dependencias si faltan, inicia ambos servidores y abre la aplicación en el navegador. Para detenerla, presiona `Ctrl+C` en su ventana.
-
-También puedes iniciarla manualmente:
+El lanzador comprueba el entorno, instala dependencias si faltan, inicia ambos servidores y abre el navegador. También puede hacerse a mano:
 
 ```powershell
 npm.cmd install
 npm.cmd run dev
 ```
 
-Vite publica el frontend y redirige `/api` al servidor Express local. El endpoint `GET /api/health` comprueba tanto el servidor como la conexión a Neon.
+- Frontend: `http://127.0.0.1:5173/` (Vite redirige `/api` a Express).
+- Backend: `http://127.0.0.1:3000/`; estado del servidor y la base en `GET /api/health`.
 
-Abre `http://127.0.0.1:5173/login`. El asesor ingresa con documento y contraseña; el administrador, con documento o correo administrativo y contraseña.
+| Comando | Uso |
+| --- | --- |
+| `npm run dev` | Frontend y backend con recarga. |
+| `npm run check` | Tipos del frontend, del servidor y de pruebas/seeds. |
+| `npm test` | Pruebas (requiere `DATABASE_URL_TEST`). |
+| `npm run build` | Genera Prisma Client y compila todo. |
+| `npm start` | Ejecuta `server-dist/server.js`. |
+| `npm run db:seed` | Catálogo inicial y asesor de prueba. |
+| `npm run db:seed:demo` | Datos demo (ver abajo). |
+| `npm run db:seed:demo:clean -- --yes` | Borra solo los datos demo. |
+| `npm run admin:bootstrap` | Crea el administrador inicial si no existe (muestra la contraseña una sola vez en esa terminal). |
+
+Al arrancar, el servidor ya no crea administradores ni imprime contraseñas: si no existe ninguno muestra "No existe administrador; ejecuta npm run admin:bootstrap".
 
 ## Variables de entorno
 
-Copia `.env.example` como `.env` y completa:
+Copia `.env.example` como `.env`. `.env` está ignorado por Git y nunca debe subirse.
 
-- `DATABASE_URL`: conexión agrupada (pooler) usada por la aplicación.
-- `DIRECT_URL`: conexión directa usada por las migraciones.
-- `PORT`: puerto del servidor; Render lo define automáticamente.
-- `SESSION_SECRET`: clave para firmar cookies de sesión; obligatoria en producción. Render la genera automáticamente según `render.yaml`.
-
-El archivo `.env` está ignorado por Git y nunca debe subirse al repositorio.
+| Variable | Uso |
+| --- | --- |
+| `DATABASE_URL` | Conexión agrupada (pooler) de la aplicación. |
+| `DIRECT_URL` | Conexión directa para migraciones. |
+| `PORT` | Puerto HTTP (Render lo define). |
+| `NODE_ENV` | `development`, `production` o `test`. |
+| `SESSION_SECRET` | Firma de cookies; obligatoria (≥ 32 caracteres) en producción. |
+| `APP_TIMEZONE` | Zona de presentación y de los filtros de fecha. Por defecto `America/Bogota`. |
+| `STALLED_DAYS` | Días sin avance para "asesores detenidos". Por defecto 7. |
+| `CERTIFICATES_ENABLED` | `true` activa la emisión automática de certificados. Por defecto `false`. |
+| `TYPING_WEBHOOK_SECRET` | Activa el webhook de mecanografía (sin él, la ruta responde 404). |
+| `DATABASE_URL_TEST`, `DIRECT_URL_TEST` | Base de pruebas (rama de Neon o PostgreSQL local). Nunca la de producción. |
+| `SEED_ALLOW` | Debe ser `true` para ejecutar seeds. |
+| `SEED_ALLOWED_HOSTS` | Hosts no locales en los que se permite sembrar (por ejemplo, la rama de pruebas de Neon). |
+| `PRODUCTION_DATABASE_HOSTS` | Hosts de producción: los seeds y las pruebas se niegan a usarlos. |
 
 ## Prisma y migraciones
 
-El esquema Prisma refleja la tabla existente `induccion.usuarios`. No se ejecutó ninguna migración sobre la base para implementar el login. Antes de crear migraciones nuevas, debe registrarse una línea base de la estructura existente para evitar que Prisma proponga recrear tablas.
+El esquema Prisma refleja la tabla existente `induccion.usuarios`, creada fuera de Prisma. La migración `prisma/migrations/0_baseline_usuarios` es la **línea base**: describe esa tabla tal como existe en Neon, incluidos los objetos que Prisma no modela (CHECK `chk_usuarios_rol` y `chk_usuarios_estado`, índice único `uq_usuarios_correo_lower`, trigger `trg_usuarios_fecha_actualizacion` y la vista `usuarios_ruta_induccion`). Se comprobó con `prisma migrate diff` que una base creada desde la línea base es idéntica a la real.
 
-Una vez preparada esa línea base, las nuevas migraciones se crearán con:
+La migración `20261015162347_backend_training_admin` agrega `usuarios.version_sesion` (con valor por defecto 0), los enums y las tablas nuevas. No contiene `DROP`. Incluye SQL manual revisado: índices únicos parciales (un sello `ACTIVE` por usuario y módulo, un certificado `ACTIVE` por usuario) y CHECK de integridad de las tablas nuevas.
 
-```powershell
-npm.cmd run prisma:migrate -- --name nombre_de_la_migracion
-```
+### Registrar la línea base (una sola vez por base existente)
 
-Comandos disponibles:
+En la base que ya tiene `induccion.usuarios` la línea base **no se ejecuta**: solo se marca como aplicada. Hazlo primero en una rama de pruebas de Neon y, al desplegar, en producción (requiere aprobación):
 
 ```powershell
-npm.cmd run prisma:generate
-npm.cmd run prisma:migrate:deploy
-npm.cmd run prisma:studio
+npx.cmd prisma validate
+npx.cmd prisma migrate resolve --applied 0_baseline_usuarios
+npx.cmd prisma migrate deploy
 ```
 
-`prisma:migrate:deploy` aplica únicamente migraciones versionadas. El despliegue actual no lo ejecuta porque la estructura de Neon ya existía antes de Prisma.
+En una base vacía (rama nueva de Neon, PostgreSQL local) basta con `npx.cmd prisma migrate deploy`.
 
-## Compilar y ejecutar
+Las nuevas migraciones se crean revisando el SQL antes de aplicarlo:
 
 ```powershell
-npm.cmd run check
-npm.cmd run build
-npm.cmd start
+npx.cmd prisma migrate dev --create-only --name nombre_descriptivo
+# revisar prisma/migrations/<fecha>_nombre_descriptivo/migration.sql
+npx.cmd prisma migrate dev
 ```
 
-Render puede leer `render.yaml`. Antes de desplegar, configura `DATABASE_URL` y `DIRECT_URL` como variables secretas del servicio.
+Nunca se usan `prisma migrate reset` ni `prisma db push`, y nunca se modifica una migración ya aplicada en producción. Los `.sql` de migraciones se guardan con finales de línea LF (`.gitattributes`) para que su checksum no cambie entre equipos.
 
-## Documentación
+### Orden de despliegue en Render
 
-- [Comandos importantes](documentacion/comandos.md)
-- [Documentación técnica del proyecto](documentacion/proyecto.md)
-- [Login y gestión de usuarios](documentacion/login.md)
+1. Con aprobación, marcar la línea base en la base de producción: `npx prisma migrate resolve --applied 0_baseline_usuarios`.
+2. Cambiar en `render.yaml` el `buildCommand` a `npm ci && npm run build && npx prisma migrate deploy`. **No antes del paso 1**: sin la línea base marcada, `migrate deploy` intentaría crear `usuarios` y el despliegue fallaría.
+3. Desplegar. `migrate deploy` aplica `backend_training_admin` antes de que arranque el código nuevo, que necesita `version_sesion`.
+4. Ejecutar `npm run db:seed` contra producción solo para el catálogo, con aprobación (requiere quitar el host de `PRODUCTION_DATABASE_HOSTS` de forma consciente) o crear el catálogo desde una migración de datos cuando se apruebe.
+
+## Seeds y datos demo
+
+Los seeds se niegan a correr con `NODE_ENV=production`, sin `SEED_ALLOW=true`, contra un host de `PRODUCTION_DATABASE_HOSTS` o contra un host no local que no esté en `SEED_ALLOWED_HOSTS`. No imprimen contraseñas.
+
+- `npm run db:seed`: catálogo de la sección 6.1 con una actividad `PLACEHOLDER` por módulo y el asesor de prueba **Asesor Prueba Fontana**, documento `1000000001`, contraseña `FontanaTest2026!`.
+- `npm run db:seed:demo`: crea, a través de los servicios reales, un administrador demo y 45 asesores demo con todos los estados a revisar. Identificación: documentos `1000000100`–`1000000199`, correos `@demo.fontana.test`, nombres `Demo · ...`, motivos e `idempotencyKey` `demo-...`, certificados `FSG-DEMO-...`. Es idempotente: si el asesor ya existe, su escenario no se repite.
+- `npm run db:seed:demo:clean`: muestra cuántos registros demo borraría; con `-- --yes` los elimina en una transacción (única excepción a la regla de no borrar historial).
+
+Contraseñas demo: asesores `FontanaDemo2026!`; administrador demo (`1000000100`) `FontanaAdminDemo2026!`.
+
+### Lista de verificación manual (punto de control 1)
+
+Ejecuta `npm run db:seed` y `npm run db:seed:demo` sobre la base de desarrollo, luego `npm run dev` y abre `http://127.0.0.1:5173/login`.
+
+| Documento | Entra como | Qué abrir | Qué se debe ver |
+| --- | --- | --- | --- |
+| 1000000100 | Administración | `/admin` | Panel con Asesores, Módulos y actividades, Métricas y Auditoría. |
+| 1000000101 | Asesor | login | Va a "Llena tus datos"; después, módulo 1 disponible y el resto bloqueados. |
+| 1000000102 | Asesor | `/induccion` | Módulo 1 "En curso" con "Continuar". |
+| 1000000103 | Asesor | `/induccion` | Módulo 1 "Completado", módulo 2 con "Continuar", módulo 3 "Aprueba Simulador de cobranzas para continuar". |
+| 1000000104 | Asesor | `/induccion` | Módulo 1 "Sin intentos" y botón deshabilitado. En el panel, su ficha muestra 0 intentos restantes. |
+| 1000000105 | Asesor | `/induccion` | Módulo 1 con la hora a partir de la cual podrá reintentar (30 min tras el fallo). |
+| 1000000106 | Asesor / panel | `/induccion`, ficha | "Continuar" de nuevo; en la ficha, próximo intento número 4 y excepción vigente. |
+| 1000000107 | Panel | ficha | Excepción UNLOCK "Vencida"; el asesor ve el módulo 2 bloqueado. |
+| 1000000108 | Panel | ficha | Excepción REACTIVATE "Revocada"; el módulo 1 sigue sin intentos. |
+| 1000000109 | Asesor / panel | `/induccion`, ficha | Certificado con "Ver certificado"; en la ficha, FSG-DEMO-0001 activo y tres sellos. |
+| 1000000110 | Panel | ficha | FSG-DEMO-0002 anulado con motivo y FSG-DEMO-0003 activo que lo reemplaza. |
+| 1000000111 | Asesor | `/induccion` | Certificado bloqueado: "Te faltan los sellos de: Tipificación de llamadas". |
+| 1000000112 | Panel | Métricas | Aparece en "Asesores detenidos" (7 días). |
+| 1000000113 | Asesor / panel | login, ficha | No inicia sesión; su historial de intentos sigue visible. |
+| 1000000114 | Asesor / panel | login, Auditoría | Mensaje genérico al entrar; el bloqueo y su motivo están en auditoría. |
+| 1000000115 | Asesor | `/induccion/modulos/simulador-cobranzas` | Puede entrar al módulo 2 reabierto y conserva el sello. |
+| 1000000116–145 | Panel | Asesores, Métricas | Paginación "Cargar más", filtros por módulo/estado/fecha y métricas con datos. |
+
+En **Módulos y actividades** aparece "Demo · actividad retirada" inactiva con progreso previo de dos asesores (la desactivación conserva el historial).
+
+## Pruebas
+
+```powershell
+# .env: DATABASE_URL_TEST y DIRECT_URL_TEST apuntando a la base de pruebas
+npm.cmd test
+```
+
+`global-setup.ts` aplica `prisma migrate deploy`, el seed base y vuelve a sembrar los datos demo. Cada suite crea usuarios con documento `TEST-<suite>-...` y borra solo esos datos al terminar. Para una base local desechable sirve cualquier PostgreSQL 15+ (por ejemplo, `postgresql://usuario@127.0.0.1:5432/fontana_test`).
+
+## API
+
+| Método y ruta | Uso | Rol |
+| --- | --- | --- |
+| `POST /api/auth/login` | Iniciar sesión (`identificador`, `password`, `tipo`). | Público, con rate limit |
+| `POST /api/auth/logout` | Cerrar sesión. | Autenticado |
+| `POST /api/auth/logout-all` | Cerrar todas las sesiones del usuario. | Autenticado |
+| `GET /api/auth/me` | Usuario, ruta y permisos. | Autenticado |
+| `POST /api/auth/completar-datos` | Correo y teléfono del asesor. | Asesor |
+| `POST /api/auth/experiencia` | Guarda la experiencia y asigna la ruta de práctica. | Asesor con perfil completo |
+| `GET /api/advisor/modules` | Ruta, progreso y botones. | Asesor |
+| `GET /api/advisor/modules/:slug` | Acceso validado a un módulo (403 con `blockedReason`). | Asesor |
+| `GET /api/advisor/progress` | Resumen personal. | Asesor |
+| `GET/POST /api/admin/users` | Listar (filtros y cursor) y crear. | Administrador |
+| `PATCH /api/admin/users/:id` | Editar datos permitidos. | Administrador |
+| `PATCH /api/admin/users/:id/status` | Activar, desactivar o bloquear (motivo). | Administrador |
+| `POST /api/admin/users/:id/reset-password` | Contraseña temporal. | Administrador |
+| `GET /api/admin/advisors/:id/progress` | Ficha completa. | Administrador |
+| `GET /api/admin/modules` | Módulos, actividades y evaluaciones. | Administrador |
+| `PATCH /api/admin/modules/:id/status`, `PATCH /api/admin/activities/:id/status` | Activar o desactivar (motivo). | Administrador |
+| `POST /api/admin/activities/:id/evaluations` | Nueva versión evaluable. | Administrador |
+| `POST /api/admin/advisors/:userId/activities/:activityId/reactivate` | Excepción individual (`Idempotency-Key`). | Administrador |
+| `POST /api/admin/overrides/:id/revoke` | Revocar excepción. | Administrador |
+| `POST /api/admin/certificates/:id/revoke`, `/reissue` | Anular o reemitir. | Administrador |
+| `GET /api/admin/metrics/summary`, `/metrics/location`, `/metrics/modules/:moduleId` | Métricas. | Administrador |
+| `GET /api/admin/audit` | Auditoría de solo lectura. | Administrador |
+| `POST /api/integrations/typing/webhook` | Resultado externo idempotente (borrador). | Integración |
+| `GET /api/health` | Estado del servidor y la base. | Público |
+
+Respuestas nuevas: `{ "data": ..., "meta": { "nextCursor": ... } }`. Errores: `{ "status": "error", "code", "message", "details", "requestId" }`.
+
+Las rutas `/api/admin/asesores` se mantienen como alias **obsoletos** que usan los mismos servicios; el panel ya usa las rutas nuevas.
+
+### Webhook de mecanografía (borrador)
+
+Sin proveedor real. Si `TYPING_WEBHOOK_SECRET` no está definido responde 404. Si lo está:
+
+- Encabezado `X-Typing-Signature: sha256=<hex de HMAC-SHA256 del cuerpo crudo>`.
+- Cuerpo: `{ "eventId", "numeroDocumento", "wpm", "accuracy", "errors", "attemptId"?, "occurredAt"? }`.
+- Un `(provider, eventId)` repetido responde 200 con `DUPLICATE` sin reprocesar.
+
+## Documentación local
+
+La carpeta `documentacion/` es local y está en `.gitignore`. Al hacer pull de este cambio, Git la eliminará de las copias que no la tengan modificada: respáldala antes o recupérala con `git show 949dece^:documentacion/<archivo>`. Lo que seguía vigente de esos archivos está en este README.

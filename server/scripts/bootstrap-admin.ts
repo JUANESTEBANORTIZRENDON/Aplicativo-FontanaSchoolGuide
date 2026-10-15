@@ -1,11 +1,14 @@
-import 'dotenv/config';
-import { asegurarAdministrador } from '../services/bootstrap-admin.service.js';
-import { databaseModel } from '../models/database.model.js';
+import { disconnect } from '../config/prisma.js';
+import { crearAdministradorInicial } from '../services/bootstrap-admin.service.js';
 
 try {
-  const created = await asegurarAdministrador();
-  if (created) console.log(`Administrador inicial creado. Documento: ${created.documento} | Contraseña temporal: ${created.password}`);
-  else console.log('Ya existe al menos un administrador; no se creó otro.');
+  const created = await crearAdministradorInicial();
+  if (created) {
+    console.log('Administrador inicial creado. Guarda estos datos ahora: no se volverán a mostrar.');
+    console.log(`Documento: ${created.documento} | Contraseña temporal: ${created.password}`);
+  } else {
+    console.log('Ya existe al menos un administrador; no se creó otro.');
+  }
 } finally {
-  await databaseModel.disconnect();
+  await disconnect();
 }

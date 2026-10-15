@@ -14,3 +14,11 @@ services:
         sync: false
       - key: SESSION_SECRET
         generateValue: true
+      - key: APP_TIMEZONE
+        value: America/Bogota
+      - key: STALLED_DAYS
+        value: "7"
+      - key: CERTIFICATES_ENABLED
+        value: "false"
+      # buildCommand pasa a "npm ci && npm run build && npx prisma migrate deploy"
+      # solo después de marcar la línea base en producción (ver README, orden de despliegue).
