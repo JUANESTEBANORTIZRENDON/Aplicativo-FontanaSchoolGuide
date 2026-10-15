@@ -1,0 +1,77 @@
+import { Prisma } from '@prisma/client';
+import { prisma, type Db } from '../config/prisma.js';
+import { ConflictError, NotFoundError, ValidationError } from '../domain/errors.js';
+import {
+  archiveActiveEvaluations, createEvaluation, findActivityById, findModuleById, latestEvaluationVersion, listAllModulesForAdmin,
+  listPrerequisiteEdges, replacePrerequisites, updateActivityStatus, updateModuleStatus,
+} from '../repositories/catalog.repository.js';
+import { audit, type ActionContext } from './audit.service.js';
+
+export function listModules() {
+  return listAllModulesForAdmin();
+}
+
+// Desactivar impide nuevos accesos e intentos; el progreso y el historial se conservan.
+export async function setModuleStatus(id: string, status: 'ACTIVE' | 'INACTIVE', reason: string, context: ActionContext) {
+  return prisma.$transaction(async (tx) => {
+    const before = await findModuleById(tx, id);
+    if (!before) throw new NotFoundError('Módulo no encontrado.', 'MODULE_NOT_FOUND');
+    if (before.status === status) throw new ConflictError(`El módulo ya está ${status}.`, 'STATUS_UNCHANGED');
+    const after = await updateModuleStatus(tx, id, status);
+    await audit(tx, context, { action: 'MODULE_STATUS_CHANGED', entityType: 'TrainingModule', entityId: id, before: { ...before }, after: { ...after }, reason });
+    return after;
+  });
+}
+
+export async function setActivityStatus(id: string, status: 'ACTIVE' | 'INACTIVE', reason: string, context: ActionContext) {
+  return prisma.$transaction(async (tx) => {
+    const found = await findActivityById(tx, id);
+    if (!found) throw new NotFoundError('Actividad no encontrada.', 'ACTIVITY_NOT_FOUND');
+    const { module: _module, ...before } = found;
+    void _module;
+    if (before.status === status) throw new ConflictError(`La actividad ya está ${status}.`, 'STATUS_UNCHANGED');
+    const after = await updateActivityStatus(tx, id, status);
+    await audit(tx, context, { action: 'ACTIVITY_STATUS_CHANGED', entityType: 'Activity', entityId: id, before, after: { ...after }, reason });
+    return after;
+  });
+}
+
+export type EvaluationInput = { minimumScore: number | string; maxAttempts: number; waitMinutes: number; title?: string; reason?: string };
+
+// Toda configuración nueva es una versión nueva; las anteriores se archivan y nunca se editan.
+export async function createEvaluationVersion(activityId: string, input: EvaluationInput, context: ActionContext | null, db?: Db) {
+  const run = async (tx: Db) => {
+    const activity = await findActivityById(tx, activityId);
+    if (!activity) throw new NotFoundError('Actividad no encontrada.', 'ACTIVITY_NOT_FOUND');
+    await tx.$queryRaw`SELECT id FROM induccion.actividades WHERE id = ${activityId}::uuid FOR UPDATE`;
+    const version = ((await latestEvaluationVersion(tx, activityId))?.version ?? 0) + 1;
+    await archiveActiveEvaluations(tx, activityId);
+    const evaluation = await createEvaluation(tx, {
+      activityId, version, title: input.title ?? null, status: 'ACTIVE',
+      minimumScore: new Prisma.Decimal(input.minimumScore), maxAttempts: input.maxAttempts, waitMinutes: input.waitMinutes,
+    });
+    if (context) await audit(tx, context, { action: 'EVALUATION_VERSION_CREATED', entityType: 'Evaluation', entityId: evaluation.id, after: { ...evaluation }, reason: input.reason });
+    return evaluation;
+  };
+  return db ? run(db) : prisma.$transaction(run);
+}
+
+// Valida autorreferencia y ciclos antes de guardar los prerrequisitos de un módulo.
+export async function setPrerequisites(db: Db, moduleId: string, prerequisiteIds: string[]): Promise<void> {
+  if (prerequisiteIds.includes(moduleId)) throw new ValidationError('Un módulo no puede ser prerrequisito de sí mismo.', { prerequisiteIds: 'Autorreferencia.' });
+  const edges = (await listPrerequisiteEdges(db)).filter((edge) => edge.moduleId !== moduleId);
+  edges.push(...prerequisiteIds.map((prerequisiteModuleId) => ({ moduleId, prerequisiteModuleId })));
+  const graph = new Map<string, string[]>();
+  for (const edge of edges) graph.set(edge.moduleId, [...(graph.get(edge.moduleId) ?? []), edge.prerequisiteModuleId]);
+  // Hay ciclo si desde algún prerrequisito se vuelve a llegar a moduleId.
+  const stack = [...prerequisiteIds];
+  const seen = new Set<string>();
+  while (stack.length) {
+    const current = stack.pop()!;
+    if (current === moduleId) throw new ValidationError('Los prerrequisitos forman un ciclo.', { prerequisiteIds: 'Ciclo detectado.' }, 'PREREQUISITE_CYCLE');
+    if (seen.has(current)) continue;
+    seen.add(current);
+    stack.push(...(graph.get(current) ?? []));
+  }
+  await replacePrerequisites(db, moduleId, prerequisiteIds);
+}

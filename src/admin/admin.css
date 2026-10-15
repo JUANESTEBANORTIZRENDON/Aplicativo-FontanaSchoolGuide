@@ -1,0 +1,26 @@
+.admin-content .secondary-link { color: #8b1538; font-weight: 700; text-decoration: none; }
+.filter-grid { display: flex; flex-wrap: wrap; gap: 9px; align-items: end; margin-bottom: 18px; }
+.filter-grid input, .filter-grid select { min-height: 40px; padding: 8px 11px; border: 1px solid #d4dae3; border-radius: 8px; background: #fff; color: #192840; font: 500 13px 'DM Sans', sans-serif; }
+.filter-grid input[type="search"], .filter-grid input:not([type]) { min-width: 200px; }
+.filter-grid button { padding: 9px 14px; border: 1px solid #d6dce6; border-radius: 8px; background: #fff; color: #33465f; font: 700 13px 'DM Sans', sans-serif; cursor: pointer; }
+.inline-label { display: grid; gap: 4px; color: #657184; font-size: 11px; font-weight: 700; }
+.admin-form select, .auth-form textarea { width: 100%; min-height: 45px; padding: 10px 13px; border: 1px solid #d4dae3; border-radius: 9px; background: #fff; color: #192840; font: 500 14px 'DM Sans', sans-serif; }
+.admin-form { grid-template-columns: repeat(4, minmax(0,1fr)); }
+.row-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.row-actions a.row-action { text-decoration: none; display: inline-block; }
+.row-title { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.status-active, .status-passed, .status-vigente { color: #176b40; background: #e8f7ef; }
+.status-in_progress, .status-available, .status-submitted { color: #8a6510; background: #fff4dc; }
+.status-inactive, .status-failed, .status-revoked, .status-revocada, .status-blocked { color: #8c4850; background: #fceef0; }
+.status-reissued, .status-vencida, .status-consumida, .status-archived, .status-draft, .status-not_started, .status-cancelled { color: #4a5a70; background: #eef1f6; }
+.metric-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+.metric-card { display: grid; gap: 6px; padding: 18px; background: #fff; border: 1px solid #e5e8ef; border-radius: 14px; }
+.metric-card span { color: #778398; font-size: 12px; font-weight: 700; }
+.metric-card strong { color: #192840; font: 800 24px 'Manrope', sans-serif; }
+.audit-list { margin: 0; padding-left: 18px; color: #344054; font-size: 13px; line-height: 1.7; }
+.split-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.dialog-note { margin: 0; color: #657184; font-size: 13px; }
+.loading-note { color: #657184; }
+.table-wrap + .table-wrap { margin-top: 18px; }
+@media (max-width: 850px) { .admin-form { grid-template-columns: 1fr 1fr; } .split-lists { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .admin-form { grid-template-columns: 1fr; } }
