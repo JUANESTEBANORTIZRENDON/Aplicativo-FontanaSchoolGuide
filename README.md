@@ -50,9 +50,23 @@ El archivo `.env` está ignorado por Git y nunca debe subirse al repositorio.
 
 ## Prisma y migraciones
 
-El esquema Prisma refleja la tabla existente `induccion.usuarios`. No se ejecutó ninguna migración sobre la base para implementar el login. Antes de crear migraciones nuevas, debe registrarse una línea base de la estructura existente para evitar que Prisma proponga recrear tablas.
+El esquema Prisma refleja la tabla existente `induccion.usuarios`, creada fuera de Prisma. La migración `prisma/migrations/0_baseline_usuarios` es la **línea base**: describe esa tabla tal como existe en Neon, incluidos los objetos que Prisma no modela (CHECK `chk_usuarios_rol` y `chk_usuarios_estado`, índice único `uq_usuarios_correo_lower`, trigger `trg_usuarios_fecha_actualizacion` y la vista `usuarios_ruta_induccion`). Se comprobó con `prisma migrate diff` que una base creada desde la línea base es idéntica a la real.
 
-Una vez preparada esa línea base, las nuevas migraciones se crearán con:
+### Registrar la línea base (una sola vez por base existente)
+
+En la base que ya tiene `induccion.usuarios` la línea base **no se ejecuta**: solo se marca como aplicada. Hazlo primero en una rama de pruebas de Neon y, al desplegar, en producción (requiere aprobación):
+
+```powershell
+npx.cmd prisma validate
+npx.cmd prisma migrate resolve --applied 0_baseline_usuarios
+npx.cmd prisma migrate deploy
+```
+
+En una base vacía (rama nueva de Neon, PostgreSQL local) basta con `npx.cmd prisma migrate deploy`: la línea base crea la estructura y luego se aplican las migraciones siguientes.
+
+Trabaja siempre contra una rama de Neon de desarrollo o pruebas, nunca contra producción. Las variables `DATABASE_URL_TEST` y `DIRECT_URL_TEST` de `.env.example` apuntan a esa base.
+
+Las nuevas migraciones se crean revisando el SQL antes de aplicarlo:
 
 ```powershell
 npm.cmd run prisma:migrate -- --name nombre_de_la_migracion
