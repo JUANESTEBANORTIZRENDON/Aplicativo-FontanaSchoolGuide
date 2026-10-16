@@ -109,8 +109,13 @@ async function editUser(user: Usuario, after: () => unknown): Promise<void> {
   } catch (error) { feedback((error as Error).message, true); }
 }
 
+// Columnas de la tabla de usuarios que se pueden ordenar; la clave coincide con sortBy del servidor.
+const USER_COLUMNS = [
+  { key: 'nombre', label: 'Usuario' }, { key: 'documento', label: 'Documento' }, { key: 'rol', label: 'Rol' },
+  { key: 'estado', label: 'Estado' }, { key: 'perfil', label: 'Perfil' }, { key: 'ultimoAcceso', label: 'Último acceso' },
+];
+
 async function advisorsSection(view: HTMLElement): Promise<void> {
-  const modules = (await api<{ data: { id: string; name: string }[] }>('/admin/modules')).data;
   view.innerHTML = `
     <section class="auth-card admin-card"><div class="section-title"><div><h2>Registrar usuario</h2><p>Los asesores completan su perfil al ingresar.</p></div></div>
       <form id="create-form" class="admin-form">
@@ -123,16 +128,12 @@ async function advisorsSection(view: HTMLElement): Promise<void> {
     </section>
     <section class="auth-card admin-card"><div class="section-title"><div><h2>Usuarios</h2><p id="total-caption">Cargando…</p></div></div>
       <form id="filter-form" class="filter-grid">
-        <input name="search" type="search" placeholder="Nombre o documento" aria-label="Buscar">
-        <select name="role" aria-label="Rol"><option value="">Todos los roles</option><option value="asesor">Asesor</option><option value="administrador">Administrador</option></select>
-        <select name="status" aria-label="Estado"><option value="">Todos los estados</option><option value="activo">Activo</option><option value="inactivo">Inactivo</option><option value="bloqueado">Bloqueado</option></select>
-        <select name="moduleId" aria-label="Módulo"><option value="">Cualquier módulo</option>${modules.map((m) => `<option value="${m.id}">${escapar(m.name)}</option>`).join('')}</select>
-        <select name="progressStatus" aria-label="Estado en el módulo"><option value="">Cualquier avance</option>${['AVAILABLE', 'IN_PROGRESS', 'PASSED', 'FAILED', 'BLOCKED'].map((s) => `<option value="${s}">${text(s)}</option>`).join('')}</select>
-        <label class="inline-label">Último avance desde<input name="lastActivityFrom" type="date"></label>
-        <label class="inline-label">hasta<input name="lastActivityTo" type="date"></label>
-        <button type="submit">Filtrar</button>
+        <input name="search" type="search" placeholder="Buscar por nombre o documento" aria-label="Buscar por nombre o documento">
+        <button type="submit">Buscar</button>
       </form>
-      <div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Documento</th><th>Rol</th><th>Estado</th><th>Perfil</th><th>Último acceso</th><th>Acciones</th></tr></thead><tbody id="user-rows"></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr>
+        ${USER_COLUMNS.map((column) => `<th aria-sort="none" data-col="${column.key}"><button type="button" class="sort-button" data-sort="${column.key}">${column.label}<span class="sort-arrow" aria-hidden="true"></span></button></th>`).join('')}
+        <th>Acciones</th></tr></thead><tbody id="user-rows"></tbody></table></div>
       <div class="pagination"><button id="more" type="button" hidden>Cargar más</button></div>
     </section>`;
 
@@ -140,12 +141,15 @@ async function advisorsSection(view: HTMLElement): Promise<void> {
   const more = view.querySelector<HTMLButtonElement>('#more')!;
   let cursor: string | null = null;
   let filters = new URLSearchParams();
+  // Orden por columna: clic en el encabezado alterna ascendente → descendente → orden por defecto.
+  let sort: { key: string; dir: 'asc' | 'desc' } | null = null;
   const loaded = new Map<string, Usuario>();
 
   async function load(reset: boolean): Promise<void> {
     if (reset) { cursor = null; rows.innerHTML = ''; loaded.clear(); }
     const query = new URLSearchParams(filters);
     query.set('limit', '20');
+    if (sort) { query.set('sortBy', sort.key); query.set('sortDir', sort.dir); }
     if (cursor) query.set('cursor', cursor);
     const page = await api<Page<Usuario>>(`/admin/users?${query}`);
     view.querySelector('#total-caption')!.textContent = `${page.meta.total ?? page.data.length} usuario(s) con estos filtros`;
@@ -173,6 +177,18 @@ async function advisorsSection(view: HTMLElement): Promise<void> {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
     await run(() => api('/admin/users', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(form))) }), 'Usuario creado y activo.', () => { form.reset(); return load(true); });
+  });
+  view.querySelector('thead')!.addEventListener('click', (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-sort]');
+    if (!button) return;
+    const key = button.dataset.sort!;
+    sort = sort?.key !== key ? { key, dir: 'asc' } : sort.dir === 'asc' ? { key, dir: 'desc' } : null;
+    view.querySelectorAll<HTMLElement>('th[data-col]').forEach((th) => {
+      const active = sort?.key === th.dataset.col;
+      th.setAttribute('aria-sort', active ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none');
+      th.querySelector('.sort-arrow')!.textContent = active ? (sort!.dir === 'asc' ? ' ▲' : ' ▼') : '';
+    });
+    void load(true).catch((error) => feedback((error as Error).message, true));
   });
   view.querySelector<HTMLFormElement>('#filter-form')!.addEventListener('submit', (event) => {
     event.preventDefault();

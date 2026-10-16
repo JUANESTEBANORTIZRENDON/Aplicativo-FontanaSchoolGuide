@@ -96,3 +96,8 @@
   .activity-actions { justify-content: start; }
   .module-note, .activity-empty { padding-left: 18px; }
 }
+
+/* Encabezados ordenables de la tabla de usuarios */
+.sort-button { padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; white-space: nowrap; }
+.sort-button:hover, th[aria-sort="ascending"] .sort-button, th[aria-sort="descending"] .sort-button { color: #8b1538; }
+.sort-arrow { display: inline-block; min-width: 1.2em; }
