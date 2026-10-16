@@ -60,6 +60,8 @@ export function renderTyping(ctx: OfficeContext): void {
   renderIntro(ctx);
 }
 
+const time = (iso: string) => new Intl.DateTimeFormat('es-CO', { timeStyle: 'short', timeZone: 'America/Bogota' }).format(new Date(iso));
+
 function renderIntro(ctx: OfficeContext): void {
   const { state } = ctx;
   const cfg = state.config.typing;
@@ -76,20 +78,36 @@ function renderIntro(ctx: OfficeContext): void {
         <li><strong>Intentos:</strong> te quedan ${section.attemptsRemaining ?? cfg.maxAttempts} de ${section.maxAttempts ?? cfg.maxAttempts}.</li>
       </ul>
       <p class="office-warning" role="note"><strong>Antes de iniciar:</strong> no recargues la página ni salgas durante la prueba. Si la abandonas, el intento se cuenta como fallido. Pegar y copiar están desactivados.</p>
-      ${open ? `<p class="office-error" role="alert">Tienes una prueba preparada o en curso que ya no se puede retomar. Podrás preparar otra cuando venza (${escapar(new Intl.DateTimeFormat('es-CO', { timeStyle: 'short', timeZone: 'America/Bogota' }).format(new Date(open.expiresAt)))}).</p>` : ''}
+      ${open && !open.started ? `<p class="office-note" role="status">Ya tienes una prueba preparada que todavía no inicias. Ábrela para continuar con el mismo texto (vence a las ${escapar(time(open.expiresAt))}).</p>` : ''}
+      ${open?.started ? `<p class="office-error" role="alert">Tu prueba ya había iniciado y el tiempo siguió corriendo: no se puede retomar. Podrás preparar otra cuando venza (${escapar(time(open.expiresAt))}).</p>` : ''}
       <div class="office-actions">
-        <button class="primary" id="typing-prepare" type="button">Preparar mi prueba</button>
+        ${open && !open.started
+          ? '<button class="primary" id="typing-resume" type="button">Abrir mi prueba de mecanografía</button>'
+          : '<button class="primary" id="typing-prepare" type="button">Preparar mi prueba</button>'}
         ${open ? '<button class="office-secondary" id="typing-refresh" type="button">Actualizar estado</button>' : ''}
       </div>
     </section>`;
-  const prepare = ctx.view.querySelector<HTMLButtonElement>('#typing-prepare')!;
-  prepare.addEventListener('click', async () => {
+  const resume = ctx.view.querySelector<HTMLButtonElement>('#typing-resume');
+  resume?.addEventListener('click', async () => {
+    resume.disabled = true;
+    ctx.view.innerHTML = loadingCard('Abriendo tu prueba…', 'Recuperamos el texto que ya tenías preparado.');
+    try {
+      renderReady(ctx, await officeApi.typingResume());
+    } catch (error) {
+      await ctx.reload();
+      showError(ctx.view, error);
+    }
+  });
+  const prepare = ctx.view.querySelector<HTMLButtonElement>('#typing-prepare');
+  prepare?.addEventListener('click', async () => {
     prepare.disabled = true;
     ctx.view.innerHTML = loadingCard('Preparando tu prueba…', 'Estamos eligiendo el texto que vas a copiar.');
     try {
       renderReady(ctx, await officeApi.typingPrepare());
     } catch (error) {
       if (error instanceof ApiError && error.code === 'PRACTICE_REQUIRED') { await ctx.reload(); return; }
+      // Ya había una prueba preparada (por ejemplo, en otra pestaña): se recarga para ofrecer abrirla.
+      if (error instanceof ApiError && error.code === 'TYPING_ATTEMPT_OPEN') { await ctx.reload(); return; }
       renderIntro(ctx);
       showError(ctx.view, error);
     }

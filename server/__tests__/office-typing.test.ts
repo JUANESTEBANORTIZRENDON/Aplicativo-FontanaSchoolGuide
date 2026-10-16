@@ -120,6 +120,20 @@ describe('mecanografía interna', () => {
     expect(second.status).toBe(409);
     expect(second.body.code).toBe('TYPING_ATTEMPT_OPEN');
     expect(await prisma.attempt.count({ where: { userId: user.id } })).toBe(1);
+
+    // La prueba preparada se reabre con el mismo intento y texto, y un nonce nuevo que invalida el anterior.
+    const resumed = await agent.post('/api/training/office/typing/attempts/resume').set(ORIGIN);
+    expect(resumed.status).toBe(200);
+    expect(resumed.body.data).toMatchObject({ attemptId: first.body.data.attemptId, text: first.body.data.text });
+    expect(resumed.body.data.nonce).not.toBe(first.body.data.nonce);
+    const old = await agent.post(`/api/training/office/typing/attempts/${first.body.data.attemptId}/start`).set(ORIGIN);
+    expect(old.status).toBe(200);
+    const stale = await agent.post(`/api/training/office/typing/attempts/${first.body.data.attemptId}/complete`).set(ORIGIN)
+      .send({ nonce: first.body.data.nonce, typedText: 'texto', clientDurationSeconds: 5 });
+    expect(stale.body.code).toBe('NONCE_INVALID');
+    // Ya iniciada, no se puede reabrir.
+    expect((await agent.post('/api/training/office/typing/attempts/resume').set(ORIGIN)).body.code).toBe('TYPING_ATTEMPT_STARTED');
+    expect(await prisma.attempt.count({ where: { userId: user.id } })).toBe(1);
   });
 
   it('calcula en el servidor, aprueba, cierra el intento y no acepta reenvíos', async () => {

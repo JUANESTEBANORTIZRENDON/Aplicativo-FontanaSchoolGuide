@@ -64,6 +64,7 @@ export const officeApi = {
   result: () => get<ResultView>('/result'),
 
   typingPrepare: () => post<TypingPrepared>('/typing/attempts'),
+  typingResume: () => post<TypingPrepared>('/typing/attempts/resume'),
   typingStart: (id: string) => post<{ startedOfficialAt: string; durationSeconds: number; startWindowSeconds: number }>(`/typing/attempts/${id}/start`),
   typingComplete: (id: string, body: { nonce: string; typedText: string; clientDurationSeconds: number }) => post<TypingResult>(`/typing/attempts/${id}/complete`, body),
   typingPracticeTexts: () => get<{ texts: string[] }>('/typing/practice'),

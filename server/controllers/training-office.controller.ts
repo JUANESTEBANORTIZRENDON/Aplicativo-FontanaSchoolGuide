@@ -38,6 +38,10 @@ export async function typingPrepare(request: Request, response: Response): Promi
   response.status(201).json({ data: await typingService.prepareAttempt(request.usuario!.id) });
 }
 
+export async function typingResume(request: Request, response: Response): Promise<void> {
+  response.json({ data: await typingService.resumePrepared(request.usuario!.id) });
+}
+
 export async function typingStart(request: Request, response: Response): Promise<void> {
   const { id } = validParams<{ id: string }>(request);
   response.json({ data: await typingService.startOfficial(request.usuario!.id, id) });
