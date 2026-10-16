@@ -53,6 +53,33 @@ export function loadingOverlay(card: HTMLElement, message: string): () => void {
   return () => layer.remove();
 }
 
+// Pantalla de carga fija sobre toda la página: se usa al calificar (el formulario puede ser largo y la
+// tarjeta quedaría fuera de la vista). Devuelve la función que la quita.
+export function loadingScreen(message: string, detail = ''): () => void {
+  const layer = document.createElement('div');
+  layer.className = 'office-loading-screen';
+  layer.innerHTML = loadingCard(message, detail);
+  document.body.append(layer);
+  return () => layer.remove();
+}
+
+// Las ilustraciones de lecciones y preguntas se amplían a pantalla completa con un clic.
+function bindImageZoom(container: HTMLElement): void {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'office-zoom';
+  dialog.innerHTML = '<button type="button" class="office-zoom-close" aria-label="Cerrar imagen ampliada">✕</button><img alt="">';
+  document.body.append(dialog);
+  const image = dialog.querySelector('img')!;
+  container.addEventListener('click', (event) => {
+    const source = (event.target as HTMLElement).closest<HTMLImageElement>('img.office-zoomable');
+    if (!source) return;
+    image.src = source.currentSrc || source.src;
+    image.alt = source.alt;
+    dialog.showModal();
+  });
+  dialog.addEventListener('click', () => dialog.close());
+}
+
 export function showError(container: HTMLElement, error: unknown): void {
   let box = container.querySelector<HTMLElement>('.office-error');
   if (!box) {
@@ -78,6 +105,7 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
   const stepsNav = root.querySelector<HTMLElement>('.office-steps')!;
   const view = root.querySelector<HTMLElement>('#office-view')!;
   mountHeaderAccount(nombre, 'Ofimática para tus cobranzas');
+  bindImageZoom(root);
 
   let state: ModuleState;
   try {
@@ -186,12 +214,12 @@ export function lessonCard(lesson: Lesson): string {
   const src = image?.url ?? bundledImage(lesson.key);
   const picture = image
     ? (src
-      ? `<img src="${escapar(src)}" alt="${escapar(image.url ? image.alt : `Ilustración de la lección «${lesson.title}»`)}" width="${image.width}" height="${image.height}" loading="lazy" decoding="async">`
+      ? `<img class="office-zoomable" title="Haz clic para ampliar" src="${escapar(src)}" alt="${escapar(image.url ? image.alt : `Ilustración de la lección «${lesson.title}»`)}" width="${image.width}" height="${image.height}" loading="lazy" decoding="async">`
       : `<div class="office-image-placeholder" role="img" aria-label="${escapar(image.alt)}" style="aspect-ratio:${image.width}/${image.height}"><span>Imagen en preparación</span><small>${escapar(image.alt)}</small></div>`)
     : '';
   return `
     <article class="office-lesson">
-      ${picture ? `<figure>${picture}<figcaption>${escapar(image!.caption)}</figcaption></figure>` : ''}
+      ${picture ? `<figure>${picture}<figcaption>${escapar(image!.caption)}${src ? ' <span class="office-zoom-hint">· Haz clic en la imagen para ampliarla</span>' : ''}</figcaption></figure>` : ''}
       <div>
         <h3>${escapar(lesson.title)}</h3>
         <p>${escapar(lesson.summary)}</p>

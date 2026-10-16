@@ -1,6 +1,6 @@
 import { escapar } from '../http';
 import { ApiError, officeApi, type Correction, type DictationInfo, type DictationResult, type Lesson } from './api';
-import { errorMessage, lessonCard, showError, type OfficeContext } from './office';
+import { errorMessage, lessonCard, loadingScreen, showError, type OfficeContext } from './office';
 
 // Ortografía aplicada: lecciones cortas y un dictado. La nota la calcula el sistema experto del servidor;
 // las recomendaciones (con Ollama o por plantilla) llegan ya redactadas junto con el resultado.
@@ -199,11 +199,14 @@ function renderRunning(ctx: OfficeContext, exercise: DictationInfo, attemptId: s
     sent = true;
     submit.disabled = true;
     submit.textContent = 'Calificando…';
+    const hide = loadingScreen('Revisando tu dictado…', 'Comparamos palabra por palabra y preparamos tus recomendaciones.');
     try {
       const result = await officeApi.dictationSubmit(exercise.id, { attemptId, typedText: input.value });
       await ctx.refresh().catch(() => undefined);
+      hide();
       renderResult(ctx, result);
     } catch (error) {
+      hide();
       sent = false;
       submit.disabled = false;
       submit.textContent = 'Enviar dictado';

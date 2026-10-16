@@ -70,10 +70,11 @@ button.office-secondary:disabled { opacity: .5; cursor: not-allowed; }
 .office-right { background: #f1fbf5; border: 1px solid #8fd0ad; }
 
 /* Lecciones */
-.office-lesson { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 24px; align-items: start; }
+/* La ilustración ocupa todo el ancho de la tarjeta y el texto va debajo: así se lee sin esforzar la vista. */
+.office-lesson { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-items: start; }
 .office-lesson figure { margin: 0; }
 .office-lesson img { width: 100%; height: auto; border-radius: 14px; border: 1px solid #e5e8ef; }
-.office-lesson figcaption { margin-top: 6px; color: #626672; font-size: 13px; }
+.office-lesson figcaption { margin-top: 8px; color: #626672; font-size: 14px; }
 .office-image-placeholder { display: grid; place-content: center; gap: 6px; padding: 20px; text-align: center; border: 2px dashed #d4af37; border-radius: 14px; background: #fffaf0; color: #5a4310; }
 .office-image-placeholder small { color: #626672; }
 .office-rule { padding: 10px 12px; border-left: 4px solid #d4af37; background: #fff8e6; border-radius: 6px; }
@@ -168,3 +169,14 @@ button.office-secondary:disabled { opacity: .5; cursor: not-allowed; }
 .office-loading-overlay { position: absolute; inset: 0; z-index: 5; display: grid; place-content: center; justify-items: center; gap: 10px; border-radius: inherit; background: rgba(255, 252, 245, .86); backdrop-filter: blur(2px); }
 @keyframes office-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .office-spinner { animation-duration: 2.5s; } }
+
+/* Imagen ampliada y pantalla de carga al calificar */
+.office-zoomable { cursor: zoom-in; transition: box-shadow .2s; }
+.office-zoomable:hover { box-shadow: 0 10px 30px rgba(25, 40, 64, .18); }
+.office-zoom-hint { color: #8b1538; font-weight: 600; }
+.office-zoom { width: min(96vw, 1500px); max-height: 94vh; padding: 0; border: 0; border-radius: 14px; background: #fff; overflow: auto; cursor: zoom-out; }
+.office-zoom::backdrop { background: rgba(14, 25, 42, .75); }
+.office-zoom img { display: block; width: 100%; height: auto; }
+.office-zoom-close { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border: 0; border-radius: 50%; background: #192840; color: #fff; font-size: 18px; cursor: pointer; }
+.office-loading-screen { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgba(255, 250, 240, .75); backdrop-filter: blur(3px); }
+.office-loading-screen .office-loading-card { width: min(460px, 100%); box-shadow: 0 24px 70px rgba(25, 40, 64, .2); }

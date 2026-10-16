@@ -1,6 +1,6 @@
 import { escapar } from '../http';
 import { ApiError, officeApi, type ExcelPractice, type ExcelResult, type Lesson, type QuizOptionId, type QuizQuestion } from './api';
-import { bundledAsset, errorMessage, lessonCard, showError, type OfficeContext } from './office';
+import { bundledAsset, errorMessage, lessonCard, loadingScreen, showError, type OfficeContext } from './office';
 
 // Excel para cobranzas: cuatro microlecciones y una evaluación de opción múltiple (A–D) con casos ilustrados.
 // El servidor califica; aquí solo se recogen las respuestas y se muestra la retroalimentación.
@@ -86,9 +86,13 @@ function renderLessons(ctx: OfficeContext, activityId: string | null, lessons: L
     start?.addEventListener('click', async () => {
       start.disabled = true;
       start.textContent = 'Preparando la evaluación…';
+      const hide = loadingScreen('Preparando tu evaluación…');
       try {
-        renderQuiz(ctx, activityId!, await officeApi.excelStart(activityId!));
+        const practice = await officeApi.excelStart(activityId!);
+        hide();
+        renderQuiz(ctx, activityId!, practice);
       } catch (error) {
+        hide();
         start.disabled = false;
         start.textContent = 'Ir a la evaluación →';
         showError(ctx.view, error);
@@ -116,7 +120,7 @@ function renderQuiz(ctx: OfficeContext, activityId: string, practice: ExcelPract
           const image = bundledAsset(`excel-${question.image}`);
           return `<fieldset class="quiz-question">
             <legend><span class="quiz-number">${index + 1}</span>${escapar(question.prompt)}</legend>
-            ${image ? `<img class="quiz-image" src="${escapar(image)}" alt="Caso de la pregunta ${index + 1} en una hoja de Excel" width="1280" height="720" loading="lazy" decoding="async">` : ''}
+            ${image ? `<img class="quiz-image office-zoomable" title="Haz clic para ampliar" src="${escapar(image)}" alt="Caso de la pregunta ${index + 1} en una hoja de Excel" width="1280" height="720" loading="lazy" decoding="async">` : ''}
             <div class="quiz-options">
               ${question.options.map((option) => `<label class="quiz-option"><input type="radio" name="${question.id}" value="${option.id}" required><span class="quiz-letter">${LETTER[option.id]}</span><span>${escapar(option.text)}</span></label>`).join('')}
             </div>
@@ -143,11 +147,15 @@ function renderQuiz(ctx: OfficeContext, activityId: string, practice: ExcelPract
     const answers = questions.map((question) => ({ questionId: question.id, optionId: form.querySelector<HTMLInputElement>(`input[name="${question.id}"]:checked`)!.value as QuizOptionId }));
     submit.disabled = true;
     submit.textContent = 'Calificando…';
+    const hide = loadingScreen('Calificando tu evaluación…', 'Revisamos tus respuestas y preparamos las explicaciones.');
     try {
       const result = await officeApi.excelSubmit(activityId, { attemptId: practice.attemptId, answers });
       await ctx.refresh();
+      hide();
       renderResult(ctx, activityId, result, questions);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
+      hide();
       if (error instanceof ApiError && error.code === 'ATTEMPT_CLOSED') { await ctx.reload(); return; }
       submit.disabled = false;
       submit.textContent = 'Enviar evaluación';
