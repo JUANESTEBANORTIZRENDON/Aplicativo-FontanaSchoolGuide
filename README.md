@@ -104,6 +104,18 @@ Los ejercicios de dictado quedan en **borrador** hasta subir el audio autorizado
 
 Para probarlo: inicia sesión con un asesor demo → "Tu ruta de formación" → **Ofimática para tus cobranzas**.
 
+### Audios del dictado
+
+Cada ejercicio tiene un audio generado con **voz sintética local** que lee exactamente su `expectedText`. No hay voces grabadas ni servicios en la nube.
+
+- **Motor:** [Piper](https://github.com/rhasspy/piper) 1.8 (voz neuronal offline), con la voz `es_MX-claude-high` de `rhasspy/piper-voices` (licencia Apache-2.0 según su `MODEL_CARD`). Si Piper no está disponible, se usa la voz de Windows en español (SAPI).
+- **Instalación (una vez por equipo, idempotente):** `powershell -ExecutionPolicy Bypass -File server/scripts/tts/setup-tts.ps1`. Instala Python 3.12, `piper-tts` (pip --user), la voz (en `%LOCALAPPDATA%\fontana-tts\voices`, fuera del repositorio) y `ffmpeg` con winget, y deja la configuración en `%LOCALAPPDATA%\fontana-tts\config.json`.
+- **Generar y validar (sin escribir nada):** `npm.cmd run dictation:audio`. Los archivos quedan en `%TEMP%\fontana-dictado` para escucharlos.
+- **Cargar y asociar:** `npm.cmd run dictation:audio -- --apply --admin-documento <documento de un administrador>`. Agrega `--no-activate` para dejar el ejercicio en borrador, `--only <key>` para uno solo y `--force-audio` para regenerar uno que ya tiene audio. Usa `uploadMedia` (valida bytes mágicos y tamaño) y `updateDictation` (audita y exige que el audio exista para activar).
+- **Requisitos que valida el script:** OGG Opus mono 48 kHz a 48 kbps normalizado a -16 LUFS; entre 20 y 30 s (busca 24 a 28 s ajustando el ritmo de Piper entre 1.0 y 1.3); menos de 2 MB; sin silencios de más de 2 s ni saturación; nombre `dictado-<key>-v<version>.ogg`. Si no lo logra en 3 intentos, no carga ese ejercicio y lo informa.
+- **Dónde viven:** en `STORAGE_DIR` (por defecto `../fontana-storage`, fuera del repositorio y de `dist/`). No se versionan en Git porque se regeneran con el script. En producción `STORAGE_DIR` debe apuntar a un disco persistente del servidor.
+- **Ejercicio nuevo:** créalo en el panel (Ofimática › Dictados) en borrador y ejecuta el script con `--only <key>`. Si cambias el `expectedText` de un ejercicio con intentos, se crea una versión nueva y hay que generar su audio.
+
 ## Desarrollo local
 
 Requiere Node.js 22.12 o superior. En Windows:

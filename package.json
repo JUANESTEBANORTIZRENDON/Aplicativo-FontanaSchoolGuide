@@ -19,6 +19,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
+    "dictation:audio": "tsx server/scripts/generate-dictation-audio.ts",
     "admin:bootstrap": "tsx server/scripts/bootstrap-admin.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:demo": "tsx prisma/seed-demo.ts",
