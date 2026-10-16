@@ -30,10 +30,12 @@ export function overridesForUser(db: Db, userId: string) {
   return db.userActivityOverride.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
-export function attemptsForUser(db: Db, userId: string, evaluationIds: string[]) {
+// Intentos del asesor en las actividades indicadas, de todas las versiones de su evaluación: cambiar la
+// configuración (más intentos, otra nota mínima) no borra lo que el asesor ya usó.
+export function attemptsForUser(db: Db, userId: string, activityIds: string[]) {
   return db.attempt.findMany({
-    where: { userId, evaluationId: { in: evaluationIds } },
-    select: { id: true, number: true, status: true, overrideId: true, submittedAt: true, startedAt: true, evaluationId: true },
+    where: { userId, evaluation: { activityId: { in: activityIds } } },
+    select: { id: true, number: true, status: true, overrideId: true, submittedAt: true, startedAt: true, evaluationId: true, evaluation: { select: { activityId: true } } },
   });
 }
 

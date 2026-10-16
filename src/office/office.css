@@ -1,0 +1,139 @@
+/* Módulo "Ofimática para tus cobranzas". Reutiliza la paleta de la plataforma (vino, dorado y azul oscuro). */
+.office-main { max-width: 1180px; margin: 0 auto; padding: 0 24px 40px; font-family: 'DM Sans', 'Segoe UI', Arial, sans-serif; }
+.office-screen footer { display: flex; justify-content: space-between; gap: 12px; color: #626672; font-size: 13px; padding: 14px 4px; }
+
+/* Recorrido de secciones */
+.office-steps ol { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; list-style: none; margin: 20px 0; padding: 0; }
+.office-steps button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 8px 12px; border: 1px solid #d4af3745; border-radius: 14px; background: linear-gradient(120deg, #fffcf4, #f7efde); color: #1f2a37; text-align: left; font-weight: 700; font-size: 14px; }
+.office-steps button small { display: block; margin-top: 2px; font-weight: 400; font-size: 11px; color: #72746f; }
+.office-steps li[aria-current="step"] button { border-color: #8b1538; box-shadow: 0 0 0 3px #8b153822; }
+.office-steps li[aria-current="step"] small { color: #8b1538; }
+.office-steps li[data-status="COMPLETED"] .office-step-number { background: linear-gradient(145deg, #f9e6ab, #d4af37); border-color: #cba64a; }
+.office-steps li[data-status="NO_ATTEMPTS"] .office-step-number { background: #fceef0; border-color: #c98a93; color: #8c4850; }
+.office-step-number { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; border: 1px solid #d7d3c8; background: #ffffffaa; color: #8b1538; font-size: 12px; font-weight: 700; }
+
+/* Tarjeta principal */
+.office-view { outline: none; }
+.office-card { padding: 34px; border: 1px solid #d4af3733; border-radius: 24px; background: radial-gradient(ellipse at 100% 0%, #b9cfe240, transparent 65%), linear-gradient(145deg, #fffaf0, #f2f5f7); margin-bottom: 28px; }
+.office-card h1 { margin: 0 0 14px; font: italic 600 clamp(26px, 3.2vw, 36px)/1.2 Georgia, serif; color: #8b1538; letter-spacing: -.5px; }
+.office-card h2 { margin: 22px 0 10px; font: 800 19px 'Manrope', sans-serif; color: #192840; }
+.office-card h3 { margin: 0 0 6px; font: 800 17px 'Manrope', sans-serif; color: #192840; }
+.office-lead { max-width: 70ch; color: #4e535d; font-size: 16px; }
+.office-duration { color: #8a6510; font-weight: 700; }
+.office-note { color: #4e535d; }
+.office-loading { padding: 40px; text-align: center; color: #626672; }
+.office-error { margin: 12px 0; padding: 12px 14px; border: 1px solid #e3a8b1; border-radius: 12px; background: #fceef0; color: #8c1d33; font-weight: 600; }
+.office-warning { margin: 14px 0; padding: 12px 14px; border: 1px solid #d4af37; border-radius: 12px; background: #fff8e6; color: #5a4310; }
+.office-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 22px; }
+.office-actions .primary, .office-card .primary { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 10px 22px; border: 0; border-radius: 12px; color: #fff; font-weight: 700; text-decoration: none; background: linear-gradient(120deg, #8b1538, #70112c); }
+.office-card .primary:disabled { opacity: .55; cursor: not-allowed; }
+.office-secondary, .office-link { color: #8b1538; font-weight: 700; text-decoration: none; background: none; border: 0; padding: 8px 4px; cursor: pointer; }
+button.office-secondary { border: 1px solid #b76279; border-radius: 12px; padding: 10px 18px; background: #fff; }
+button.office-secondary:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Listas y bloques */
+.office-plan { list-style: none; margin: 20px 0; padding: 0; display: grid; gap: 14px; }
+.office-plan li { display: flex; gap: 14px; align-items: flex-start; }
+.office-plan p { margin: 2px 0 0; color: #4e535d; }
+.office-goals { padding-left: 20px; color: #344054; }
+.office-summary { list-style: none; margin: 18px 0; padding: 0; display: grid; gap: 8px; }
+.office-summary li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px; border: 1px solid #e5e7ed; border-radius: 12px; background: #fff; }
+.office-summary li[data-status="COMPLETED"] { border-color: #8fd0ad; background: #e8f7ef; }
+.office-summary li[data-status="NO_ATTEMPTS"] { border-color: #e3a8b1; background: #fceef0; }
+.office-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.office-seal { display: flex; align-items: center; gap: 16px; margin: 16px 0; padding: 18px; border: 2px solid #d4af37; border-radius: 18px; background: linear-gradient(135deg, #fff8e0, #f5e3a8); }
+.office-seal > span { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 50%; background: #8b1538; color: #fff; font-size: 28px; }
+.office-seal small { display: block; color: #5a4310; }
+
+/* Métricas y resultados */
+.office-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin: 20px 0; }
+.office-metrics > div { padding: 16px; border: 1px solid #e5e8ef; border-radius: 16px; background: #fff; }
+.office-metrics strong { display: block; font: 800 30px 'Manrope', sans-serif; color: #8b1538; }
+.office-metrics span { display: block; color: #344054; font-weight: 600; }
+.office-metrics small { color: #778398; }
+.office-feedback { list-style: none; padding: 0; display: grid; gap: 8px; }
+.office-feedback li { padding: 12px 14px; border-radius: 12px; border: 1px solid #e5e8ef; background: #fff; }
+.office-feedback li[data-ok="true"] { border-color: #8fd0ad; background: #f1fbf5; }
+.office-feedback li[data-ok="false"] { border-color: #e3a8b1; background: #fff6f7; }
+.office-feedback span { display: block; color: #4e535d; font-size: 14px; }
+.office-corrections { display: grid; gap: 8px; padding-left: 20px; }
+.office-corrections li { padding: 10px 12px; border: 1px solid #e5e8ef; border-radius: 10px; background: #fff; }
+.office-corrections li[data-severity="CRITICAL"] { border-color: #e3a8b1; background: #fff6f7; }
+.office-corrections strong, .office-corrections span, .office-corrections small { display: block; }
+.office-corrections small { color: #4e535d; }
+.office-recommendation { margin-top: 20px; padding: 18px; border-radius: 16px; background: #eef4fb; border: 1px solid #c6d8ec; }
+.office-more { margin: 12px 0; }
+.office-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 14px 0; }
+.office-compare p { margin: 0; padding: 12px 14px; border-radius: 12px; }
+.office-compare span { display: block; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px; }
+.office-wrong { background: #fff6f7; border: 1px solid #e3a8b1; }
+.office-right { background: #f1fbf5; border: 1px solid #8fd0ad; }
+
+/* Lecciones */
+.office-lesson { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 24px; align-items: start; }
+.office-lesson figure { margin: 0; }
+.office-lesson img { width: 100%; height: auto; border-radius: 14px; border: 1px solid #e5e8ef; }
+.office-lesson figcaption { margin-top: 6px; color: #626672; font-size: 13px; }
+.office-image-placeholder { display: grid; place-content: center; gap: 6px; padding: 20px; text-align: center; border: 2px dashed #d4af37; border-radius: 14px; background: #fffaf0; color: #5a4310; }
+.office-image-placeholder small { color: #626672; }
+.office-rule { padding: 10px 12px; border-left: 4px solid #d4af37; background: #fff8e6; border-radius: 6px; }
+
+/* Mecanografía */
+.office-typing-meta { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; margin: 12px 0; font-weight: 600; }
+.office-timer { padding: 6px 16px; border-radius: 30px; background: #8b1538; color: #fff; font: 800 22px 'Manrope', sans-serif; }
+.office-typing-target { margin: 8px 0 14px; padding: 18px; border: 1px solid #d4af3766; border-radius: 14px; background: #fff; font: 500 19px/1.8 Georgia, 'Times New Roman', serif; user-select: none; -webkit-user-select: none; cursor: default; }
+.office-typing-target .is-ok { color: #176b40; }
+.office-typing-target .is-bad { color: #fff; background: #c43c52; border-radius: 3px; }
+.office-typing-target .is-current { border-bottom: 3px solid #8b1538; }
+.office-label { display: block; margin: 12px 0 6px; font-weight: 700; color: #192840; }
+.office-typing-input { width: 100%; padding: 14px; border: 2px solid #c9ced9; border-radius: 12px; font: 500 18px/1.6 Georgia, serif; resize: vertical; background: #fff; }
+.office-typing-input:disabled { background: #f0f1f4; cursor: not-allowed; }
+.office-dictation-player { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 16px 0; }
+
+/* Práctica de Excel */
+.office-wide { max-width: none; }
+.office-excel { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 22px; align-items: start; }
+.office-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.office-tabs button { padding: 8px 14px; border: 1px solid #c9ced9; border-radius: 10px 10px 0 0; background: #f3f4f7; font-weight: 700; }
+.office-tabs button[aria-selected="true"] { background: #fff; border-color: #8b1538; color: #8b1538; }
+.sheet-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-bottom: 8px; }
+.sheet-tools input { padding: 6px 10px; border: 1px solid #c9ced9; border-radius: 8px; }
+.sheet-status { margin: 0; color: #626672; font-size: 13px; }
+.sheet-scroll { overflow: auto; max-height: 460px; border: 1px solid #c9ced9; border-radius: 10px; background: #fff; }
+.sheet-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.sheet-table caption { padding: 8px; text-align: left; font-weight: 700; color: #192840; caption-side: top; }
+.sheet-table th, .sheet-table td { padding: 6px 8px; border: 1px solid #e0e3ea; white-space: nowrap; text-align: left; }
+.sheet-table thead th { position: sticky; top: 0; background: #eef1f6; z-index: 1; font-size: 12px; vertical-align: top; }
+.sheet-index { width: 34px; text-align: center !important; background: #f3f4f7; color: #626672; }
+.sheet-colname { display: block; }
+.sheet-sort { margin-top: 4px; padding: 0 6px; border: 1px solid #c9ced9; border-radius: 6px; background: #fff; }
+.sheet-filter { display: block; margin-top: 4px; max-width: 150px; font-size: 12px; }
+.sheet-table tbody tr.is-selected { background: #fff2cc; outline: 2px solid #d4af37; }
+.sheet-table tbody tr[tabindex] { cursor: pointer; }
+.sheet-table td[data-type="currency"], .sheet-table td[data-type="number"] { text-align: right; }
+.sheet-input { width: 100%; min-width: 120px; padding: 4px 6px; border: 2px solid #8b1538; border-radius: 6px; background: #fffdf5; }
+.sheet-cell-edit { display: grid; gap: 4px; }
+.sheet-formula-value { font-weight: 700; color: #176b40; }
+.office-step-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; counter-reset: step; }
+.office-step-list li { padding: 12px; border: 1px solid #e0e3ea; border-radius: 12px; background: #fff; }
+.office-step-list li[data-state="done"] { border-color: #8fd0ad; background: #f1fbf5; }
+.office-step-list li[data-state="warn"] { border-color: #e3a8b1; background: #fff6f7; }
+.office-step-text { margin: 0 0 8px; font-weight: 600; }
+.office-step-text .office-step-number { display: inline-grid; width: 24px; height: 24px; flex: none; font-size: 11px; vertical-align: middle; }
+.office-step-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.office-mini-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.office-mini-form label { display: grid; gap: 2px; font-size: 12px; font-weight: 700; }
+.office-mini-form input, .office-step-controls select { padding: 6px 8px; border: 1px solid #c9ced9; border-radius: 8px; }
+.office-confirm { padding: 7px 14px; border: 1px solid #8b1538; border-radius: 10px; background: #fff; color: #8b1538; font-weight: 700; }
+.office-step-state { margin: 8px 0 0; min-height: 1.2em; font-size: 13px; color: #626672; }
+
+@media (max-width: 900px) {
+  .office-steps ol { grid-template-columns: 1fr 1fr; }
+  .office-excel, .office-lesson, .office-columns, .office-compare { grid-template-columns: 1fr; }
+  .office-card { padding: 22px 18px; }
+}
+@media (max-width: 560px) {
+  .office-main { padding: 0 16px 28px; }
+  .office-steps ol { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .office-screen * { scroll-behavior: auto !important; } }

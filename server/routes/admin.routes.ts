@@ -4,6 +4,8 @@ import * as users from '../controllers/admin-users.controller.js';
 import { Role } from '../domain/enums.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import * as officeAdmin from '../controllers/admin-office.controller.js';
+import { adminOfficeRouter } from './admin-office.routes.js';
 import {
   auditQuery, catalogStatusBody, evaluationBody, metricsQuery, moduleMetricsParams, reactivateBody, reactivateParams, reasonBody,
 } from '../validators/admin.validator.js';
@@ -22,6 +24,10 @@ adminRouter.patch('/users/:id', validate({ params: idParams, body: updateUserBod
 adminRouter.patch('/users/:id/status', validate({ params: idParams, body: changeStatusBody }), users.changeStatus);
 adminRouter.post('/users/:id/reset-password', validate({ params: idParams, body: resetPasswordBody }), users.resetPassword);
 adminRouter.get('/advisors/:id/progress', validate({ params: idParams }), training.advisorProgress);
+adminRouter.get('/advisors/:id/office', validate({ params: idParams }), officeAdmin.advisorOffice);
+
+// Módulo Ofimática: configuración versionada, contenido, medios
+adminRouter.use('/training/office', adminOfficeRouter);
 
 // Catálogo
 adminRouter.get('/modules', training.listModules);

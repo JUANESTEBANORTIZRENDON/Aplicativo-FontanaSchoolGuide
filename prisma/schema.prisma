@@ -50,6 +50,11 @@ model Usuario {
   excepciones         UserActivityOverride[] @relation("ExcepcionUsuario")
   excepcionesCreadas  UserActivityOverride[] @relation("ExcepcionCreador")
   auditoria           AdminAuditLog[]
+  seccionesVistas     ActivitySectionView[]
+  configsOfimatica    OfficeModuleConfig[]
+  textosMecanografia  TypingText[]
+  actividadesExcel    ExcelActivity[]
+  ejerciciosDictado   DictationExercise[]
 
   @@index([estado], map: "idx_usuarios_estado")
   @@index([rol], map: "idx_usuarios_rol")
@@ -121,6 +126,40 @@ enum ActivityType {
   TYPING
   SIMULATOR
   TYPIFICATION
+  EXCEL_PRACTICE
+  DICTATION
+
+  @@schema("induccion")
+}
+
+enum TypingCloseReason {
+  COMPLETED
+  EXPIRED
+  ABANDONED
+
+  @@schema("induccion")
+}
+
+enum SpellingCategory {
+  HOMOFONA
+  TILDE_DIACRITICA
+  FORMA_VERBAL
+  PUNTUACION
+  MAYUSCULA
+
+  @@schema("induccion")
+}
+
+enum SpellingSeverity {
+  CRITICAL
+  MINOR
+
+  @@schema("induccion")
+}
+
+enum RecommendationSource {
+  OLLAMA
+  TEMPLATE
 
   @@schema("induccion")
 }
@@ -192,21 +231,22 @@ model ModulePrerequisite {
 }
 
 model Activity {
-  id          String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  moduleId    String                 @map("module_id") @db.Uuid
-  type        ActivityType
-  order       Int                    @map("order")
-  status      CatalogStatus          @default(DRAFT)
-  title       String                 @db.VarChar(150)
-  isRequired  Boolean                @default(true) @map("is_required")
-  route       String?                @db.VarChar(200)
-  version     Int                    @default(1)
-  createdAt   DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
-  module      TrainingModule         @relation(fields: [moduleId], references: [id], onDelete: Restrict)
-  evaluations Evaluation[]
-  progress    UserActivityProgress[]
-  overrides   UserActivityOverride[]
+  id           String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  moduleId     String                 @map("module_id") @db.Uuid
+  type         ActivityType
+  order        Int                    @map("order")
+  status       CatalogStatus          @default(DRAFT)
+  title        String                 @db.VarChar(150)
+  isRequired   Boolean                @default(true) @map("is_required")
+  route        String?                @db.VarChar(200)
+  version      Int                    @default(1)
+  createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  module       TrainingModule         @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+  evaluations  Evaluation[]
+  progress     UserActivityProgress[]
+  overrides    UserActivityOverride[]
+  sectionViews ActivitySectionView[]
 
   @@unique([moduleId, order])
   @@index([moduleId, status])
@@ -241,6 +281,7 @@ model UserActivityProgress {
   activityId     String         @map("activity_id") @db.Uuid
   status         ProgressStatus @default(NOT_STARTED)
   attemptsUsed   Int            @default(0) @map("attempts_used")
+  lastPracticeAt DateTime?      @map("last_practice_at") @db.Timestamptz(6)
   startedAt      DateTime?      @map("started_at") @db.Timestamptz(6)
   completedAt    DateTime?      @map("completed_at") @db.Timestamptz(6)
   lastActivityAt DateTime?      @map("last_activity_at") @db.Timestamptz(6)
@@ -276,25 +317,28 @@ model Evaluation {
 }
 
 model Attempt {
-  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId              String                @map("user_id") @db.Uuid
-  evaluationId        String                @map("evaluation_id") @db.Uuid
+  id                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String                  @map("user_id") @db.Uuid
+  evaluationId        String                  @map("evaluation_id") @db.Uuid
   number              Int
-  score               Decimal?              @db.Decimal(5, 2)
-  status              AttemptStatus         @default(IN_PROGRESS)
-  startedAt           DateTime              @default(now()) @map("started_at") @db.Timestamptz(6)
-  submittedAt         DateTime?             @map("submitted_at") @db.Timestamptz(6)
-  durationSeconds     Int?                  @map("duration_seconds")
-  overrideId          String?               @map("override_id") @db.Uuid
-  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
-  user                Usuario               @relation(fields: [userId], references: [id], onDelete: Restrict)
-  evaluation          Evaluation            @relation(fields: [evaluationId], references: [id], onDelete: Restrict)
-  override            UserActivityOverride? @relation(fields: [overrideId], references: [id], onDelete: Restrict)
+  score               Decimal?                @db.Decimal(5, 2)
+  status              AttemptStatus           @default(IN_PROGRESS)
+  startedAt           DateTime                @default(now()) @map("started_at") @db.Timestamptz(6)
+  submittedAt         DateTime?               @map("submitted_at") @db.Timestamptz(6)
+  durationSeconds     Int?                    @map("duration_seconds")
+  overrideId          String?                 @map("override_id") @db.Uuid
+  createdAt           DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  user                Usuario                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  evaluation          Evaluation              @relation(fields: [evaluationId], references: [id], onDelete: Restrict)
+  override            UserActivityOverride?   @relation(fields: [overrideId], references: [id], onDelete: Restrict)
   answers             AttemptAnswer[]
   typingResults       TypingResult[]
   simulatorResults    SimulatorResult[]
   typificationResults TypificationResult[]
   seals               Seal[]
+  typingInternal      TypingAttemptResult?
+  excelResult         ExcelAttemptResult?
+  dictationResult     DictationAttemptResult?
 
   @@unique([userId, evaluationId, number])
   @@index([userId, evaluationId, createdAt])
@@ -470,5 +514,224 @@ model WebhookEvent {
 
   @@unique([provider, providerEventId])
   @@map("eventos_webhook")
+  @@schema("induccion")
+}
+
+// ---------------------------------------------------------------------------------------------
+// Módulo "Ofimática para tus cobranzas": configuración, mecanografía interna, Excel y dictado.
+// ---------------------------------------------------------------------------------------------
+
+// Una sola versión ACTIVE por moduleKey (índice único parcial en la migración). Nunca se edita:
+// cada cambio crea una versión nueva y archiva la anterior.
+model OfficeModuleConfig {
+  id                       String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  moduleKey                String        @map("module_key") @db.VarChar(80)
+  version                  Int
+  status                   CatalogStatus @default(DRAFT)
+  typingDurationSeconds    Int           @default(60) @map("typing_duration_seconds")
+  typingMinCorrectCpm      Int           @default(150) @map("typing_min_correct_cpm")
+  typingMinAccuracy        Decimal       @default(90) @map("typing_min_accuracy") @db.Decimal(5, 2)
+  typingMaxAttempts        Int           @default(3) @map("typing_max_attempts")
+  typingStartWindowSeconds Int           @default(15) @map("typing_start_window_seconds")
+  typingAttemptTtlMinutes  Int           @default(10) @map("typing_attempt_ttl_minutes")
+  excelMinScore            Decimal       @default(80) @map("excel_min_score") @db.Decimal(5, 2)
+  excelMaxAttempts         Int           @default(3) @map("excel_max_attempts")
+  dictationMinScore        Decimal       @default(85) @map("dictation_min_score") @db.Decimal(5, 2)
+  dictationMaxAttempts     Int           @default(3) @map("dictation_max_attempts")
+  dictationMaxPlays        Int           @default(2) @map("dictation_max_plays")
+  reason                   String?
+  createdById              String?       @map("created_by_id") @db.Uuid
+  createdAt                DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy                Usuario?      @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([moduleKey, version])
+  @@map("config_modulo_ofimatica")
+  @@schema("induccion")
+}
+
+// Lecciones y microlecciones vistas: permiten reanudar el módulo después de cerrar sesión.
+model ActivitySectionView {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  activityId String   @map("activity_id") @db.Uuid
+  sectionKey String   @map("section_key") @db.VarChar(60)
+  viewedAt   DateTime @default(now()) @map("viewed_at") @db.Timestamptz(6)
+  user       Usuario  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, activityId, sectionKey])
+  @@index([activityId])
+  @@map("activity_section_views")
+  @@schema("induccion")
+}
+
+// Banco de textos ficticios (650 a 900 caracteres). Editar un texto ya usado crea otra versión.
+model TypingText {
+  id          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String                @db.VarChar(60)
+  version     Int                   @default(1)
+  title       String                @db.VarChar(150)
+  content     String
+  locale      String                @default("es-CO") @db.VarChar(10)
+  status      CatalogStatus         @default(DRAFT)
+  createdById String?               @map("created_by_id") @db.Uuid
+  createdAt   DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   Usuario?              @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  results     TypingAttemptResult[]
+
+  @@unique([key, version])
+  @@index([status])
+  @@map("textos_mecanografia")
+  @@schema("induccion")
+}
+
+// Resultado de la prueba interna. nonceHash es SHA-256 del nonce; el nonce nunca se guarda.
+model TypingAttemptResult {
+  id                String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attemptId         String             @unique @map("attempt_id") @db.Uuid
+  textId            String             @map("text_id") @db.Uuid
+  textVersion       Int                @map("text_version")
+  nonceHash         String             @map("nonce_hash") @db.VarChar(64)
+  expiresAt         DateTime           @map("expires_at") @db.Timestamptz(6)
+  startedOfficialAt DateTime?          @map("started_official_at") @db.Timestamptz(6)
+  completedAt       DateTime?          @map("completed_at") @db.Timestamptz(6)
+  durationSeconds   Decimal?           @map("duration_seconds") @db.Decimal(6, 2)
+  typedText         String?            @map("typed_text")
+  totalCharacters   Int                @default(0) @map("total_characters")
+  correctCharacters Int                @default(0) @map("correct_characters")
+  insertions        Int                @default(0)
+  omissions         Int                @default(0)
+  substitutions     Int                @default(0)
+  errorCount        Int                @default(0) @map("error_count")
+  accuracy          Decimal            @default(0) @db.Decimal(5, 2)
+  ppm               Decimal            @default(0) @db.Decimal(6, 2)
+  correctCpm        Int                @default(0) @map("correct_cpm")
+  passed            Boolean?
+  closeReason       TypingCloseReason? @map("close_reason")
+  suspicious        Boolean            @default(false)
+  configSnapshot    Json               @map("config_snapshot")
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  attempt           Attempt            @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  text              TypingText         @relation(fields: [textId], references: [id], onDelete: Restrict)
+
+  @@index([textId])
+  @@index([completedAt])
+  @@map("resultados_mecanografia_interna")
+  @@schema("induccion")
+}
+
+// Escenario ficticio de Excel. answerKey nunca se envía al navegador.
+model ExcelActivity {
+  id           String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key          String               @db.VarChar(60)
+  version      Int                  @default(1)
+  title        String               @db.VarChar(150)
+  scenarioData Json                 @map("scenario_data")
+  answerKey    Json                 @map("answer_key")
+  status       CatalogStatus        @default(DRAFT)
+  createdById  String?              @map("created_by_id") @db.Uuid
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy    Usuario?             @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  results      ExcelAttemptResult[]
+
+  @@unique([key, version])
+  @@index([status])
+  @@map("actividades_excel")
+  @@schema("induccion")
+}
+
+// Un intento de Excel: guarda la semilla para reproducir el escenario que vio el asesor.
+model ExcelAttemptResult {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attemptId       String        @unique @map("attempt_id") @db.Uuid
+  excelActivityId String        @map("excel_activity_id") @db.Uuid
+  excelVersion    Int           @map("excel_version")
+  seed            Int
+  configSnapshot  Json          @map("config_snapshot")
+  score           Decimal?      @db.Decimal(5, 2)
+  passed          Boolean?
+  stepResults     Json?         @map("step_results")
+  startedAt       DateTime      @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt     DateTime?     @map("completed_at") @db.Timestamptz(6)
+  attempt         Attempt       @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  excelActivity   ExcelActivity @relation(fields: [excelActivityId], references: [id], onDelete: Restrict)
+
+  @@index([excelActivityId])
+  @@map("resultados_excel")
+  @@schema("induccion")
+}
+
+// Ejercicio de dictado. No se activa sin audio autorizado (salvo DICTATION_DEV_TTS en desarrollo).
+model DictationExercise {
+  id                   String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key                  String                   @db.VarChar(60)
+  version              Int                      @default(1)
+  title                String                   @db.VarChar(150)
+  audioKey             String?                  @map("audio_key") @db.VarChar(120)
+  audioDurationSeconds Int?                     @map("audio_duration_seconds")
+  expectedText         String                   @map("expected_text")
+  locale               String                   @default("es-CO") @db.VarChar(10)
+  difficulty           Int                      @default(1)
+  criticalRuleKeys     String[]                 @map("critical_rule_keys")
+  status               CatalogStatus            @default(DRAFT)
+  createdById          String?                  @map("created_by_id") @db.Uuid
+  createdAt            DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy            Usuario?                 @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  results              DictationAttemptResult[]
+
+  @@unique([key, version])
+  @@index([status])
+  @@map("ejercicios_dictado")
+  @@schema("induccion")
+}
+
+// Catálogo del sistema experto. pairs: [["a ver","haber"], ...] (esperado, confusión frecuente).
+model SpellingRule {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String           @db.VarChar(60)
+  version     Int              @default(1)
+  category    SpellingCategory
+  severity    SpellingSeverity
+  weight      Decimal          @db.Decimal(5, 2)
+  pairs       Json
+  explanation String
+  examples    Json
+  status      CatalogStatus    @default(DRAFT)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([key, version])
+  @@index([status])
+  @@map("reglas_ortografia")
+  @@schema("induccion")
+}
+
+// Intento de dictado: se crea al abrirlo (cuenta reproducciones) y se completa al enviarlo.
+model DictationAttemptResult {
+  id                          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attemptId                   String                @unique @map("attempt_id") @db.Uuid
+  exerciseId                  String                @map("exercise_id") @db.Uuid
+  exerciseVersion             Int                   @map("exercise_version")
+  expectedText                String                @map("expected_text")
+  playsUsed                   Int                   @default(0) @map("plays_used")
+  typedText                   String?               @map("typed_text")
+  typedNormalized             String?               @map("typed_normalized")
+  score                       Decimal?              @db.Decimal(5, 2)
+  wordMatchPercent            Decimal?              @map("word_match_percent") @db.Decimal(5, 2)
+  detectedErrors              Json?                 @map("detected_errors")
+  criticalCount               Int?                  @map("critical_count")
+  passed                      Boolean?
+  rulesVersion                Int?                  @map("rules_version")
+  configSnapshot              Json                  @map("config_snapshot")
+  recommendation              Json?
+  recommendationSource        RecommendationSource? @map("recommendation_source")
+  recommendationPromptVersion String?               @map("recommendation_prompt_version") @db.VarChar(40)
+  startedAt                   DateTime              @default(now()) @map("started_at") @db.Timestamptz(6)
+  completedAt                 DateTime?             @map("completed_at") @db.Timestamptz(6)
+  attempt                     Attempt               @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  exercise                    DictationExercise     @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+
+  @@index([exerciseId])
+  @@index([completedAt])
+  @@map("resultados_dictado")
   @@schema("induccion")
 }

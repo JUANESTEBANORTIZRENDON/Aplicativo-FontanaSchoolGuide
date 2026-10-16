@@ -24,3 +24,7 @@
 .table-wrap + .table-wrap { margin-top: 18px; }
 @media (max-width: 850px) { .admin-form { grid-template-columns: 1fr 1fr; } .split-lists { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .admin-form { grid-template-columns: 1fr; } }
+
+/* Sección Ofimática del panel */
+.office-admin-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.office-admin-tabs [aria-selected="true"] { background: #8b1538; color: #fff; border-color: #8b1538; }

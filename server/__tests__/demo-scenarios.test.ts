@@ -5,7 +5,7 @@ import { prisma } from '../config/prisma.js';
 import * as attemptService from '../services/attempt.service.js';
 import { firmarSesion } from '../services/session.service.js';
 import { DEMO_ADMIN_PASSWORD, DEMO_PASSWORD } from '../../prisma/seed-demo.js';
-import { activityIds, loginAgent, resetRateLimits } from './helpers.js';
+import { activityIds, loginAgent, ORIGIN, resetRateLimits } from './helpers.js';
 
 // La base de pruebas se siembra con db:seed:demo en global-setup.ts.
 // Cada caso comprueba con la API la fila correspondiente de la tabla de escenarios.
@@ -37,7 +37,7 @@ describe('escenarios demo', () => {
     const me = await admin.get('/api/auth/me');
     expect(me.body.usuario.ruta).toBe('/admin');
     const list = await admin.get('/api/admin/users').query({ search: 'Demo ·', limit: 100 });
-    expect(list.body.meta.total).toBe(46);
+    expect(list.body.meta.total).toBe(51);
   });
 
   it('1000000101 · nuevo: va a /llena-tus-datos y luego ve M1 disponible', async () => {
@@ -51,11 +51,14 @@ describe('escenarios demo', () => {
     const { modules } = await advisor('1000000102');
     expect(modules[0]).toMatchObject({ status: 'IN_PROGRESS', actionLabel: 'Continuar', enabled: true });
     expect(await prisma.attempt.count({ where: { userId: await userId('1000000102'), status: 'IN_PROGRESS' } })).toBe(1);
+    const state = (await (await loginAgent('1000000102', 'asesor', DEMO_PASSWORD)).agent.get('/api/training/office/module')).body.data;
+    expect(state.currentSection).toBe('mecanografia');
+    expect(state.typing.openAttempt).toMatchObject({ started: false });
   });
 
   it('1000000103 · aprobado M1: completado, M2 disponible, M3 bloqueado', async () => {
     const { modules } = await advisor('1000000103');
-    expect(modules[0]).toMatchObject({ status: 'PASSED', actionLabel: 'Completado', hasSeal: true });
+    expect(modules[0]).toMatchObject({ status: 'PASSED', actionLabel: 'Completado', hasSeal: true, enabled: true });
     expect(modules[1]).toMatchObject({ status: 'AVAILABLE', enabled: true });
     expect(modules[2]).toMatchObject({ status: 'BLOCKED', blockedReason: 'Aprueba Simulador de cobranzas para continuar' });
   });
@@ -65,12 +68,14 @@ describe('escenarios demo', () => {
     expect(modules[0]).toMatchObject({ status: 'FAILED', enabled: false });
     expect(modules[0]!.blockedReason).toMatch(/intentos/);
     await expect(attemptService.startAttempt(await userId('1000000104'), ids.a1)).rejects.toMatchObject({ code: 'NO_ATTEMPTS_LEFT' });
+    expect(await prisma.typingAttemptResult.count({ where: { attempt: { userId: await userId('1000000104') }, passed: false } })).toBe(3);
   });
 
-  it('1000000105 · en espera: no puede iniciar un intento hasta la hora indicada', async () => {
+  it('1000000105 · en espera: no puede iniciar un intento del Simulador hasta la hora indicada', async () => {
     const { modules } = await advisor('1000000105');
-    expect(modules[0]!.waitUntil).toBeTruthy();
-    const error = await attemptService.startAttempt(await userId('1000000105'), ids.a1).catch((reason: unknown) => reason);
+    expect(modules[0]).toMatchObject({ status: 'PASSED' });
+    expect(modules[1]!.waitUntil).toBeTruthy();
+    const error = await attemptService.startAttempt(await userId('1000000105'), ids.a2).catch((reason: unknown) => reason);
     expect(error).toMatchObject({ code: 'WAIT_ACTIVE' });
     expect((error as Error).message).toMatch(/Podrás intentarlo desde/);
   });
@@ -79,7 +84,7 @@ describe('escenarios demo', () => {
     const { modules } = await advisor('1000000106');
     expect(modules[0]).toMatchObject({ enabled: true, actionLabel: 'Continuar' });
     const file = (await admin.get(`/api/admin/advisors/${await userId('1000000106')}/progress`)).body.data;
-    const activity = file.catalog[0].activities[0];
+    const activity = file.catalog[0].activities.find((item: { activityId: string }) => item.activityId === ids.a1);
     expect(activity).toMatchObject({ nextAttemptNumber: 4, attemptsRemaining: 1 });
     expect(file.overrides[0]).toMatchObject({ action: 'EXTRA_ATTEMPT', state: 'VIGENTE' });
   });
@@ -161,6 +166,52 @@ describe('escenarios demo', () => {
     } while (cursor && pages < 10);
     expect(pages).toBe(3);
     expect(seen.size).toBe(45);
+  });
+
+  it('1000000146 · mecanografía aprobada y Excel pendiente', async () => {
+    const session = await loginAgent('1000000146', 'asesor', DEMO_PASSWORD);
+    const state = (await session.agent.get('/api/training/office/module')).body.data;
+    expect(state.currentSection).toBe('excel');
+    expect(state.sections.find((section: { key: string }) => section.key === 'mecanografia').status).toBe('COMPLETED');
+  });
+
+  it('1000000147 · mecanografía fallida con práctica pendiente', async () => {
+    const session = await loginAgent('1000000147', 'asesor', DEMO_PASSWORD);
+    const state = (await session.agent.get('/api/training/office/module')).body.data;
+    expect(state.typing.practiceRequired).toBe(true);
+    const blocked = await session.agent.post('/api/training/office/typing/attempts').set(ORIGIN);
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.code).toBe('PRACTICE_REQUIRED');
+  });
+
+  it('1000000148 · dictado fallido con error crítico y dos intentos restantes', async () => {
+    const id = await userId('1000000148');
+    const result = await prisma.dictationAttemptResult.findFirstOrThrow({ where: { attempt: { userId: id } } });
+    expect(result).toMatchObject({ passed: false, criticalCount: 1 });
+    const state = (await (await loginAgent('1000000148', 'asesor', DEMO_PASSWORD)).agent.get('/api/training/office/module')).body.data;
+    expect(state.currentSection).toBe('ortografia');
+    expect(state.sections.find((section: { key: string }) => section.key === 'ortografia').attemptsRemaining).toBe(2);
+  });
+
+  it('1000000149 · módulo completo con sello y Simulador desbloqueado', async () => {
+    const session = await loginAgent('1000000149', 'asesor', DEMO_PASSWORD);
+    const state = (await session.agent.get('/api/training/office/module')).body.data;
+    expect(state).toMatchObject({ currentSection: 'resultado' });
+    expect(state.module.hasSeal).toBe(true);
+    expect(state.nextModule).toMatchObject({ slug: 'simulador-cobranzas', enabled: true });
+    const result = (await session.agent.get('/api/training/office/result')).body.data;
+    expect(result.sealIssued).toBe(true);
+    expect(result.reinforce).toEqual([]);
+  });
+
+  it('1000000150 · intento de mecanografía vencido (EXPIRED)', async () => {
+    const id = await userId('1000000150');
+    const result = await prisma.typingAttemptResult.findFirstOrThrow({ where: { attempt: { userId: id } }, include: { attempt: true } });
+    expect(result).toMatchObject({ closeReason: 'EXPIRED', passed: false });
+    expect(result.attempt.status).toBe('FAILED');
+    const state = (await (await loginAgent('1000000150', 'asesor', DEMO_PASSWORD)).agent.get('/api/training/office/module')).body.data;
+    expect(state.typing.practiceRequired).toBe(true);
+    expect(state.sections.find((section: { key: string }) => section.key === 'mecanografia').attemptsRemaining).toBe(2);
   });
 
   it('datos complementarios: mecanografía, webhooks y actividad inactiva', async () => {
