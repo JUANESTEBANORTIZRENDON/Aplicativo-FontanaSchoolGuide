@@ -563,6 +563,7 @@ export async function cleanDemo(confirm: boolean, log: (line: string) => void = 
     await tx.excelAttemptResult.deleteMany({ where: { attemptId: { in: attemptIds } } });
     await tx.dictationAttemptResult.deleteMany({ where: { attemptId: { in: attemptIds } } });
     await tx.activitySectionView.deleteMany({ where: { userId: { in: userIds } } });
+    await tx.collectionsBlockProgress.deleteMany({ where: { userId: { in: userIds } } });
     await tx.simulatorResult.deleteMany({ where: { attemptId: { in: attemptIds } } });
     await tx.typificationResult.deleteMany({ where: { attemptId: { in: attemptIds } } });
     await tx.attemptAnswer.deleteMany({ where: { attemptId: { in: attemptIds } } });

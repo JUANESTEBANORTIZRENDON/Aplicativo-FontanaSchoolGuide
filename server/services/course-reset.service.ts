@@ -34,6 +34,7 @@ export async function resetCourse(userId: string, reason: string, context: Actio
     // Las excepciones se borran después de los intentos que las usaron.
     const overrides = (await tx.userActivityOverride.deleteMany({ where: { userId } })).count;
     const limits = (await tx.userAttemptLimit.deleteMany({ where: { userId } })).count;
+    await tx.collectionsBlockProgress.deleteMany({ where: { userId } });
     await tx.userActivityProgress.deleteMany({ where: { userId } });
     await tx.userModuleProgress.deleteMany({ where: { userId } });
     await tx.activitySectionView.deleteMany({ where: { userId } });

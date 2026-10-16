@@ -52,7 +52,7 @@ describe('módulos y acceso', () => {
       expect(view).toMatchObject({ enabled: false, actionLabel: 'No disponible', blockedReason: 'Módulo no disponible temporalmente' });
       expect((await advisor.get('/api/advisor/modules/ofimatica-mecanografia')).status).toBe(403);
       await expect(attemptService.startAttempt(user.id, ids.a1)).rejects.toMatchObject({ code: 'MODULE_BLOCKED' });
-      expect(await prisma.userModuleProgress.count({ where: { userId: user.id } })).toBe(4);
+      expect(await prisma.userModuleProgress.count({ where: { userId: user.id } })).toBe(5);
     } finally {
       await adminAgent.patch(`/api/admin/modules/${ids.modules.m1.id}/status`).set(ORIGIN).send({ status: 'ACTIVE', reason: 'Fin del mantenimiento de prueba' });
     }
