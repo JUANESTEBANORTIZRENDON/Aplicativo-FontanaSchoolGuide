@@ -6,6 +6,18 @@ import type { Cursor } from '../utils/cursor.js';
 
 // Selección del usuario autenticado: sin passwordHash.
 export const usuarioSesionSelect = {
+  nombre: true,
+  apellidos: true,
+  fechaNacimiento: true,
+  sexo: true,
+  tipoSangre: true,
+  tallaCamisa: true,
+  direccionResidencia: true,
+  nombreContactoEmergencia: true,
+  numeroContactoEmergencia: true,
+  banco: true,
+  otroBanco: true,
+  numeroCuenta: true,
   id: true,
   nombreCompleto: true,
   tipoDocumento: true,

@@ -255,7 +255,15 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
     }, ctx);
     if (options.completeProfile !== false) {
       const session = await findSessionUser(user.id);
-      await authService.completarDatos(session!, { correo: `demo.${documento}@demo.fontana.test`, telefono: '3000000000' });
+      await authService.completarDatos(session!, {
+        nombre: nombre.split(' ')[0]!, apellidos: nombre.split(' ').slice(1).join(' ') || 'Demo',
+        tipoDocumento: 'CC', numeroDocumento: documento, fechaNacimiento: '1995-01-01',
+        sexo: 'Femenino', tipoSangre: 'O+', tallaCamisa: 'M',
+        direccionResidencia: 'Dirección ficticia de demostración',
+        nombreContactoEmergencia: 'Contacto de demostración', numeroContactoEmergencia: '3000000000',
+        banco: 'Bancolombia', otroBanco: '', numeroCuenta: '0000000000',
+        correo: `demo.${documento}@demo.fontana.test`, telefono: '3000000000',
+      });
     }
     return { id: user.id, created: true };
   }

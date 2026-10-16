@@ -1,7 +1,8 @@
 import { esAdministrador } from './enums.js';
+import type { DatosPersonales } from './profile.js';
 
 // Usuario autenticado tal como lo carga requireAuth: nunca incluye passwordHash.
-export type AuthUser = {
+export type AuthUser = Partial<DatosPersonales> & {
   id: string;
   nombreCompleto: string;
   tipoDocumento: string;
@@ -45,6 +46,18 @@ export function serializarUsuario(usuario: AuthUser) {
     tipoDocumento: usuario.tipoDocumento,
     correo: usuario.correo,
     telefono: usuario.telefono,
+    nombre: usuario.nombre ?? null,
+    apellidos: usuario.apellidos ?? null,
+    fechaNacimiento: usuario.fechaNacimiento?.toISOString().slice(0, 10) ?? null,
+    sexo: usuario.sexo ?? null,
+    tipoSangre: usuario.tipoSangre ?? null,
+    tallaCamisa: usuario.tallaCamisa ?? null,
+    direccionResidencia: usuario.direccionResidencia ?? null,
+    nombreContactoEmergencia: usuario.nombreContactoEmergencia ?? null,
+    numeroContactoEmergencia: usuario.numeroContactoEmergencia ?? null,
+    banco: usuario.banco ?? null,
+    otroBanco: usuario.otroBanco ?? null,
+    numeroCuenta: usuario.numeroCuenta ?? null,
     rol: usuario.rol,
     estado: usuario.estado,
     debeCompletarDatos: usuario.debeCompletarDatos,

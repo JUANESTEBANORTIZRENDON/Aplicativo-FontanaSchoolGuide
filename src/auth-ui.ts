@@ -1,8 +1,10 @@
 import { api, escapar } from './http';
 import { pasosCamino } from './learning-path';
 import { revealApp, showAppLoading } from './loading';
+import { BANCOS, SEXOS, TALLAS_CAMISA, TIPOS_DOCUMENTO, TIPOS_SANGRE, type DatosPersonales } from '../server/domain/profile';
 
-type Usuario = {
+type Usuario = Partial<Omit<DatosPersonales, 'fechaNacimiento'>> & {
+  fechaNacimiento?: string | null;
   id: string;
   nombreCompleto: string;
   numeroDocumento: string;
@@ -124,6 +126,11 @@ function formularioLogin(): void {
 }
 
 function llenaTusDatos(usuario: Usuario): void {
+  const input = (label: string, name: string, value: string | null | undefined, attributes: string) =>
+    `<label>${label}<input name="${name}" value="${escapar(value)}" ${attributes}></label>`;
+  const select = (label: string, name: string, options: readonly string[], selected?: string | null) =>
+    `<label>${label}<select name="${name}" required><option value="">Selecciona una opción</option>${options.map((value) => `<option value="${escapar(value)}"${value === selected ? ' selected' : ''}>${value === 'PPT' ? 'Permiso de permanencia de trabajo' : escapar(value)}</option>`).join('')}</select></label>`;
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   shell('', '', `
     <div class="login-panel">
       <section class="auth-card narrow login-card" aria-labelledby="profile-title">
@@ -131,9 +138,32 @@ function llenaTusDatos(usuario: Usuario): void {
       <p class="profile-intro">Un último paso antes de comenzar tu inducción.</p>
       <div class="profile-summary"><strong>${escapar(usuario.nombreCompleto)}</strong><span>Documento ${escapar(usuario.numeroDocumento)}</span></div>
       <form id="profile-form" class="auth-form">
-        <label>Correo electrónico<input name="correo" type="email" required maxlength="150" value="${escapar(usuario.correo)}" autocomplete="email" placeholder="nombre@empresa.com"></label>
-        <label>Teléfono <small>Opcional</small><input name="telefono" type="tel" maxlength="30" value="${escapar(usuario.telefono)}" autocomplete="tel"></label>
-        <button class="primary-action">Guardar y continuar</button><p id="feedback" class="feedback" role="alert" hidden></p>
+        <p class="profile-required">Todos los campos son obligatorios, excepto el teléfono personal.</p>
+        <fieldset class="profile-fields"><legend>Datos personales</legend><div class="profile-grid">
+          ${input('Nombre', 'nombre', usuario.nombre, 'required maxlength="75" autocomplete="given-name"')}
+          ${input('Apellidos', 'apellidos', usuario.apellidos, 'required maxlength="75" autocomplete="family-name"')}
+          ${select('Tipo de documento', 'tipoDocumento', TIPOS_DOCUMENTO, usuario.tipoDocumento)}
+          ${input('Número de documento', 'numeroDocumento', usuario.numeroDocumento, 'required maxlength="30" inputmode="numeric" pattern="[0-9]+"')}
+          ${input('Fecha de nacimiento', 'fechaNacimiento', usuario.fechaNacimiento, `type="date" required max="${today}" autocomplete="bday"`)}
+          ${select('Sexo', 'sexo', SEXOS, usuario.sexo)}
+          ${select('Tipo de sangre', 'tipoSangre', TIPOS_SANGRE, usuario.tipoSangre)}
+          ${select('Talla de camisa', 'tallaCamisa', TALLAS_CAMISA, usuario.tallaCamisa)}
+        </div></fieldset>
+        <fieldset class="profile-fields"><legend>Datos de contacto</legend><div class="profile-grid">
+          <div class="profile-full">${input('Dirección de residencia', 'direccionResidencia', usuario.direccionResidencia, 'required maxlength="250" autocomplete="street-address"')}</div>
+          ${input('Correo electrónico', 'correo', usuario.correo, 'type="email" required maxlength="150" autocomplete="email" placeholder="nombre@empresa.com"')}
+          ${input('Teléfono <small>Opcional</small>', 'telefono', usuario.telefono, 'type="tel" maxlength="30" autocomplete="tel"')}
+        </div></fieldset>
+        <fieldset class="profile-fields"><legend>Contacto de emergencia</legend><div class="profile-grid">
+          ${input('Nombre del contacto de emergencia', 'nombreContactoEmergencia', usuario.nombreContactoEmergencia, 'required maxlength="150"')}
+          ${input('Número del contacto de emergencia', 'numeroContactoEmergencia', usuario.numeroContactoEmergencia, 'type="tel" required maxlength="30"')}
+        </div></fieldset>
+        <fieldset class="profile-fields"><legend>Datos bancarios</legend><div class="profile-grid">
+          ${select('Banco', 'banco', BANCOS, usuario.banco)}
+          ${input('Número de cuenta', 'numeroCuenta', usuario.numeroCuenta, 'required maxlength="30" inputmode="numeric" pattern="[0-9]+" autocomplete="off"')}
+          <div id="other-bank-field" class="profile-full" hidden>${input('Nombre del otro banco', 'otroBanco', usuario.otroBanco, 'maxlength="100" disabled')}</div>
+        </div></fieldset>
+        <button class="primary-action" type="submit">Guardar y continuar</button><p id="feedback" class="feedback" role="alert" hidden></p>
       </form>
       <button type="button" class="profile-back" id="profile-back-login">← Volver al inicio de sesión</button>
     </section></div>`, usuario);
@@ -144,6 +174,16 @@ function llenaTusDatos(usuario: Usuario): void {
   const draftKey = `fontana-profile-draft:${usuario.id}`;
   const correoInput = profileForm.elements.namedItem('correo') as HTMLInputElement;
   const telefonoInput = profileForm.elements.namedItem('telefono') as HTMLInputElement;
+  const bank = profileForm.elements.namedItem('banco') as HTMLSelectElement;
+  const otherBank = profileForm.elements.namedItem('otroBanco') as HTMLInputElement;
+  const updateBank = () => {
+    const other = bank.value === 'Otros';
+    document.querySelector<HTMLElement>('#other-bank-field')!.hidden = !other;
+    otherBank.disabled = !other;
+    otherBank.required = other;
+  };
+  bank.addEventListener('change', updateBank);
+  updateBank();
   const backToLogin = document.querySelector<HTMLButtonElement>('#profile-back-login')!;
   backToLogin.addEventListener('click', async () => {
     if (backToLogin.disabled) return;
@@ -172,23 +212,34 @@ function llenaTusDatos(usuario: Usuario): void {
   correo.addEventListener('invalid', () => {
     correo.setCustomValidity('Ingresa un correo válido con @ y dominio, por ejemplo nombre@empresa.com.');
   });
-  document.querySelector<HTMLFormElement>('#profile-form')!.addEventListener('submit', async (event) => {
+  let savingProfile = false;
+  profileForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
-    if (!form.reportValidity()) return;
+    if (savingProfile || !form.reportValidity()) return;
     const data = Object.fromEntries(new FormData(form));
+    savingProfile = true;
+    const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    submit.disabled = true;
+    submit.textContent = 'Guardando tus datos…';
+    backToLogin.disabled = true;
+    document.querySelector<HTMLElement>('#feedback')!.hidden = true;
     try {
       sessionStorage.setItem(draftKey, JSON.stringify({ correo: data.correo, telefono: data.telefono }));
     } catch { /* Guardar el perfil no depende del almacenamiento del navegador. */ }
     try {
       const result = await api<{ usuario: Usuario }>('/auth/completar-datos', {
-        method: 'POST', body: JSON.stringify({
-          correo: data.correo, telefono: data.telefono,
-        }),
+        method: 'POST', body: JSON.stringify(data),
       });
       try { sessionStorage.removeItem(draftKey); } catch { /* Sin almacenamiento disponible. */ }
       location.assign(result.usuario.ruta);
-    } catch (error) { mensaje((error as Error).message, true); }
+    } catch (error) {
+      mensaje((error as Error).message, true);
+      savingProfile = false;
+      submit.disabled = false;
+      submit.textContent = 'Guardar y continuar';
+      backToLogin.disabled = false;
+    }
   });
 }
 
