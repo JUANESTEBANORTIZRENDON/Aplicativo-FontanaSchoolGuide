@@ -1,7 +1,9 @@
 import { escapar } from '../http';
 
-const icon = (paths: string) => `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
-const SLIDES = [
+export const icon = (paths: string) => `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+export type Slide = { title: string; definition: string; example: string; reminder: string; icon: string };
+
+const SLIDES: Slide[] = [
   { title: 'Conocimiento del producto', definition: 'Entiende qué se cobra y de dónde viene el saldo.', example: 'Camila pregunta por $480.000: revisas el detalle antes de explicarlo.', reminder: 'Consulta la ficha del producto aprobada.',
     icon: icon('<path d="M10 13h18l4 4 4-4h18v38H36l-4 4-4-4H10zM32 17v38M17 24h8M17 32h8M39 24h8M39 32h8"/>') },
   { title: 'Manejo de objeciones', definition: 'Escucha la dificultad y pregunta antes de responder.', example: '«No puedo pagar». → «¿Qué dificultad tienes en este momento?»', reminder: 'Comprende sin discutir ni juzgar.',
@@ -12,28 +14,44 @@ const SLIDES = [
     icon: icon('<path d="M10 25 32 10l22 15zM13 52h38M18 29v17M32 29v17M46 29v17M10 47h44v5H10z"/>') },
   { title: 'Habilidad de negociar', definition: 'Busca una opción autorizada que se ajuste a la posibilidad del cliente.', example: 'Camila propone $200.000 el día 20: revisas si esa opción está permitida.', reminder: 'Si sale de tu autorización, consulta antes de prometer.',
     icon: icon('<path d="m8 25 10-9 11 5 7-5 20 12-8 19-12-1-12-8-7 4zM29 21l-8 10 6 5 10-9 13 10M24 38l12 10M8 25l9 17M56 28l-8 19"/>') },
-] as const;
+];
 
-export function mountConceptsSlider(root: HTMLElement, options: { initialSlide: number; onSlide: (index: number) => void; mountChallenge: (root: HTMLElement) => void }): void {
-  let index = Math.max(0, Math.min(SLIDES.length, options.initialSlide));
+type SliderOptions = {
+  slides: Slide[];
+  label: string;
+  notice: string;
+  finalName: string;
+  finalLastHint: string;
+  finalHint: string;
+  initialSlide: number;
+  onSlide: (index: number) => void;
+  mountFinal: (root: HTMLElement) => void;
+  // Selector que recibe el foco al llegar a la última pantalla.
+  finalFocus: string;
+};
+
+// Carrusel de tarjetas: N tarjetas cortas y una pantalla final (reto o ejemplo resuelto).
+export function mountSlider(root: HTMLElement, options: SliderOptions): void {
+  const { slides } = options;
+  let index = Math.max(0, Math.min(slides.length, options.initialSlide));
   let motion = '';
 
   function go(next: number, focusTarget: 'title' | 'next' | 'previous' = 'title'): void {
-    const target = Math.max(0, Math.min(SLIDES.length, next));
+    const target = Math.max(0, Math.min(slides.length, next));
     if (target === index) return;
     motion = next > index ? 'next' : 'previous';
     index = target;
     render();
     const selector = focusTarget === 'title' ? '#concepts-slide-title' : focusTarget === 'next' ? '[data-concept-next]' : '[data-concept-previous]';
-    const focus = index === SLIDES.length ? root.querySelector<HTMLElement>('#quick-challenge-question, #quick-challenge-title') : root.querySelector<HTMLElement>(selector);
+    const focus = index === slides.length ? root.querySelector<HTMLElement>(options.finalFocus) : root.querySelector<HTMLElement>(selector);
     (focus?.matches(':disabled') ? root.querySelector<HTMLElement>('#concepts-slide-title') : focus)?.focus({ preventScroll: true });
     options.onSlide(index);
   }
   function card(): string {
-    const slide = SLIDES[index]!;
-    return `<article class="fontana-concept-card fontana-concept-card--active" role="group" aria-roledescription="diapositiva" aria-label="${index + 1} de 5">
+    const slide = slides[index]!;
+    return `<article class="fontana-concept-card fontana-concept-card--active" role="group" aria-roledescription="diapositiva" aria-label="${index + 1} de ${slides.length}">
       <div class="fontana-concept-brand"><img src="/imagenes/fontana-logo.png" alt="" draggable="false" width="38" height="38"><span>FONTANA<small>SCHOOL</small></span><span class="fontana-concept-number">0${index + 1}</span></div>
-      ${index === 0 ? '<p class="fontana-concept-notice" role="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 18H2zM12 9v5M12 17h.01"/></svg><span><strong>Lee con atención:</strong> al terminar las cinco tarjetas tendrás un reto rápido.</span></p>' : ''}
+      ${index === 0 ? `<p class="fontana-concept-notice" role="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 18H2zM12 9v5M12 17h.01"/></svg><span>${options.notice}</span></p>` : ''}
       <div class="fontana-concept-icon">${slide.icon}</div>
       <h3 id="concepts-slide-title" tabindex="-1">${escapar(slide.title)}</h3>
       <p class="fontana-concept-definition">${escapar(slide.definition)}</p>
@@ -42,20 +60,20 @@ export function mountConceptsSlider(root: HTMLElement, options: { initialSlide: 
     </article>`;
   }
   function render(): void {
-    const challengeScreen = index === SLIDES.length;
-    root.innerHTML = `<section class="fontana-concepts" role="region" aria-roledescription="carrusel" aria-label="Cinco conceptos básicos de cobranza y reto rápido">
+    const finalScreen = index === slides.length;
+    root.innerHTML = `<section class="fontana-concepts" role="region" aria-roledescription="carrusel" aria-label="${escapar(options.label)}">
       <div class="fontana-concept-stage" data-motion="${motion}">
-        ${challengeScreen ? '<div class="fontana-concept-card fontana-concept-card--active fontana-concept-card--quiz" data-inline-challenge role="group" aria-roledescription="diapositiva" aria-label="Reto rápido después de los cinco conceptos"></div>' : card()}
-        <button type="button" data-concept-previous class="fontana-concept-arrow fontana-concept-arrow--left" aria-label="Concepto anterior"${index === 0 ? ' disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
-        <button type="button" data-concept-next class="fontana-concept-arrow fontana-concept-arrow--right" aria-label="${index === SLIDES.length - 1 ? 'Ir al reto rápido' : 'Concepto siguiente'}"${challengeScreen ? ' disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
+        ${finalScreen ? `<div class="fontana-concept-card fontana-concept-card--active fontana-concept-card--quiz" data-inline-challenge role="group" aria-roledescription="diapositiva" aria-label="${escapar(options.finalName)}"></div>` : card()}
+        <button type="button" data-concept-previous class="fontana-concept-arrow fontana-concept-arrow--left" aria-label="Tarjeta anterior"${index === 0 ? ' disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
+        <button type="button" data-concept-next class="fontana-concept-arrow fontana-concept-arrow--right" aria-label="${index === slides.length - 1 ? `Ir a ${escapar(options.finalName.toLowerCase())}` : 'Tarjeta siguiente'}"${finalScreen ? ' disabled' : ''}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
       </div>
-      <div class="fontana-concept-footer"><div class="fontana-concept-dots" aria-hidden="true">${SLIDES.map((_, position) => `<span${position === index ? ' class="is-current"' : ''}></span>`).join('')}</div><span class="fontana-concept-counter" aria-live="polite">${challengeScreen ? 'Reto rápido' : `${index + 1} / 5`}</span></div>
-      <p class="fontana-concept-instruction">${challengeScreen ? 'Elige una respuesta y practica a tu ritmo.' : index === SLIDES.length - 1 ? 'Pulsa la flecha derecha para ir al reto rápido.' : 'Usa las flechas para cambiar de tarjeta.'}</p>
+      <div class="fontana-concept-footer"><div class="fontana-concept-dots" aria-hidden="true">${slides.map((_, position) => `<span${position === index ? ' class="is-current"' : ''}></span>`).join('')}</div><span class="fontana-concept-counter" aria-live="polite">${finalScreen ? escapar(options.finalName) : `${index + 1} / ${slides.length}`}</span></div>
+      <p class="fontana-concept-instruction">${finalScreen ? escapar(options.finalHint) : index === slides.length - 1 ? escapar(options.finalLastHint) : 'Usa las flechas para cambiar de tarjeta.'}</p>
     </section>`;
     root.querySelector('[data-concept-previous]')!.addEventListener('click', () => go(index - 1, 'previous'));
     root.querySelector('[data-concept-next]')!.addEventListener('click', () => go(index + 1, 'next'));
-    const challenge = root.querySelector<HTMLElement>('[data-inline-challenge]');
-    if (challenge) options.mountChallenge(challenge);
+    const final = root.querySelector<HTMLElement>('[data-inline-challenge]');
+    if (final) options.mountFinal(final);
   }
   root.addEventListener('keydown', (event) => {
     if ((event.target as HTMLElement).closest('[data-inline-challenge]')) return;
@@ -64,4 +82,14 @@ export function mountConceptsSlider(root: HTMLElement, options: { initialSlide: 
     if (event.key === 'ArrowLeft') { event.preventDefault(); go(index - 1); }
   });
   render();
+}
+
+export function mountConceptsSlider(root: HTMLElement, options: { initialSlide: number; onSlide: (index: number) => void; mountChallenge: (root: HTMLElement) => void }): void {
+  mountSlider(root, {
+    slides: SLIDES, label: 'Cinco conceptos básicos de cobranza y reto rápido',
+    notice: '<strong>Lee con atención:</strong> al terminar las cinco tarjetas tendrás un reto rápido.',
+    finalName: 'Reto rápido', finalLastHint: 'Pulsa la flecha derecha para ir al reto rápido.', finalHint: 'Elige una respuesta y practica a tu ritmo.',
+    initialSlide: options.initialSlide, onSlide: options.onSlide, mountFinal: options.mountChallenge,
+    finalFocus: '#quick-challenge-question, #quick-challenge-title',
+  });
 }

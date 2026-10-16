@@ -74,35 +74,27 @@ export async function mountLearningPath(): Promise<void> {
 
 const INDUCTION_SLUG = 'induccion-cobranzas';
 
-// Primera pantalla de «Inducción a las cobranzas»: la experiencia define el camino. Quien es nuevo recibe la
-// introducción y luego el examen; quien tiene experiencia va directo al examen (el mismo que hacen los nuevos).
-function inductionHtml(experience: boolean | null): string {
-  if (experience === null) {
-    return `<form id="experience-form" class="exp-form">
+// Primera pantalla de «Inducción a las cobranzas»: la experiencia define el camino. Quien es nuevo recorre la
+// teoría y luego el examen final; quien tiene experiencia empieza por el mismo examen y, si no lo aprueba, ve la teoría.
+function experienceFormHtml(): string {
+  return `<form id="experience-form" class="exp-form">
       <p class="auth-kicker">CONOZCAMOS TU EXPERIENCIA</p>
       <h3>¿Cuál es tu punto de partida?</h3>
       <p>Selecciona la opción que mejor describe tu experiencia en cobranzas digitales.</p>
       <div class="exp-options">
-        <label class="exp-option"><input type="radio" name="experience" value="experienced" required><span><strong>Tengo experiencia</strong><small>Ya he trabajado en cobranzas digitales.</small></span></label>
-        <label class="exp-option"><input type="radio" name="experience" value="new" required><span><strong>Soy completamente nuevo</strong><small>Es mi primera experiencia en cobranzas digitales.</small></span></label>
+        <label class="exp-option"><input type="radio" name="experience" value="experienced" required><span><strong>Tengo experiencia</strong><small>Ya he trabajado en cobranzas digitales. Presentarás el examen final: si lo apruebas, pasas al simulador.</small></span></label>
+        <label class="exp-option"><input type="radio" name="experience" value="new" required><span><strong>Soy completamente nuevo</strong><small>Es mi primera experiencia en cobranzas digitales. Verás la teoría paso a paso y luego el examen final.</small></span></label>
       </div>
       <p id="experience-error" class="feedback feedback-error" role="alert" hidden></p>
       <button type="submit" class="primary-action">Confirmar respuesta</button>
     </form>`;
-  }
-  const steps = experience ? ['Examen de inducción'] : ['Introducción a las cobranzas', 'Examen de inducción'];
-  return `<div class="exp-plan">
-    <p class="auth-kicker">TU CAMINO EN ESTE MÓDULO</p>
-    <p>${experience ? 'Como ya tienes experiencia, vas directo al examen de inducción.' : 'Como eres nuevo, primero verás la introducción a las cobranzas y luego presentarás el examen de inducción.'}</p>
-    <ol class="exp-steps">${steps.map((step) => `<li>${escapar(step)} <em>· contenido en preparación</em></li>`).join('')}</ol>
-    <p class="exp-note">Al aprobar el examen se habilita el módulo «Simulador de cobranzas».</p>
-  </div>`;
 }
 
 // Rutas /induccion/modulos/:slug y /induccion/certificado: el servidor valida el acceso.
 export async function renderModulePage(container: HTMLElement, backHref = '/induccion', experience: boolean | null = null): Promise<void> {
   const slug = location.pathname === '/induccion/certificado' ? 'certificado' : decodeURIComponent(location.pathname.split('/')[3] ?? '');
-  if (slug === INDUCTION_SLUG && experience === false) {
+  // Con la experiencia respondida, el módulo propio decide el camino: teoría y examen, o examen primero.
+  if (slug === INDUCTION_SLUG && experience !== null) {
     const { mountCollections } = await import('../collections/collections');
     await mountCollections(container, backHref);
     return;
@@ -114,7 +106,7 @@ export async function renderModulePage(container: HTMLElement, backHref = '/indu
     page.innerHTML = `
       <p class="auth-kicker">MÓDULO ${String(data.module.order).padStart(2, '0')}</p>
       <h2>${escapar(data.module.name)}</h2>
-      ${slug === INDUCTION_SLUG ? inductionHtml(experience) : `<div class="module-placeholder"><strong>${escapar(data.content.message)}</strong><p>Este espacio mostrará las actividades del módulo cuando estén listas.</p></div>`}
+      ${slug === INDUCTION_SLUG ? experienceFormHtml() : `<div class="module-placeholder"><strong>${escapar(data.content.message)}</strong><p>Este espacio mostrará las actividades del módulo cuando estén listas.</p></div>`}
       ${slug !== INDUCTION_SLUG && data.activities.length ? `<ul class="module-activities">${data.activities.map((activity) => `<li>${escapar(activity.title)}${activity.enabled ? '' : ` · <em>${escapar(activity.blockedReason)}</em>`}</li>`).join('')}</ul>` : ''}
       <a class="secondary-link" href="${escapar(backHref)}">← Volver a tu ruta</a>`;
     page.querySelector<HTMLFormElement>('#experience-form')?.addEventListener('submit', async (event) => {

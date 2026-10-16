@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import type { PrismaClient } from '@prisma/client';
 import { setPrerequisites } from '../server/services/catalog.service.js';
 import { completeModule, initializeForUser } from '../server/services/progress.service.js';
-import { COLLECTIONS_BLOCKS, COLLECTIONS_VERSION } from '../server/domain/collections.js';
+import { COLLECTIONS_BLOCKS, COLLECTIONS_EXAM, COLLECTIONS_VERSION, EXAM_KEY } from '../server/domain/collections.js';
 import { OFFICE_MODULE_SLUG, SECTION_ORDER, SECTION_TITLE } from '../server/domain/office.js';
 import { DICTATIONS, EXCEL_ANSWER_KEY, EXCEL_SCENARIO_DATA, SPELLING_RULES, TYPING_TEXTS } from './seed-office-content.js';
 
@@ -45,6 +45,8 @@ export async function seedCompletedInduction(prisma: PrismaClient, userId: strin
       const data = { userId, moduleId: module.id, blockKey: block.key, contentVersion: COLLECTIONS_VERSION };
       await tx.collectionsBlockProgress.upsert({ where: { userId_moduleId_blockKey_contentVersion: data }, create: { ...data, attempts: 1, answers: Object.fromEntries(block.questions.map((q) => [q.key, q.options.find((o) => o.correct)!.id])), completedAt: now }, update: {} });
     }
+    const exam = { userId, moduleId: module.id, blockKey: EXAM_KEY, contentVersion: COLLECTIONS_VERSION };
+    await tx.collectionsBlockProgress.upsert({ where: { userId_moduleId_blockKey_contentVersion: exam }, create: { ...exam, attempts: 1, answers: Object.fromEntries(COLLECTIONS_EXAM.map((q) => [q.key, q.options.find((o) => o.correct)!.id])), completedAt: now }, update: {} });
     for (const activity of module.activities) await tx.userActivityProgress.upsert({ where: { userId_activityId: { userId, activityId: activity.id } }, create: { userId, activityId: activity.id, status: 'PASSED', completedAt: now }, update: { status: 'PASSED', completedAt: now } });
     await completeModule(tx, userId, module.id, undefined, now);
   });

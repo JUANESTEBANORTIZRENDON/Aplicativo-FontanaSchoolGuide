@@ -278,3 +278,81 @@ export function gradeCollections(block: CollectionsBlock, answers: Record<string
   });
   return { passed: results.every((item) => item.correct), correctCount: results.filter((item) => item.correct).length, total: results.length, expected: block.expected, results };
 }
+
+// Examen final del módulo 02: lo presentan los asesores nuevos al terminar la teoría y, como primer paso,
+// quienes declaran experiencia. Usa un caso ficticio distinto al de la práctica para validar comprensión, no memoria.
+export const EXAM_KEY = 'examen';
+export const EXAM_MIN_CORRECT = 8;
+export type ExamQuestion = Question & { block: CollectionsKey };
+const examQuestion = (block: CollectionsKey, key: string, prompt: string, options: Option[]): ExamQuestion => ({ ...question(key, prompt, options), block });
+
+export const COLLECTIONS_EXAM: ExamQuestion[] = [
+  examQuestion('conceptos', 'reporte', 'Andrés dice: «Ya pagué ayer», pero el pago no aparece en la fuente autorizada. ¿Cómo lo registras?', [
+    option('confirmado', 'Pago confirmado, porque el cliente lo afirma.', false, 'Lo que dice el cliente es un reporte; la confirmación depende de la fuente autorizada.'),
+    option('reportado', 'Pago reportado por el cliente, pendiente de verificar.', true, 'Registras lo que dijo sin darlo por confirmado y dejas la verificación pendiente.'),
+    option('ignorar', 'No registro nada hasta que el pago aparezca.', false, 'Omitir el reporte hace perder información útil para el seguimiento.'),
+  ]),
+  examQuestion('conceptos', 'mora', 'La obligación de Andrés venció el día 5. Hoy es 12 y el saldo sigue pendiente. ¿En qué situación está?', [
+    option('mora', 'En mora: la fecha de pago pasó y la deuda continúa pendiente.', true, 'Mora es la deuda pendiente después del vencimiento.'),
+    option('dia', 'Al día, porque prometió pagar la próxima semana.', false, 'Una promesa futura no cambia que el vencimiento ya pasó.'),
+    option('cancelada', 'Cancelada, porque ya venció el plazo.', false, 'El vencimiento no cancela la obligación.'),
+  ]),
+  examQuestion('preparacion', 'revisar', 'Antes de contactar a Andrés, ¿qué debes revisar?', [
+    option('telefono', 'Solo el número de teléfono para no perder tiempo.', false, 'Sin revisar el caso no sabrás qué está pendiente ni qué puedes ofrecer.'),
+    option('improvisar', 'Nada: es mejor improvisar según lo que diga.', false, 'Improvisar aumenta el riesgo de dar información incorrecta.'),
+    option('ficha', 'Saldo vigente, vencimiento, historial y compromisos anteriores.', true, 'Preparar el caso te permite continuar la gestión con información actualizada.'),
+  ]),
+  examQuestion('preparacion', 'otra-cuenta', 'En otra cuenta de Andrés aparece un plazo especial. ¿Qué haces con esta cuenta?', [
+    option('confirmar', 'Confirmo cuáles alternativas están autorizadas para esta cuenta.', true, 'Las condiciones de una cuenta no se trasladan a otra sin autorización.'),
+    option('aplicar', 'Aplico el mismo plazo: es el mismo cliente.', false, 'Cada cuenta puede tener condiciones distintas.'),
+    option('ofrecer', 'Le ofrezco el plazo como algo seguro para abrir la conversación.', false, 'No prometas condiciones que no están confirmadas.'),
+  ]),
+  examQuestion('contacto', 'tercero', 'Contesta una persona que dice ser el hermano de Andrés. ¿Qué haces?', [
+    option('explicar', 'Le explico el saldo para que le dé el mensaje.', false, 'Un tercero no está autorizado a recibir información de la obligación.'),
+    option('reservar', 'No revelo la obligación y sigo la ruta interna correspondiente.', true, 'Proteges la información: solo se habla de la deuda tras verificar la identidad.'),
+    option('cobrar', 'Le pido que pague él en nombre de Andrés.', false, 'Además de revelar la deuda, presionas a una persona que no es el titular.'),
+  ]),
+  examQuestion('contacto', 'escucha', 'Tras verificar su identidad, Andrés dice: «Perdí mi empleo». ¿Cuál es la mejor respuesta?', [
+    option('comprender', 'Entiendo que es una situación difícil. ¿Qué posibilidad de pago ves hoy?', true, 'Reconoces la situación y preguntas para comprender, sin juzgar.'),
+    option('juzgar', 'Eso no es asunto mío; la deuda sigue igual.', false, 'El juicio cierra la conversación y no ayuda a encontrar una salida.'),
+    option('prometer', 'Tranquilo, le garantizo que le condonan la deuda.', false, 'No puedes prometer condiciones que no están autorizadas.'),
+  ]),
+  examQuestion('alternativas', 'plazo', 'Andrés pide seis meses de plazo y esa opción no está entre las autorizadas. ¿Qué haces?', [
+    option('aceptar', 'Acepto para no perder el acuerdo.', false, 'Las ganas de cerrar no amplían tus facultades.'),
+    option('colgar', 'Le digo que no es posible y termino la conversación.', false, 'Puedes registrar su solicitud y consultarla en lugar de cerrar la puerta.'),
+    option('consultar', 'Registro su solicitud y la consulto, aclarando que aún no está aprobada.', true, 'Consultar conserva la información sin prometer un resultado.'),
+  ]),
+  examQuestion('alternativas', 'frase', 'Mientras esperas la respuesta del coordinador, ¿qué frase es correcta?', [
+    option('consulta', '«Voy a consultarlo; por ahora no puedo confirmarlo como aprobado».', true, 'Distingues la consulta de la aprobación.'),
+    option('aprobado', '«Ya está aprobado, no se preocupe».', false, 'Esa aprobación todavía no existe.'),
+    option('seguro', '«Seguro que lo aprueban, siempre lo hacen».', false, 'Una aprobación probable sigue siendo una condición no confirmada.'),
+  ]),
+  examQuestion('seguimiento', 'nota', 'Andrés se compromete a abonar $150.000 el 30 de noviembre. ¿Qué nota registras?', [
+    option('pago', 'Pago confirmado por $150.000.', false, 'Es un compromiso futuro, no un pago verificado.'),
+    option('compromiso', 'Compromiso de abono de $150.000 para el 30/11; sin pago confirmado; pendiente verificar.', true, 'La nota separa lo acordado de lo que falta verificar.'),
+    option('contacto', 'Se contactó al cliente.', false, 'La nota pierde el monto, la fecha y el pendiente.'),
+  ]),
+  examQuestion('seguimiento', 'accion', 'Después de registrar el compromiso, ¿cuál es la próxima acción?', [
+    option('insistir', 'Llamar varias veces al día hasta que pague.', false, 'No puedes crear reglas de frecuencia de contacto.'),
+    option('cerrar', 'Cerrar la gestión: el cliente ya prometió.', false, 'El compromiso queda sin seguimiento y sin verificar.'),
+    option('seguimiento', 'Programar el seguimiento del compromiso según el procedimiento y el canal autorizados.', true, 'La próxima acción responde al pendiente y respeta las reglas internas.'),
+  ]),
+];
+
+export function publicExam() {
+  return { minCorrect: EXAM_MIN_CORRECT, total: COLLECTIONS_EXAM.length,
+    questions: COLLECTIONS_EXAM.map(({ key, prompt, block, options }) => ({ key, prompt, block, options: options.map(({ id, text }) => ({ id, text })) })) };
+}
+
+// Corrige el examen completo. Solo se califica con todas las respuestas y con opciones válidas.
+export function gradeExam(answers: Record<string, string>) {
+  if (Object.keys(answers).length !== COLLECTIONS_EXAM.length || COLLECTIONS_EXAM.some((q) => !q.options.some((o) => o.id === answers[q.key]))) {
+    throw new Error('Responde todas las preguntas del examen con una de las opciones disponibles.');
+  }
+  const results = COLLECTIONS_EXAM.map((q) => {
+    const selected = q.options.find((o) => o.id === answers[q.key])!;
+    return { key: q.key, block: q.block, correct: selected.correct, selected: selected.id, correctOption: q.options.find((o) => o.correct)!.id, feedback: selected.feedback };
+  });
+  const correctCount = results.filter((item) => item.correct).length;
+  return { passed: correctCount >= EXAM_MIN_CORRECT, correctCount, total: results.length, minCorrect: EXAM_MIN_CORRECT, results };
+}
