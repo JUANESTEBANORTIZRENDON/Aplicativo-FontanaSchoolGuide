@@ -67,7 +67,7 @@ export async function getModuleState(userId: string, now = new Date(), preloaded
   const order: OfficeSection[] = ['bienvenida', 'mecanografia', 'excel', 'ortografia'];
   const currentSection: OfficeSection = order.find((key) => sections.find((section) => section.key === key)?.status !== 'COMPLETED') ?? 'resultado';
 
-  const next = snapshot.views.find((item) => item.slug === 'simulador-cobranzas');
+  const next = snapshot.views.find((item) => item.slug === 'induccion-cobranzas');
 
   return {
     module: { slug: view.slug, name: view.name, status: view.status, progressPercent: view.progressPercent, hasSeal: view.hasSeal, route: view.route },
@@ -176,7 +176,7 @@ export async function getResult(userId: string, now = new Date(), preloaded?: Tr
     strengths,
     reinforce,
     nextStep: state.module.hasSeal
-      ? { text: 'Terminaste Ofimática para tus cobranzas. Sigue con el Simulador de cobranzas.', module: state.nextModule }
+      ? { text: 'Terminaste Ofimática para tus cobranzas. Sigue con la Inducción a las cobranzas.', module: state.nextModule }
       : { text: `Continúa con ${SECTION_TITLE[state.currentSection]}.`, section: state.currentSection },
   };
 }

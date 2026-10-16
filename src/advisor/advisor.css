@@ -23,3 +23,21 @@
 .module-activities { margin: 18px 0 0; padding-left: 18px; color: #344054; font-size: 14px; }
 .secondary-link { display: inline-block; margin-top: 22px; color: #8b1538; font-weight: 700; text-decoration: none; }
 @media (max-width: 600px) { .training-route { padding: 0 16px; } }
+
+/* Inducción a las cobranzas: pregunta de experiencia y camino del módulo */
+.exp-form { display: grid; gap: 14px; margin: 18px 0; }
+.exp-form h3 { margin: 0; font: 800 22px 'Manrope', sans-serif; color: #192840; }
+.exp-form p { margin: 0; color: #657184; }
+.exp-options { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.exp-option { display: flex; align-items: flex-start; gap: 12px; padding: 16px; border: 1px solid #d4dae3; border-radius: 14px; background: #fff; cursor: pointer; }
+.exp-option:has(input:checked) { border-color: #8b1538; background: #fdf5f7; box-shadow: inset 3px 0 #8b1538; }
+.exp-option input { width: 18px; height: 18px; margin: 3px 0 0; accent-color: #8b1538; }
+.exp-option span { display: grid; gap: 4px; }
+.exp-option strong { color: #192840; }
+.exp-option small { color: #778398; font-size: 13px; }
+.exp-plan { display: grid; gap: 10px; margin: 18px 0; padding: 18px; border: 1px solid #e5e8ef; border-radius: 14px; background: #f7f8fb; }
+.exp-plan p { margin: 0; color: #344054; }
+.exp-steps { margin: 0; padding-left: 22px; color: #192840; font-weight: 700; line-height: 1.9; }
+.exp-steps em { color: #778398; font-weight: 500; }
+.exp-note { color: #657184 !important; font-size: 13px; }
+@media (max-width: 600px) { .exp-options { grid-template-columns: 1fr; } }

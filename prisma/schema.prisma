@@ -26,6 +26,9 @@ model Usuario {
   estado                             String    @default("activo") @db.VarChar(20)
   tieneExperienciaCobranzasDigitales Boolean?  @map("tiene_experiencia_cobranzas_digitales")
   fechaRespuestaExperiencia          DateTime? @map("fecha_respuesta_experiencia") @db.Timestamptz(6)
+  // Cuándo terminó la inducción inicial («Conoce la empresa»). La pregunta de experiencia ya no forma parte de ella:
+  // se responde dentro del módulo «Inducción a las cobranzas».
+  fechaInduccionCompletada           DateTime? @map("fecha_induccion_completada") @db.Timestamptz(6)
   fechaHistoriaCompletada            DateTime? @map("fecha_historia_completada") @db.Timestamptz(6)
   fechaMetodoCompletado              DateTime? @map("fecha_metodo_completado") @db.Timestamptz(6)
   debeCompletarDatos                 Boolean   @default(true) @map("debe_completar_datos")

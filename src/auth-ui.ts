@@ -202,7 +202,7 @@ export async function iniciarInterfaz(): Promise<void> {
   try { usuario = (await api<{ usuario: Usuario }>('/auth/me')).usuario; } catch { /* Sin sesión. */ }
   if (!usuario) { formularioLogin(); await revealApp(); return; }
   const route = usuario.ruta;
-  const practiceRoute = route === '/practica/nuevo' || route === '/practica/experiencia';
+  const practiceRoute = route === '/practica' || route === '/practica/nuevo' || route === '/practica/experiencia';
   const reviewing = practiceRoute && location.pathname === '/induccion';
   // Subrutas de la ruta de formación: el servidor valida el acceso a cada módulo.
   // Módulo 1 (Ofimática para tus cobranzas): tiene su propia aplicación con cinco secciones.
@@ -221,13 +221,13 @@ export async function iniciarInterfaz(): Promise<void> {
   if (advisorSubroute) {
     shell('Tu ruta de formación', 'Fontana School · Inducción', '<div id="module-page"></div>', usuario);
     const { renderModulePage } = await import('./advisor/advisor');
-    await renderModulePage(document.querySelector<HTMLElement>('#module-page')!, practiceRoute ? route : '/induccion');
+    await renderModulePage(document.querySelector<HTMLElement>('#module-page')!, practiceRoute ? route : '/induccion', usuario.tieneExperienciaCobranzasDigitales);
     await revealApp();
     return;
   }
   if (practiceRoute && !reviewing) {
     const { mostrarPractica } = await import('./practice');
-    mostrarPractica(usuario.nombreCompleto, usuario.tieneExperienciaCobranzasDigitales === true);
+    mostrarPractica(usuario.nombreCompleto, usuario.tieneExperienciaCobranzasDigitales, route);
     const { mountLearningPath } = await import('./advisor/advisor');
     await mountLearningPath();
     await revealApp();
@@ -239,6 +239,6 @@ export async function iniciarInterfaz(): Promise<void> {
   // "Tu camino en Fontana": con la práctica ya asignada, el paso 02 lleva de vuelta a ella.
   document.querySelector('.learning-path ol')!.outerHTML = pasosCamino('empresa', practiceRoute ? route : null);
   const { restoreProgress } = await import('./training');
-  restoreProgress({ historia: usuario.historiaCompletada, metodo: usuario.metodoCompletado, experiencia: usuario.tieneExperienciaCobranzasDigitales });
+  restoreProgress({ historia: usuario.historiaCompletada, metodo: usuario.metodoCompletado, completada: practiceRoute });
   await revealApp();
 }

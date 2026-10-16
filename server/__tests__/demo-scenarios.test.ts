@@ -60,7 +60,7 @@ describe('escenarios demo', () => {
     const { modules } = await advisor('1000000103');
     expect(modules[0]).toMatchObject({ status: 'PASSED', actionLabel: 'Completado', hasSeal: true, enabled: true });
     expect(modules[1]).toMatchObject({ status: 'AVAILABLE', enabled: true });
-    expect(modules[2]).toMatchObject({ status: 'BLOCKED', blockedReason: 'Aprueba Simulador de cobranzas para continuar' });
+    expect(modules[2]).toMatchObject({ status: 'BLOCKED', blockedReason: 'Aprueba Inducción a las cobranzas para continuar' });
   });
 
   it('1000000104 · agotado: sin intentos y startAttempt lo rechaza', async () => {
@@ -151,7 +151,7 @@ describe('escenarios demo', () => {
   it('1000000115 · reabierto: puede entrar a M2 y conserva el sello', async () => {
     const { modules, agent } = await advisor('1000000115');
     expect(modules[1]).toMatchObject({ enabled: true, actionLabel: 'Continuar', hasSeal: true });
-    expect((await agent.get('/api/advisor/modules/simulador-cobranzas')).status).toBe(200);
+    expect((await agent.get('/api/advisor/modules/induccion-cobranzas')).status).toBe(200);
   });
 
   it('1000000116–145 · volumen: 30 asesores paginables por cursor', async () => {
@@ -193,12 +193,12 @@ describe('escenarios demo', () => {
     expect(state.sections.find((section: { key: string }) => section.key === 'ortografia').attemptsRemaining).toBe(2);
   });
 
-  it('1000000149 · módulo completo con sello y Simulador desbloqueado', async () => {
+  it('1000000149 · módulo completo con sello e Inducción desbloqueada', async () => {
     const session = await loginAgent('1000000149', 'asesor', DEMO_PASSWORD);
     const state = (await session.agent.get('/api/training/office/module')).body.data;
     expect(state).toMatchObject({ currentSection: 'resultado' });
     expect(state.module.hasSeal).toBe(true);
-    expect(state.nextModule).toMatchObject({ slug: 'simulador-cobranzas', enabled: true });
+    expect(state.nextModule).toMatchObject({ slug: 'induccion-cobranzas', enabled: true });
     const result = (await session.agent.get('/api/training/office/result')).body.data;
     expect(result.sealIssued).toBe(true);
     expect(result.reinforce).toEqual([]);

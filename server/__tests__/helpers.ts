@@ -50,7 +50,7 @@ export function resetRateLimits(): void {
 }
 
 // Actividades del catálogo. a1 es la mecanografía del módulo 1 (tres intentos, sin espera, nota mínima 100:
-// aprueba por la regla de caracteres por minuto). a2 y a3 son los placeholders de los módulos 2 y 3
+// aprueba por la regla de caracteres por minuto). a2 es el examen de la inducción (módulo 2) y a3 el placeholder del módulo 4
 // (evaluación demo de tres intentos y 30 minutos de espera).
 export async function activityIds() {
   const modules = await prisma.trainingModule.findMany({ include: { activities: { orderBy: { order: 'asc' } } }, orderBy: { order: 'asc' } });
@@ -58,10 +58,10 @@ export async function activityIds() {
   const m1 = bySlug('ofimatica-mecanografia');
   const section = (order: number) => m1.activities.find((activity) => activity.order === order)!.id;
   return {
-    modules: { m1, m2: bySlug('simulador-cobranzas'), m3: bySlug('tipificacion-llamadas'), cert: bySlug('certificado') },
+    modules: { m1, m2: bySlug('induccion-cobranzas'), m3: bySlug('tipificacion-llamadas'), cert: bySlug('certificado') },
     office: { welcome: section(10), typing: section(20), excel: section(30), dictation: section(40), result: section(50) },
     a1: section(20),
-    a2: bySlug('simulador-cobranzas').activities.find((activity) => activity.order === 1)!.id,
+    a2: bySlug('induccion-cobranzas').activities.find((activity) => activity.type === 'QUIZ')!.id,
     a3: bySlug('tipificacion-llamadas').activities.find((activity) => activity.order === 1)!.id,
   };
 }

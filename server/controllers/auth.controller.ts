@@ -46,6 +46,11 @@ export async function registrarAvanceInduccion(request: Request, response: Respo
   response.json({ usuario: serializarUsuario(usuario) });
 }
 
+export async function completarInduccion(request: Request, response: Response): Promise<void> {
+  const usuario = await authService.completarInduccion(request.usuario!);
+  response.json({ usuario: serializarUsuario(usuario) });
+}
+
 export async function registrarExperiencia(request: Request, response: Response): Promise<void> {
   const usuario = await authService.registrarExperiencia(request.usuario!, validBody<ExperienciaBody>(request));
   response.json({ usuario: serializarUsuario(usuario) });

@@ -14,23 +14,23 @@ describe('módulos y acceso', () => {
   beforeAll(async () => { ids = await activityIds(); });
   afterAll(() => cleanupSuite(SUITE));
 
-  it('devuelve los cuatro módulos en orden con botones y razones de bloqueo', async () => {
+  it('devuelve los cinco módulos en orden con botones y razones de bloqueo', async () => {
     const user = await createTestUser(SUITE);
     const { agent } = await loginAgent(user.numeroDocumento, 'asesor');
     const response = await agent.get('/api/advisor/modules');
     expect(response.status).toBe(200);
     const data = response.body.data as Array<Record<string, unknown>>;
-    expect(data.map((row) => row.slug)).toEqual(['ofimatica-mecanografia', 'simulador-cobranzas', 'tipificacion-llamadas', 'certificado']);
+    expect(data.map((row) => row.slug)).toEqual(['ofimatica-mecanografia', 'induccion-cobranzas', 'simulador-cobranzas', 'tipificacion-llamadas', 'certificado']);
     expect(data[0]).toMatchObject({ status: 'AVAILABLE', actionLabel: 'Continuar', enabled: true, blockedReason: null, progressPercent: '0.00', route: '/induccion/modulos/ofimatica-mecanografia' });
     expect(data[1]).toMatchObject({ status: 'BLOCKED', enabled: false, blockedReason: 'Aprueba Ofimática para tus cobranzas para continuar' });
-    expect(data[3]).toMatchObject({ status: 'BLOCKED', enabled: false });
-    expect(data[3]!.missingSeals).toHaveLength(3);
+    expect(data[4]).toMatchObject({ status: 'BLOCKED', enabled: false });
+    expect(data[4]!.missingSeals).toHaveLength(4);
   });
 
   it('bloquea el acceso directo por URL a un módulo bloqueado (403)', async () => {
     const user = await createTestUser(SUITE);
     const { agent } = await loginAgent(user.numeroDocumento, 'asesor');
-    const blocked = await agent.get('/api/advisor/modules/simulador-cobranzas');
+    const blocked = await agent.get('/api/advisor/modules/induccion-cobranzas');
     expect(blocked.status).toBe(403);
     expect(blocked.body.details.blockedReason).toBe('Aprueba Ofimática para tus cobranzas para continuar');
     const open = await agent.get('/api/advisor/modules/ofimatica-mecanografia');
@@ -143,7 +143,7 @@ describe('progreso e intentos', () => {
     // El módulo 1 tiene pantalla de resultado: aprobado sigue abierto para repasarlo.
     expect(data[0]).toMatchObject({ status: 'PASSED', actionLabel: 'Completado', progressPercent: '100.00', enabled: true });
     expect(data[1]).toMatchObject({ status: 'AVAILABLE', enabled: true, actionLabel: 'Continuar' });
-    expect(data[2]).toMatchObject({ status: 'BLOCKED', blockedReason: 'Aprueba Simulador de cobranzas para continuar' });
+    expect(data[2]).toMatchObject({ status: 'BLOCKED', blockedReason: 'Aprueba Inducción a las cobranzas para continuar' });
     const summary = (await again.agent.get('/api/advisor/progress')).body.data;
     expect(summary).toMatchObject({ modulesPassed: 1, modulesTotal: 3, overallPercent: '33.33' });
   });

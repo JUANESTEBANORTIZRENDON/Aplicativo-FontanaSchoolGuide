@@ -8,9 +8,8 @@ function escapeHtml(value: string): string {
 
 // Destino del módulo 02: "Tu camino en Fontana" arriba y, debajo, "Tu ruta de formación"
 // (la monta auth-ui). Los ejercicios se agregarán después.
-export function mostrarPractica(nombre: string, experienced: boolean): void {
-  const title = experienced ? 'Práctica para asesores con experiencia' : 'Práctica para asesores nuevos';
-  const route = experienced ? '/practica/experiencia' : '/practica/nuevo';
+export function mostrarPractica(nombre: string, experienced: boolean | null, route: string): void {
+  const title = experienced === null ? 'Tu ruta de formación' : experienced ? 'Práctica para asesores con experiencia' : 'Práctica para asesores nuevos';
   document.body.className = 'practice-screen';
   document.querySelector<HTMLElement>('#app-content')!.innerHTML = `
     <div class="training-session"><span>${escapeHtml(nombre)} · Práctica Fontana</span><button id="practice-logout" type="button">Cerrar sesión</button></div>
@@ -20,7 +19,7 @@ export function mostrarPractica(nombre: string, experienced: boolean): void {
       <section class="practice-shell" aria-labelledby="practice-title">
         <p class="eyebrow">MÓDULO 02 · TU RUTA DE PRÁCTICA</p>
         <h1 id="practice-title">${title}</h1>
-        <p>Guardamos tu respuesta. Los ejercicios de esta ruta estarán disponibles próximamente.</p>
+        <p>Avanza módulo por módulo. Cada uno se desbloquea al aprobar el anterior.</p>
         <a class="primary" href="/induccion">Volver a la inducción</a>
       </section>
       <footer><span>Fontana · Aula de formación</span><span>Módulo 02</span></footer>

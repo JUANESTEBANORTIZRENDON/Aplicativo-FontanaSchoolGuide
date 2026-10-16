@@ -16,6 +16,7 @@ export const usuarioSesionSelect = {
   debeCompletarDatos: true,
   debeCambiarPassword: true,
   tieneExperienciaCobranzasDigitales: true,
+  fechaInduccionCompletada: true,
   fechaHistoriaCompletada: true,
   fechaMetodoCompletado: true,
   versionSesion: true,

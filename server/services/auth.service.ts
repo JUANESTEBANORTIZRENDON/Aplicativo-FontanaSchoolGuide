@@ -45,7 +45,8 @@ export async function logoutEverywhere(userId: string): Promise<void> {
   await prisma.usuario.update({ where: { id: userId }, data: { versionSesion: { increment: 1 } } });
 }
 
-// Respuesta de experiencia al terminar la inducción: define la ruta de práctica del asesor.
+// Respuesta de experiencia dentro del módulo «Inducción a las cobranzas»: define si el asesor hace la
+// introducción o va directo al examen. Responderla implica haber terminado la inducción inicial.
 export async function registrarExperiencia(usuario: AuthUser, input: ExperienciaBody): Promise<AuthUser> {
   if (usuario.debeCompletarDatos) throw new ForbiddenError('Completa tu perfil de asesor antes de continuar.', 'PROFILE_INCOMPLETE');
   return prisma.usuario.update({
@@ -53,10 +54,23 @@ export async function registrarExperiencia(usuario: AuthUser, input: Experiencia
     data: {
       tieneExperienciaCobranzasDigitales: input.tieneExperienciaCobranzasDigitales,
       fechaRespuestaExperiencia: new Date(),
+      fechaInduccionCompletada: usuario.fechaInduccionCompletada ?? new Date(),
       // Responder la experiencia implica haber terminado la historia y el método.
       fechaHistoriaCompletada: usuario.fechaHistoriaCompletada ?? new Date(),
       fechaMetodoCompletado: usuario.fechaMetodoCompletado ?? new Date(),
     },
+    select: usuarioSesionSelect,
+  });
+}
+
+// Cierra la inducción inicial («Conoce la empresa») y abre la ruta de formación. Sin pregunta de experiencia.
+export async function completarInduccion(usuario: AuthUser): Promise<AuthUser> {
+  if (usuario.debeCompletarDatos) throw new ForbiddenError('Completa tu perfil de asesor antes de continuar.', 'PROFILE_INCOMPLETE');
+  if (usuario.fechaInduccionCompletada) return usuario;
+  const now = new Date();
+  return prisma.usuario.update({
+    where: { id: usuario.id },
+    data: { fechaInduccionCompletada: now, fechaHistoriaCompletada: usuario.fechaHistoriaCompletada ?? now, fechaMetodoCompletado: usuario.fechaMetodoCompletado ?? now },
     select: usuarioSesionSelect,
   });
 }

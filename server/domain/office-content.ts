@@ -31,7 +31,7 @@ export const WELCOME = {
     { key: 'excel', title: 'Excel para cobranzas', text: 'Cuatro microlecciones y una práctica con datos ficticios.' },
     { key: 'ortografia', title: 'Ortografía aplicada', text: 'Lecciones breves y un dictado corto con corrección inmediata.' },
   ],
-  note: 'Al aprobar las tres partes recibes el sello del módulo y se habilita el Simulador de cobranzas. Si algo no sale a la primera, puedes repetir según los intentos disponibles.',
+  note: 'Al aprobar las tres partes recibes el sello del módulo y se habilita la Inducción a las cobranzas. Si algo no sale a la primera, puedes repetir según los intentos disponibles.',
 } as const;
 
 export const EXCEL_LESSONS: Lesson[] = [

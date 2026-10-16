@@ -5,7 +5,7 @@ import { officeFileHtml, officeSection } from './office-admin';
 // Panel administrativo. Navegación por hash dentro de /admin:
 // #asesores, #ficha/<id>, #modulos, #ofimatica, #metricas, #auditoria.
 
-type Usuario = { id: string; nombreCompleto: string; numeroDocumento: string; rol: string; estado: string; correo: string | null; telefono: string | null; debeCompletarDatos: boolean; fechaCreacion: string; ultimoAcceso: string | null };
+type Usuario = { id: string; nombreCompleto: string; numeroDocumento: string; rol: string; estado: string; correo: string | null; telefono: string | null; debeCompletarDatos: boolean; tieneExperienciaCobranzasDigitales?: boolean | null; fechaCreacion: string; ultimoAcceso: string | null };
 type Shell = (title: string, subtitle: string, content: string) => void;
 type Page<T> = { data: T[]; meta: { nextCursor: string | null; total?: number } };
 
@@ -293,7 +293,7 @@ async function advisorFileSection(view: HTMLElement, userId: string): Promise<vo
     <a class="secondary-link" href="#asesores">← Volver a usuarios</a>
     <section class="auth-card admin-card file-head">
       <div><h2>${escapar(data.user.nombreCompleto)}</h2>
-        <p>Documento ${escapar(data.user.numeroDocumento)} · ${escapar(data.user.correo ?? 'sin correo')} · último acceso ${escapar(formatDate(data.user.ultimoAcceso))}</p></div>
+        <p>Documento ${escapar(data.user.numeroDocumento)} · ${escapar(data.user.correo ?? 'sin correo')} · experiencia: ${data.user.tieneExperienciaCobranzasDigitales === true ? 'con experiencia' : data.user.tieneExperienciaCobranzasDigitales === false ? 'nuevo' : 'sin responder'} · último acceso ${escapar(formatDate(data.user.ultimoAcceso))}</p></div>
       ${pill(data.user.estado === 'activo' ? 'active' : data.user.estado === 'bloqueado' ? 'blocked' : 'inactive', data.user.estado.charAt(0).toUpperCase() + data.user.estado.slice(1))}
     </section>
     <section class="stat-grid">

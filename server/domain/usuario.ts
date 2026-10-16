@@ -13,19 +13,21 @@ export type AuthUser = {
   debeCompletarDatos: boolean;
   debeCambiarPassword: boolean;
   tieneExperienciaCobranzasDigitales: boolean | null;
+  fechaInduccionCompletada: Date | null;
   fechaHistoriaCompletada: Date | null;
   fechaMetodoCompletado: Date | null;
   versionSesion: number;
 };
 
-// Con la experiencia ya respondida, el asesor llega a su ruta de práctica (módulo 02).
-export function rutaUsuario(usuario: { rol: string; debeCompletarDatos: boolean; tieneExperienciaCobranzasDigitales: boolean | null }): string {
+// Al terminar la inducción inicial, el asesor llega a su ruta de formación. La experiencia en cobranzas se
+// responde dentro del módulo 02; quien ya la había respondido conserva su ruta.
+export function rutaUsuario(usuario: { rol: string; debeCompletarDatos: boolean; tieneExperienciaCobranzasDigitales: boolean | null; fechaInduccionCompletada: Date | null }): string {
   if (esAdministrador(usuario.rol)) return '/admin';
   if (usuario.debeCompletarDatos) return '/llena-tus-datos';
   if (usuario.tieneExperienciaCobranzasDigitales !== null) {
     return usuario.tieneExperienciaCobranzasDigitales ? '/practica/experiencia' : '/practica/nuevo';
   }
-  return '/induccion';
+  return usuario.fechaInduccionCompletada ? '/practica' : '/induccion';
 }
 
 export function permisosUsuario(usuario: { rol: string }): string[] {

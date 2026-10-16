@@ -48,7 +48,7 @@ Al terminar las cinco etapas de `/induccion`, la confirmación de lectura habili
 
 ### Reglas de la ruta de formación
 
-- Catálogo inicial: 1 Ofimática para tus cobranzas → 2 Simulador de cobranzas → 3 Tipificación de llamadas → 4 Certificado (requiere los tres sellos).
+- Catálogo inicial: 1 Ofimática para tus cobranzas → 2 Inducción a las cobranzas → 3 Simulador de cobranzas → 4 Tipificación de llamadas → 5 Certificado (requiere los cuatro sellos).
 - `computeModuleViews` (dominio) calcula el estado efectivo de cada módulo combinando el estado del catálogo, prerrequisitos, sellos, progreso, intentos y excepciones vigentes. La usan el área del asesor, el panel y la sincronización que alimenta las métricas.
 - Un módulo `INACTIVE` se muestra "No disponible", con el botón deshabilitado. Un módulo aprobado muestra "Completado"; el módulo 1 tiene pantalla de resultado y sigue abierto para repasarlo (los demás se habilitarán cuando tengan la suya).
 - Intentos: numeración consecutiva con bloqueo de fila, límite `maxAttempts` más excepciones vigentes y espera `waitMinutes` tras un fallo. Una configuración evaluable nueva crea otra versión; nunca se edita una versión existente.
@@ -68,7 +68,7 @@ Al terminar las cinco etapas de `/induccion`, la confirmación de lectura habili
 | 40 | Ortografía aplicada | `DICTATION` | Sí | `.../ortografia` |
 | 50 | Resultado y sello | `LESSON` | No | `.../resultado` |
 
-El sello se emite cuando las tres actividades obligatorias están aprobadas, una sola vez, y desbloquea el Simulador de cobranzas. El placeholder anterior (orden 1) queda `ARCHIVED` y se conserva.
+El sello se emite cuando las tres actividades obligatorias están aprobadas, una sola vez, y desbloquea la Inducción a las cobranzas. El placeholder anterior (orden 1) queda `ARCHIVED` y se conserva.
 
 - **El servidor decide.** El navegador nunca calcula una nota que cuente, nunca aprueba una sección ni emite el sello.
 - **Mecanografía propia** (sin proveedores externos): el servidor entrega el texto y un `nonce` (solo se guarda su SHA-256), registra el inicio oficial y calcula caracteres correctos por minuto, PPM, precisión y errores al cerrar. Un intento ya cerrado, de otro asesor, con `nonce` inválido o fuera de ventana se rechaza. Un intento abandonado o vencido cuenta como fallido. Tras fallar hay que completar una práctica breve (`last_practice_at`).
@@ -211,7 +211,7 @@ Ejecuta `npm run db:seed` y `npm run db:seed:demo` sobre la base de desarrollo, 
 | 1000000100 | Administración | `/admin` | Panel con Asesores, Módulos y actividades, Métricas y Auditoría. |
 | 1000000101 | Asesor | login | Va a "Llena tus datos"; después, módulo 1 disponible y el resto bloqueados. |
 | 1000000102 | Asesor | `/induccion` | Módulo 1 "En curso" con "Continuar". |
-| 1000000103 | Asesor | `/induccion` | Módulo 1 "Completado", módulo 2 con "Continuar", módulo 3 "Aprueba Simulador de cobranzas para continuar". |
+| 1000000103 | Asesor | `/induccion` | Módulo 1 "Completado", módulo 2 con "Continuar", módulo 3 "Aprueba Inducción a las cobranzas para continuar". |
 | 1000000104 | Asesor | `/induccion` | Módulo 1 "Sin intentos" y botón deshabilitado. En el panel, su ficha muestra 0 intentos restantes. |
 | 1000000105 | Asesor | `/induccion` | Módulo 1 con la hora a partir de la cual podrá reintentar (30 min tras el fallo). |
 | 1000000106 | Asesor / panel | `/induccion`, ficha | "Continuar" de nuevo; en la ficha, próximo intento número 4 y excepción vigente. |
@@ -223,7 +223,7 @@ Ejecuta `npm run db:seed` y `npm run db:seed:demo` sobre la base de desarrollo, 
 | 1000000112 | Panel | Métricas | Aparece en "Asesores detenidos" (7 días). |
 | 1000000113 | Asesor / panel | login, ficha | No inicia sesión; su historial de intentos sigue visible. |
 | 1000000114 | Asesor / panel | login, Auditoría | Mensaje genérico al entrar; el bloqueo y su motivo están en auditoría. |
-| 1000000115 | Asesor | `/induccion/modulos/simulador-cobranzas` | Puede entrar al módulo 2 reabierto y conserva el sello. |
+| 1000000115 | Asesor | `/induccion/modulos/induccion-cobranzas` | Puede entrar al módulo 2 reabierto y conserva el sello. |
 | 1000000116–145 | Panel | Asesores, Métricas | Paginación "Cargar más", filtros por módulo/estado/fecha y métricas con datos. |
 
 En **Módulos y actividades** aparece "Demo · actividad retirada" inactiva con progreso previo de dos asesores (la desactivación conserva el historial).

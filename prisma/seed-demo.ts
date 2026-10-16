@@ -44,7 +44,7 @@ export const SCENARIOS: DemoRow[] = [
   { documento: '1000000102', nombre: 'Demo · Asesor En Curso', escenario: 'Módulo 1 con la bienvenida vista y una prueba de mecanografía preparada', esperado: 'Módulo 1 IN_PROGRESS con "Continuar"; reanuda en Mecanografía' },
   { documento: '1000000103', nombre: 'Demo · Asesor Aprobado M1', escenario: 'Módulo 1 aprobado (mecanografía, Excel y dictado) con sello', esperado: 'M1 Completado, M2 disponible, M3 bloqueado' },
   { documento: '1000000104', nombre: 'Demo · Asesor Agotado', escenario: 'Tres intentos de mecanografía fallidos', esperado: 'M1 FAILED sin intentos; candidato a reactivar' },
-  { documento: '1000000105', nombre: 'Demo · Asesor En Espera', escenario: 'M1 aprobado; intento fallido del Simulador hace 5 minutos', esperado: 'En el módulo 2 no puede intentar hasta que pasen 30 minutos' },
+  { documento: '1000000105', nombre: 'Demo · Asesor En Espera', escenario: 'M1 aprobado; intento fallido del examen de inducción hace 5 minutos', esperado: 'En el módulo 2 no puede intentar hasta que pasen 30 minutos' },
   { documento: '1000000106', nombre: 'Demo · Asesor Reactivado', escenario: 'Mecanografía agotada con EXTRA_ATTEMPT +1 vigente', esperado: '"Continuar" y el siguiente intento es el número 4' },
   { documento: '1000000107', nombre: 'Demo · Asesor Excepción Vencida', escenario: 'UNLOCK del módulo 2 ya vencido', esperado: 'Excepción en historial; M2 bloqueado' },
   { documento: '1000000108', nombre: 'Demo · Asesor Excepción Revocada', escenario: 'REACTIVATE revocada', esperado: 'Revocada en la ficha; M1 sigue sin intentos' },
@@ -58,7 +58,7 @@ export const SCENARIOS: DemoRow[] = [
   { documento: '1000000146', nombre: 'Demo · Mecanografía Aprobada', escenario: 'Bienvenida vista y mecanografía aprobada', esperado: 'Continúa en Excel; mecanografía completada' },
   { documento: '1000000147', nombre: 'Demo · Práctica Pendiente', escenario: 'Un intento de mecanografía fallido sin práctica', esperado: 'Debe completar la práctica breve antes de repetir' },
   { documento: '1000000148', nombre: 'Demo · Dictado Con Error Crítico', escenario: 'Mecanografía y Excel aprobados; dictado fallido por error crítico', esperado: 'Ve «haber» por «a ver» como corrección prioritaria; quedan 2 intentos' },
-  { documento: '1000000149', nombre: 'Demo · Módulo Completo', escenario: 'Módulo 1 completo con sello emitido y lecciones vistas', esperado: 'Pantalla de resultado con sello; Simulador desbloqueado' },
+  { documento: '1000000149', nombre: 'Demo · Módulo Completo', escenario: 'Módulo 1 completo con sello emitido y lecciones vistas', esperado: 'Pantalla de resultado con sello; Inducción desbloqueada' },
   { documento: '1000000150', nombre: 'Demo · Intento Vencido', escenario: 'Intento de mecanografía vencido (EXPIRED)', esperado: 'Intento fallido con cierre EXPIRED; conserva 2 intentos y exige práctica' },
 ];
 
@@ -90,7 +90,7 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
   const now = new Date();
   const ago = (ms: number) => new Date(now.getTime() - ms);
 
-  if ((await prisma.trainingModule.count()) < 4) await seedCatalog(prisma);
+  if ((await prisma.trainingModule.count()) < 5) await seedCatalog(prisma);
   // seedCatalog es idempotente: garantiza las actividades del módulo 1 y el contenido base.
   await seedCatalog(prisma);
   const office = await officeActivities(prisma);
@@ -99,9 +99,10 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
   const T = office.bySection.mecanografia!.id;
   const X = office.bySection.excel!.id;
   const D = office.bySection.ortografia!.id;
-  const modules = await prisma.trainingModule.findMany({ include: { activities: { where: { order: 1 } } }, orderBy: { order: 'asc' } });
-  const placeholderOf = (slug: string) => modules.find((module) => module.slug === slug)!.activities[0]!.id;
-  const A2 = placeholderOf('simulador-cobranzas');
+  const modules = await prisma.trainingModule.findMany({ include: { activities: { where: { status: { not: 'ARCHIVED' } }, orderBy: { order: 'asc' } } }, orderBy: { order: 'asc' } });
+  // Actividad de práctica del módulo: el examen de la inducción o el marcador de posición de los demás.
+  const placeholderOf = (slug: string) => modules.find((module) => module.slug === slug)!.activities.find((activity) => activity.type === 'QUIZ' || activity.type === 'PLACEHOLDER')!.id;
+  const A2 = placeholderOf('induccion-cobranzas');
   const A3 = placeholderOf('tipificacion-llamadas');
 
   // Administrador demo: se crea directamente (no hay otro actor) y se audita a sí mismo.
@@ -303,7 +304,7 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
   // 104 Agotado: tres intentos de mecanografía fallidos; el último hace 5 minutos.
   { const u = await advisor(doc(4).documento, doc(4).nombre); if (u.created) await exhaustTyping(u.id, ago(10 * MIN)); }
 
-  // 105 En espera: M1 aprobado y un fallo en el Simulador hace 5 minutos (espera de 30).
+  // 105 En espera: M1 aprobado y un fallo en el examen de inducción hace 5 minutos (espera de 30).
   {
     const u = await advisor(doc(5).documento, doc(5).nombre);
     if (u.created) {
@@ -428,7 +429,7 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
     }
   }
 
-  // 149 Módulo completo con sello emitido y Simulador desbloqueado.
+  // 149 Módulo completo con sello emitido y Inducción desbloqueada.
   { const u = await advisor(doc(19).documento, doc(19).nombre); if (u.created) await passOffice(u.id, ago(3 * HOUR)); }
 
   // 150 Intento de mecanografía vencido (EXPIRED).
