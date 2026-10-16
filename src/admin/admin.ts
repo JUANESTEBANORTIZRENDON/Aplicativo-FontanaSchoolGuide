@@ -209,6 +209,8 @@ const ACTIVITY_TYPE_TEXT: Record<string, string> = {
   EXCEL_PRACTICE: 'Práctica de Excel', DICTATION: 'Dictado', PLACEHOLDER: 'Contenido',
 };
 const CERTIFICATE_SLUG = 'certificado';
+// Las lecciones y los contenidos en preparación no se califican: no tienen evaluación que configurar.
+const UNGRADED_TYPES = new Set(['LESSON', 'PLACEHOLDER']);
 
 const pill = (kind: string, label: string) => `<span class="status status-${kind}">${escapar(label)}</span>`;
 
@@ -374,10 +376,11 @@ async function modulesSection(view: HTMLElement): Promise<void> {
       <div class="table-wrap"><table><thead><tr><th>Actividad</th><th>Tipo</th><th>Obligatoria</th><th>Estado</th><th>Evaluación vigente</th><th>Acciones</th></tr></thead><tbody>
       ${module.activities.map((activity) => {
         const evaluation = activity.evaluations[0];
+        const graded = !UNGRADED_TYPES.has(activity.type);
         return `<tr><td>${escapar(activity.title)}</td><td>${escapar(activity.type)}</td><td>${activity.isRequired ? 'Sí' : 'No'}</td><td>${badge(activity.status)}</td>
-          <td>${evaluation ? `v${evaluation.version}: mínimo ${escapar(evaluation.minimumScore)}, ${evaluation.maxAttempts} intentos, espera ${evaluation.waitMinutes} min (${escapar(text(evaluation.status))})` : 'Sin configurar'}</td>
+          <td>${evaluation ? `v${evaluation.version}: mínimo ${escapar(evaluation.minimumScore)}, ${evaluation.maxAttempts} intentos, espera ${evaluation.waitMinutes} min (${escapar(text(evaluation.status))})` : graded ? 'Sin configurar' : '<span class="muted">No se califica</span>'}</td>
           <td><button class="row-action" data-activity="${activity.id}" data-next="${activity.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'}">${activity.status === 'ACTIVE' ? 'Desactivar' : 'Activar'}</button>
-          <button class="row-action" data-evaluation="${activity.id}">Configurar evaluación</button></td></tr>`;
+          ${graded ? `<button class="row-action" data-evaluation="${activity.id}">Configurar evaluación</button>` : ''}</td></tr>`;
       }).join('') || empty(6, 'El estado de este módulo depende de los sellos.')}
       </tbody></table></div></section>`).join('');
 
