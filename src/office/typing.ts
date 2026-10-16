@@ -1,6 +1,6 @@
 import { escapar } from '../http';
 import { ApiError, officeApi, type TypingPrepared, type TypingResult } from './api';
-import { errorMessage, showError, type OfficeContext } from './office';
+import { errorMessage, loadingCard, loadingOverlay, showError, type OfficeContext } from './office';
 
 // Prueba de mecanografía propia. El navegador solo muestra el texto, el temporizador y un avance
 // provisional; las métricas que cuentan las calcula el servidor al cerrar el intento.
@@ -85,13 +85,12 @@ function renderIntro(ctx: OfficeContext): void {
   const prepare = ctx.view.querySelector<HTMLButtonElement>('#typing-prepare')!;
   prepare.addEventListener('click', async () => {
     prepare.disabled = true;
-    prepare.textContent = 'Preparando…';
+    ctx.view.innerHTML = loadingCard('Preparando tu prueba…', 'Estamos eligiendo el texto que vas a copiar.');
     try {
       renderReady(ctx, await officeApi.typingPrepare());
     } catch (error) {
-      prepare.disabled = false;
-      prepare.textContent = 'Preparar mi prueba';
       if (error instanceof ApiError && error.code === 'PRACTICE_REQUIRED') { await ctx.reload(); return; }
+      renderIntro(ctx);
       showError(ctx.view, error);
     }
   });
@@ -148,11 +147,14 @@ function renderReady(ctx: OfficeContext, prepared: TypingPrepared): void {
     running = true;
     begin.disabled = true;
     begin.textContent = 'Iniciando…';
+    const hide = loadingOverlay(ctx.view.querySelector<HTMLElement>('.office-card')!, 'Iniciando la prueba…');
     try {
       const started = await officeApi.typingStart(prepared.attemptId);
+      hide();
       begin.hidden = true;
       beginRun(started.durationSeconds, started.startWindowSeconds);
     } catch (error) {
+      hide();
       running = false;
       begin.disabled = false;
       begin.textContent = 'Iniciar prueba';
@@ -179,8 +181,10 @@ function renderReady(ctx: OfficeContext, prepared: TypingPrepared): void {
       input.disabled = false;
       status.textContent = 'Tiempo terminado. Enviando tu resultado…';
       const elapsed = timerStart === null ? 0 : (performance.now() - timerStart) / 1000;
+      const typed = input.value;
+      ctx.view.innerHTML = loadingCard('Calculando tus resultados…', 'Revisamos cada carácter, tu velocidad y tu precisión.');
       try {
-        const result = await officeApi.typingComplete(prepared.attemptId, { nonce: prepared.nonce, typedText: input.value, clientDurationSeconds: Math.min(3600, elapsed) });
+        const result = await officeApi.typingComplete(prepared.attemptId, { nonce: prepared.nonce, typedText: typed, clientDurationSeconds: Math.min(3600, elapsed) });
         renderResult(ctx, result);
       } catch (error) {
         const closed = error instanceof ApiError && ['TYPING_TIME_EXPIRED', 'ATTEMPT_CLOSED', 'NONCE_INVALID'].includes(error.code ?? '');
@@ -263,10 +267,12 @@ async function renderPractice(ctx: OfficeContext): Promise<void> {
   });
   done.addEventListener('click', async () => {
     done.disabled = true;
+    const hide = loadingOverlay(ctx.view.querySelector<HTMLElement>('.office-card')!, 'Guardando tu práctica…');
     try {
       await officeApi.typingPracticeDone();
       await ctx.reload();
     } catch (error) {
+      hide();
       done.disabled = false;
       showError(ctx.view, error);
     }

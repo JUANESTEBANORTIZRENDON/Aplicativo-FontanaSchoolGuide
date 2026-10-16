@@ -33,6 +33,26 @@ export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'No pudimos completar la acción. Intenta nuevamente.';
 }
 
+// Tarjeta de carga con indicador circular: se muestra mientras el servidor responde.
+export function loadingCard(message: string, detail = ''): string {
+  return `<section class="office-card office-loading-card" role="status" aria-live="polite">
+    <span class="office-spinner" aria-hidden="true"></span>
+    <p class="office-loading-title">${escapar(message)}</p>
+    ${detail ? `<p class="office-loading-detail">${escapar(detail)}</p>` : ''}
+  </section>`;
+}
+
+// Capa de carga sobre una tarjeta que debe seguir visible (por ejemplo, el texto de la prueba al iniciarla).
+// Devuelve la función que la quita.
+export function loadingOverlay(card: HTMLElement, message: string): () => void {
+  const layer = document.createElement('div');
+  layer.className = 'office-loading-overlay';
+  layer.setAttribute('role', 'status');
+  layer.innerHTML = `<span class="office-spinner" aria-hidden="true"></span><p class="office-loading-title">${escapar(message)}</p>`;
+  card.append(layer);
+  return () => layer.remove();
+}
+
 export function showError(container: HTMLElement, error: unknown): void {
   let box = container.querySelector<HTMLElement>('.office-error');
   if (!box) {
@@ -51,7 +71,7 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
     <header><a class="brand" href="${escapar(backHref)}" aria-label="Fontana, volver a tu ruta de formación"><span class="brand-image"><img src="/imagenes/fontana-logo.png" alt=""><strong class="brand-name">FONTANA</strong></span></a><span class="header-divider"></span><span class="platform">AULA DE FORMACIÓN</span></header>
     <main class="office-main">
       <nav class="office-steps" aria-label="Secciones del módulo"></nav>
-      <section id="office-view" class="office-view" tabindex="-1" aria-live="polite"><p class="office-loading">Cargando tu módulo…</p></section>
+      <section id="office-view" class="office-view" tabindex="-1" aria-live="polite">${loadingCard('Cargando tu módulo…')}</section>
       <footer><span>Fontana · Aula de formación</span><span>Módulo 01</span></footer>
     </main>`;
   document.body.hidden = false;
@@ -91,7 +111,7 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
 
   async function render(): Promise<void> {
     renderSteps();
-    view.replaceChildren();
+    view.innerHTML = loadingCard(`Cargando ${TITLES[current]}…`);
     try {
       if (current === 'bienvenida') await renderWelcome(ctx);
       else if (current === 'mecanografia') (await import('./typing')).renderTyping(ctx);
