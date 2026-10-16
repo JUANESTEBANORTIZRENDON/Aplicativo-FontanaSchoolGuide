@@ -18,6 +18,7 @@ officeRouter.post('/sections/:sectionKey/view', validate({ params: sectionParams
 officeRouter.get('/result', office.result);
 
 officeRouter.post('/typing/attempts', office.typingPrepare);
+officeRouter.post('/typing/attempts/resume', office.typingResume);
 officeRouter.post('/typing/attempts/:id/start', validate({ params: attemptParams }), office.typingStart);
 officeRouter.post('/typing/attempts/:id/complete', validate({ params: attemptParams, body: typingCompleteBody }), office.typingComplete);
 officeRouter.get('/typing/practice', office.typingPracticeTexts);

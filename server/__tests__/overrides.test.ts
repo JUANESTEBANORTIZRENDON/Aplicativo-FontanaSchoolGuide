@@ -111,4 +111,34 @@ describe('reactivación individual', () => {
     expect(response.status).toBe(409);
     expect(response.body.code).toBe('ADVISOR_INACTIVE');
   });
+
+  describe('cupo de intentos por asesor', () => {
+    const limitUrl = (userId: string, activityId: string) => `/api/admin/advisors/${userId}/activities/${activityId}/attempt-limit`;
+
+    it('amplía el cupo, devuelve el acceso y audita; null restablece el valor de la evaluación', async () => {
+      const user = await exhausted(ids.a1);
+      const advisor = (await loginAgent(user.numeroDocumento, 'asesor')).agent;
+      expect((await advisor.get('/api/advisor/modules')).body.data[0]).toMatchObject({ status: 'FAILED', enabled: false });
+      const raised = await agent.put(limitUrl(user.id, ids.a1)).set(ORIGIN).send({ maxAttempts: 5, reason: 'Se amplía el cupo por soporte' });
+      expect(raised.status).toBe(200);
+      expect(raised.body.data).toMatchObject({ maxAttempts: 5, attemptsRemaining: 2 });
+      expect((await advisor.get('/api/advisor/modules')).body.data[0]).toMatchObject({ enabled: true });
+      const { attempt } = await attemptService.startAttempt(user.id, ids.a1);
+      expect(attempt.number).toBe(4);
+      expect(await prisma.adminAuditLog.count({ where: { actorUserId: admin.id, action: 'ATTEMPT_LIMIT_SET', entityType: 'UserAttemptLimit' } })).toBeGreaterThan(0);
+      const restored = await agent.put(limitUrl(user.id, ids.a1)).set(ORIGIN).send({ maxAttempts: null, reason: 'Se restablece el valor original' });
+      expect(restored.status).toBe(200);
+      expect(await prisma.userAttemptLimit.count({ where: { userId: user.id } })).toBe(0);
+    });
+
+    it('reduce el cupo sin borrar los intentos usados y valida el cuerpo', async () => {
+      const user = await createTestUser(SUITE);
+      expect((await agent.put(limitUrl(user.id, ids.a1)).set(ORIGIN).send({ maxAttempts: 0, reason: 'Cupo inválido de prueba' })).status).toBe(400);
+      expect((await agent.put(limitUrl(user.id, ids.a1)).set(ORIGIN).send({ maxAttempts: 1, reason: 'corto' })).status).toBe(400);
+      expect((await agent.put(limitUrl(user.id, ids.a1)).set(ORIGIN).send({ maxAttempts: 1, reason: 'Solo un intento para este asesor' })).status).toBe(200);
+      const { attempt } = await attemptService.startAttempt(user.id, ids.a1);
+      await attemptService.submitAttempt(user.id, attempt.id, { score: 30 });
+      await expect(attemptService.startAttempt(user.id, ids.a1, { now: new Date(Date.now() + 2 * HOUR) })).rejects.toMatchObject({ code: 'NO_ATTEMPTS_LEFT' });
+    });
+  });
 });

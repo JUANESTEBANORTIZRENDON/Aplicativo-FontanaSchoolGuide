@@ -2,7 +2,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { app } from '../app.js';
 import { prisma } from '../config/prisma.js';
-import { generateScenario, solveScenario, type ExcelScenarioData } from '../domain/excel.js';
+import { EXCEL_QUIZ } from '../domain/excel-quiz.js';
 import { signedUrl } from '../services/media.service.js';
 import { cleanupSuite, createTestUser, loginAgent, ORIGIN } from './helpers.js';
 
@@ -17,60 +17,51 @@ async function advisorAgent(): Promise<{ agent: Agent; id: string; documento: st
   return { agent: (await loginAgent(user.numeroDocumento, 'asesor')).agent, id: user.id, documento: user.numeroDocumento };
 }
 
-describe('práctica de Excel', () => {
+describe('evaluación de Excel', () => {
   afterAll(() => cleanupSuite(SUITE));
 
-  it('entrega el escenario sin respuestas y lo califica en el servidor', async () => {
+  it('entrega las preguntas sin respuestas y las califica en el servidor', async () => {
     const { agent, id } = await advisorAgent();
     const activity = await agent.get('/api/training/office/excel/activity');
     expect(activity.status).toBe(200);
-    expect(JSON.stringify(activity.body)).not.toMatch(/answerKey|awardedScore|expected/);
     expect(activity.body.data.lessons).toHaveLength(4);
 
     const started = await agent.post(`/api/training/office/excel/activity/${activity.body.data.id}/attempts`).set(ORIGIN);
     expect(started.status).toBe(201);
-    const text = JSON.stringify(started.body);
-    expect(text).not.toMatch(/answerKey|"tasks"|weight/);
-    expect(started.body.data.steps).toHaveLength(8);
-    expect(Object.keys(started.body.data.sheets)).toEqual(['busquedas', 'volver', 'acuerdos', 'pagos']);
-    for (const sheet of Object.values(started.body.data.sheets) as { rows: unknown[] }[]) expect(sheet.rows.length).toBeGreaterThanOrEqual(8);
+    expect(JSON.stringify(started.body)).not.toMatch(/"correct"|explanation/);
+    const questions = started.body.data.questions as { id: string; options: { id: string }[] }[];
+    expect(questions).toHaveLength(EXCEL_QUIZ.length);
+    expect(questions.every((question) => question.options.length === 4)).toBe(true);
 
-    // Las respuestas correctas salen del escenario reproducible por la semilla del intento.
-    const result = await prisma.excelAttemptResult.findUniqueOrThrow({ where: { attemptId: started.body.data.attemptId }, include: { excelActivity: true } });
-    const correct = solveScenario(generateScenario(result.excelActivity.scenarioData as unknown as ExcelScenarioData, result.seed));
-    const graded = await agent.post(`/api/training/office/excel/activity/${activity.body.data.id}/submit`).set(ORIGIN).send({ attemptId: started.body.data.attemptId, steps: correct });
+    const correct = EXCEL_QUIZ.map((question) => ({ questionId: question.id, optionId: question.correct }));
+    const graded = await agent.post(`/api/training/office/excel/activity/${activity.body.data.id}/submit`).set(ORIGIN).send({ attemptId: started.body.data.attemptId, answers: correct });
     expect(graded.status).toBe(200);
     expect(graded.body.data).toMatchObject({ score: 100, passed: true });
     expect(graded.body.data.steps.every((step: { correct: boolean }) => step.correct)).toBe(true);
     const answers = await prisma.attemptAnswer.findMany({ where: { attemptId: started.body.data.attemptId } });
-    expect(answers).toHaveLength(8);
+    expect(answers).toHaveLength(EXCEL_QUIZ.length);
     expect(answers.every((answer) => answer.isCorrect === true)).toBe(true);
     // Sin reenvío.
-    const again = await agent.post(`/api/training/office/excel/activity/${activity.body.data.id}/submit`).set(ORIGIN).send({ attemptId: started.body.data.attemptId, steps: correct });
+    const again = await agent.post(`/api/training/office/excel/activity/${activity.body.data.id}/submit`).set(ORIGIN).send({ attemptId: started.body.data.attemptId, answers: correct });
     expect(again.status).toBe(409);
-    expect(await prisma.excelAttemptResult.count({ where: { attemptId: started.body.data.attemptId } })).toBe(1);
     expect(id).toBeTruthy();
   });
 
-  it('califica por paso con retroalimentación y rechaza fórmulas no permitidas', async () => {
+  it('califica cada pregunta con la respuesta correcta y la explicación', async () => {
     const { agent } = await advisorAgent();
     const activity = (await agent.get('/api/training/office/excel/activity')).body.data;
     const started = (await agent.post(`/api/training/office/excel/activity/${activity.id}/attempts`).set(ORIGIN)).body.data;
     const graded = await agent.post(`/api/training/office/excel/activity/${activity.id}/submit`).set(ORIGIN).send({
       attemptId: started.attemptId,
-      steps: [
-        { questionId: 'pagos.faltante', value: '=H2*I2' },
-        { questionId: 'pagos.total', value: '=constructor.constructor("return process")()' },
-        { questionId: 'pagos.moneda', value: 'cop' },
-      ],
+      answers: [{ questionId: 'suma', optionId: 'a' }, { questionId: 'buscar', optionId: 'b' }],
     });
     expect(graded.status).toBe(200);
-    expect(graded.body.data).toMatchObject({ score: 14, passed: false, attemptsRemaining: 2 });
-    const byId = new Map<string, { correct: boolean; feedback: string }>(graded.body.data.steps.map((step: { questionId: string; correct: boolean; feedback: string }) => [step.questionId, step]));
-    expect(byId.get('pagos.moneda')).toMatchObject({ correct: true, feedback: 'Correcto.' });
-    expect(byId.get('pagos.faltante')!.correct).toBe(false);
-    expect(byId.get('pagos.faltante')!.feedback).toMatch(/faltante|H2-I2/);
-    expect(byId.get('busquedas.filtro')!.correct).toBe(false);
+    expect(graded.body.data).toMatchObject({ score: 10, passed: false, attemptsRemaining: 2 });
+    const byId = new Map<string, { correct: boolean; chosen: string | null; correctOption: string; feedback: string }>(graded.body.data.steps.map((step: { questionId: string }) => [step.questionId, step]));
+    expect(byId.get('suma')).toMatchObject({ correct: true, chosen: 'a' });
+    expect(byId.get('buscar')).toMatchObject({ correct: false, chosen: 'b', correctOption: 'a' });
+    expect(byId.get('buscar')!.feedback).toMatch(/Ctrl \+ B/);
+    expect(byId.get('filtro')).toMatchObject({ correct: false, chosen: null });
   });
 
   it('valida el cuerpo y no deja calificar el intento de otro asesor', async () => {
@@ -78,11 +69,11 @@ describe('práctica de Excel', () => {
     const other = await advisorAgent();
     const activity = (await owner.agent.get('/api/training/office/excel/activity')).body.data;
     const started = (await owner.agent.post(`/api/training/office/excel/activity/${activity.id}/attempts`).set(ORIGIN)).body.data;
-    const invalid = await owner.agent.post(`/api/training/office/excel/activity/${activity.id}/submit`).set(ORIGIN).send({ attemptId: started.attemptId, steps: [{ questionId: 'X', value: 1 }] });
+    const invalid = await owner.agent.post(`/api/training/office/excel/activity/${activity.id}/submit`).set(ORIGIN).send({ attemptId: started.attemptId, answers: [{ questionId: 'suma', optionId: 'e' }] });
     expect(invalid.status).toBe(400);
-    const extra = await owner.agent.post(`/api/training/office/excel/activity/${activity.id}/submit`).set(ORIGIN).send({ attemptId: started.attemptId, steps: [], nota: 100 });
+    const extra = await owner.agent.post(`/api/training/office/excel/activity/${activity.id}/submit`).set(ORIGIN).send({ attemptId: started.attemptId, answers: [], nota: 100 });
     expect(extra.status).toBe(400);
-    const stolen = await other.agent.post(`/api/training/office/excel/activity/${activity.id}/submit`).set(ORIGIN).send({ attemptId: started.attemptId, steps: [] });
+    const stolen = await other.agent.post(`/api/training/office/excel/activity/${activity.id}/submit`).set(ORIGIN).send({ attemptId: started.attemptId, answers: [] });
     expect(stolen.status).toBe(404);
   });
 });
@@ -198,7 +189,7 @@ describe('medios privados y administración del contenido', () => {
     const rules = (await admin.get('/api/admin/training/office/rules')).body.data as { key: string }[];
     expect(rules.map((rule) => rule.key)).toEqual(expect.arrayContaining(['homofona-a-ver-haber', 'homofona-sino-si-no', 'tilde-tu']));
     const media = (await admin.get('/api/admin/training/office/media')).body.data;
-    expect(media.images).toHaveLength(6);
+    expect(media.images).toHaveLength(7);
     const demo = await prisma.usuario.findUniqueOrThrow({ where: { numeroDocumento: '1000000148' } });
     const office = (await admin.get(`/api/admin/advisors/${demo.id}/office`)).body.data;
     expect(office.typing.length).toBeGreaterThan(0);
@@ -208,7 +199,7 @@ describe('medios privados y administración del contenido', () => {
     const summary = (await admin.get('/api/admin/metrics/summary').query({ limit: 5 })).body.data;
     expect(summary.dictation.results).toBeGreaterThan(0);
     expect(summary.dictation.topErrors.length).toBeGreaterThan(0);
-    expect(summary.excel.steps.length).toBe(8);
+    expect(summary.excel.steps.length).toBe(EXCEL_QUIZ.length);
     expect(summary.typing.avgCorrectCpm).toBeTruthy();
   });
 });

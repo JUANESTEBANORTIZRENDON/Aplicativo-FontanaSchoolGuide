@@ -6,7 +6,7 @@ import { BCRYPT_ROUNDS } from '../config/security.js';
 import { esAdministrador, Role, UserStatus } from '../domain/enums.js';
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from '../domain/errors.js';
 import {
-  countUsers, findPublicById, listUsers, listUsersByOffset, lockActiveAdmins, lockUser, usuarioPublicoSelect,
+  countUsers, findPublicById, listUsers, listUsersByOffset, listUsersSorted, lockActiveAdmins, lockUser, usuarioPublicoSelect,
   type UserListFilters, type UsuarioPublico,
 } from '../repositories/usuario.repository.js';
 import { decodeCursor, pageOf } from '../utils/cursor.js';
@@ -132,6 +132,34 @@ export async function resetPassword(id: string, reason: string | undefined, cont
   return { user, temporaryPassword };
 }
 
+// El administrador fija la contraseña de un asesor. Cierra sus sesiones y le exige cambiarla al ingresar.
+// El valor nunca se audita.
+export async function setPassword(id: string, password: string, reason: string | undefined, context: ActionContext): Promise<UsuarioPublico> {
+  if (id === context.actorUserId) throw new ForbiddenError('Para cambiar tu propia contraseña usa otra vía.', 'SELF_PASSWORD_RESET');
+  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+  return prisma.$transaction(async (tx) => {
+    await lockUser(tx, id);
+    const before = await findPublicById(tx, id);
+    if (!before) throw new NotFoundError('Usuario no encontrado.', 'USER_NOT_FOUND');
+    if (before.rol !== Role.ADVISOR) throw new ValidationError('Solo se puede cambiar la contraseña de un asesor.', { id: 'El usuario no es asesor.' }, 'NOT_ADVISOR');
+    const after = await tx.usuario.update({
+      where: { id },
+      data: { passwordHash, debeCambiarPassword: true, versionSesion: { increment: 1 } },
+      select: usuarioPublicoSelect,
+    });
+    await audit(tx, context, { action: 'USER_PASSWORD_SET', entityType: 'Usuario', entityId: id, before: { debeCambiarPassword: before.debeCambiarPassword }, after: { debeCambiarPassword: true }, reason });
+    return after;
+  });
+}
+
+const encodeOffset = (offset: number) => Buffer.from(String(offset)).toString('base64url');
+function decodeOffset(cursor: string | undefined): number {
+  if (!cursor) return 0;
+  const offset = Number(Buffer.from(cursor, 'base64url').toString('utf8'));
+  if (!Number.isInteger(offset) || offset < 0) throw new ValidationError('El cursor de paginación no es válido.', { cursor: 'Cursor inválido.' });
+  return offset;
+}
+
 function filtersFrom(query: Pick<ListUsersQuery, 'search' | 'role' | 'status' | 'moduleId' | 'progressStatus' | 'lastActivityFrom' | 'lastActivityTo'>): UserListFilters {
   const range = rangeToUtc(query.lastActivityFrom, query.lastActivityTo);
   return {
@@ -147,6 +175,13 @@ function filtersFrom(query: Pick<ListUsersQuery, 'search' | 'role' | 'status' | 
 
 export async function listUsersPage(query: ListUsersQuery) {
   const filters = filtersFrom(query);
+  if (query.sortBy) {
+    // Con orden por columna, el cursor es el desplazamiento acumulado.
+    const skip = decodeOffset(query.cursor);
+    const [rows, total] = await Promise.all([listUsersSorted(filters, query.sortBy, query.sortDir, skip, query.limit + 1), countUsers(filters)]);
+    const items = rows.slice(0, query.limit);
+    return { items, nextCursor: rows.length > query.limit ? encodeOffset(skip + query.limit) : null, total };
+  }
   const [rows, total] = await Promise.all([listUsers(filters, decodeCursor(query.cursor), query.limit), countUsers(filters)]);
   const { items, nextCursor } = pageOf(rows, query.limit, (row) => ({ at: row.fechaCreacion, id: row.id }));
   return { items, nextCursor, total };

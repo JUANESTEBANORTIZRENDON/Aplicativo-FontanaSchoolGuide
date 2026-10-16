@@ -1,3 +1,4 @@
+import type { UserSortField } from '../validators/user.validator.js';
 import { Prisma } from '@prisma/client';
 import { prisma, type Db } from '../config/prisma.js';
 import { ADMIN_ROLE_ALIASES, Role, UserStatus } from '../domain/enums.js';
@@ -16,6 +17,7 @@ export const usuarioSesionSelect = {
   debeCompletarDatos: true,
   debeCambiarPassword: true,
   tieneExperienciaCobranzasDigitales: true,
+  fechaInduccionCompletada: true,
   fechaHistoriaCompletada: true,
   fechaMetodoCompletado: true,
   versionSesion: true,
@@ -120,6 +122,20 @@ export function listUsers(filters: UserListFilters, cursor: Cursor | null, limit
     orderBy: [{ fechaCreacion: 'desc' }, { id: 'desc' }],
     take: limit + 1,
   });
+}
+
+// Orden por la columna elegida. Con valores repetidos desempata por id para que las páginas sean estables.
+// Este orden usa desplazamiento (skip) porque el cursor por fecha solo sirve para el orden por creación.
+export function listUsersSorted(filters: UserListFilters, sortBy: UserSortField, dir: 'asc' | 'desc', skip: number, take: number) {
+  const primary: Prisma.UsuarioOrderByWithRelationInput = {
+    nombre: { nombreCompleto: dir },
+    documento: { numeroDocumento: dir },
+    rol: { rol: dir },
+    estado: { estado: dir },
+    perfil: { debeCompletarDatos: dir },
+    ultimoAcceso: { ultimoAcceso: { sort: dir, nulls: 'last' } },
+  }[sortBy] as Prisma.UsuarioOrderByWithRelationInput;
+  return prisma.usuario.findMany({ where: listWhere(filters), select: usuarioPublicoSelect, orderBy: [primary, { id: 'asc' }], skip, take });
 }
 
 export function countUsers(filters: UserListFilters) {

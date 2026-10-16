@@ -1,6 +1,6 @@
 import { escapar } from '../http';
 import { ApiError, officeApi, type TypingPrepared, type TypingResult } from './api';
-import { errorMessage, showError, type OfficeContext } from './office';
+import { errorMessage, loadingCard, loadingOverlay, showError, type OfficeContext } from './office';
 
 // Prueba de mecanografía propia. El navegador solo muestra el texto, el temporizador y un avance
 // provisional; las métricas que cuentan las calcula el servidor al cerrar el intento.
@@ -20,6 +20,17 @@ function textareaHtml(id: string, label: string): string {
     <textarea id="${id}" class="office-typing-input" rows="7" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" disabled></textarea>`;
 }
 
+// Repaso de la prueba: qué mide y cómo se aprueba, para volver a leerlo cuando ya terminó.
+function reviewHtml(cfg: OfficeContext['state']['config']['typing']): string {
+  return `<details class="office-review"><summary>Repasar en qué consiste la prueba</summary>
+    <ul class="office-goals">
+      <li><strong>Duración:</strong> ${cfg.durationSeconds} segundos copiando un texto de atención al cliente.</li>
+      <li><strong>Meta:</strong> ${cfg.minCorrectCpm} caracteres correctos por minuto (${Math.round(cfg.minCorrectCpm / 5)} palabras por minuto).</li>
+      <li><strong>Precisión mínima:</strong> ${cfg.minAccuracy} %. Cada espacio, tilde y signo cuenta.</li>
+      <li><strong>Reglas:</strong> no se puede pegar ni copiar, y salir durante la prueba cuenta como intento fallido.</li>
+    </ul></details>`;
+}
+
 export function renderTyping(ctx: OfficeContext): void {
   const { state } = ctx;
   const section = state.sections.find((item) => item.key === 'mecanografia')!;
@@ -29,6 +40,7 @@ export function renderTyping(ctx: OfficeContext): void {
       <section class="office-card">
         <p class="eyebrow">MECANOGRAFÍA</p><h1>Mecanografía aprobada</h1>
         <p class="office-lead">Ya cumpliste la meta de ${cfg.minCorrectCpm} caracteres correctos por minuto con ${cfg.minAccuracy} % de precisión.</p>
+        ${reviewHtml(cfg)}
         <div class="office-actions"><button class="primary" id="typing-next" type="button">Continuar con Excel →</button></div>
       </section>`;
     ctx.view.querySelector('#typing-next')!.addEventListener('click', () => ctx.go('excel'));
@@ -39,6 +51,7 @@ export function renderTyping(ctx: OfficeContext): void {
       <section class="office-card">
         <p class="eyebrow">MECANOGRAFÍA</p><h1>Sin intentos disponibles</h1>
         <p class="office-error">Agotaste los intentos de la prueba. Solicita una reactivación al administrador para continuar.</p>
+        ${reviewHtml(cfg)}
         <a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a>
       </section>`;
     return;
@@ -46,6 +59,8 @@ export function renderTyping(ctx: OfficeContext): void {
   if (state.typing.practiceRequired) { void renderPractice(ctx); return; }
   renderIntro(ctx);
 }
+
+const time = (iso: string) => new Intl.DateTimeFormat('es-CO', { timeStyle: 'short', timeZone: 'America/Bogota' }).format(new Date(iso));
 
 function renderIntro(ctx: OfficeContext): void {
   const { state } = ctx;
@@ -63,22 +78,37 @@ function renderIntro(ctx: OfficeContext): void {
         <li><strong>Intentos:</strong> te quedan ${section.attemptsRemaining ?? cfg.maxAttempts} de ${section.maxAttempts ?? cfg.maxAttempts}.</li>
       </ul>
       <p class="office-warning" role="note"><strong>Antes de iniciar:</strong> no recargues la página ni salgas durante la prueba. Si la abandonas, el intento se cuenta como fallido. Pegar y copiar están desactivados.</p>
-      ${open ? `<p class="office-error" role="alert">Tienes una prueba preparada o en curso que ya no se puede retomar. Podrás preparar otra cuando venza (${escapar(new Intl.DateTimeFormat('es-CO', { timeStyle: 'short', timeZone: 'America/Bogota' }).format(new Date(open.expiresAt)))}).</p>` : ''}
+      ${open && !open.started ? `<p class="office-note" role="status">Ya tienes una prueba preparada que todavía no inicias. Ábrela para continuar con el mismo texto (vence a las ${escapar(time(open.expiresAt))}).</p>` : ''}
+      ${open?.started ? `<p class="office-error" role="alert">Tu prueba ya había iniciado y el tiempo siguió corriendo: no se puede retomar. Podrás preparar otra cuando venza (${escapar(time(open.expiresAt))}).</p>` : ''}
       <div class="office-actions">
-        <button class="primary" id="typing-prepare" type="button">Preparar mi prueba</button>
+        ${open && !open.started
+          ? '<button class="primary" id="typing-resume" type="button">Abrir mi prueba de mecanografía</button>'
+          : '<button class="primary" id="typing-prepare" type="button">Preparar mi prueba</button>'}
         ${open ? '<button class="office-secondary" id="typing-refresh" type="button">Actualizar estado</button>' : ''}
       </div>
     </section>`;
-  const prepare = ctx.view.querySelector<HTMLButtonElement>('#typing-prepare')!;
-  prepare.addEventListener('click', async () => {
+  const resume = ctx.view.querySelector<HTMLButtonElement>('#typing-resume');
+  resume?.addEventListener('click', async () => {
+    resume.disabled = true;
+    ctx.view.innerHTML = loadingCard('Abriendo tu prueba…', 'Recuperamos el texto que ya tenías preparado.');
+    try {
+      renderReady(ctx, await officeApi.typingResume());
+    } catch (error) {
+      await ctx.reload();
+      showError(ctx.view, error);
+    }
+  });
+  const prepare = ctx.view.querySelector<HTMLButtonElement>('#typing-prepare');
+  prepare?.addEventListener('click', async () => {
     prepare.disabled = true;
-    prepare.textContent = 'Preparando…';
+    ctx.view.innerHTML = loadingCard('Preparando tu prueba…', 'Estamos eligiendo el texto que vas a copiar.');
     try {
       renderReady(ctx, await officeApi.typingPrepare());
     } catch (error) {
-      prepare.disabled = false;
-      prepare.textContent = 'Preparar mi prueba';
       if (error instanceof ApiError && error.code === 'PRACTICE_REQUIRED') { await ctx.reload(); return; }
+      // Ya había una prueba preparada (por ejemplo, en otra pestaña): se recarga para ofrecer abrirla.
+      if (error instanceof ApiError && error.code === 'TYPING_ATTEMPT_OPEN') { await ctx.reload(); return; }
+      renderIntro(ctx);
       showError(ctx.view, error);
     }
   });
@@ -135,11 +165,14 @@ function renderReady(ctx: OfficeContext, prepared: TypingPrepared): void {
     running = true;
     begin.disabled = true;
     begin.textContent = 'Iniciando…';
+    const hide = loadingOverlay(ctx.view.querySelector<HTMLElement>('.office-card')!, 'Iniciando la prueba…');
     try {
       const started = await officeApi.typingStart(prepared.attemptId);
+      hide();
       begin.hidden = true;
       beginRun(started.durationSeconds, started.startWindowSeconds);
     } catch (error) {
+      hide();
       running = false;
       begin.disabled = false;
       begin.textContent = 'Iniciar prueba';
@@ -166,8 +199,10 @@ function renderReady(ctx: OfficeContext, prepared: TypingPrepared): void {
       input.disabled = false;
       status.textContent = 'Tiempo terminado. Enviando tu resultado…';
       const elapsed = timerStart === null ? 0 : (performance.now() - timerStart) / 1000;
+      const typed = input.value;
+      ctx.view.innerHTML = loadingCard('Calculando tus resultados…', 'Revisamos cada carácter, tu velocidad y tu precisión.');
       try {
-        const result = await officeApi.typingComplete(prepared.attemptId, { nonce: prepared.nonce, typedText: input.value, clientDurationSeconds: Math.min(3600, elapsed) });
+        const result = await officeApi.typingComplete(prepared.attemptId, { nonce: prepared.nonce, typedText: typed, clientDurationSeconds: Math.min(3600, elapsed) });
         renderResult(ctx, result);
       } catch (error) {
         const closed = error instanceof ApiError && ['TYPING_TIME_EXPIRED', 'ATTEMPT_CLOSED', 'NONCE_INVALID'].includes(error.code ?? '');
@@ -250,10 +285,12 @@ async function renderPractice(ctx: OfficeContext): Promise<void> {
   });
   done.addEventListener('click', async () => {
     done.disabled = true;
+    const hide = loadingOverlay(ctx.view.querySelector<HTMLElement>('.office-card')!, 'Guardando tu práctica…');
     try {
       await officeApi.typingPracticeDone();
       await ctx.reload();
     } catch (error) {
+      hide();
       done.disabled = false;
       showError(ctx.view, error);
     }

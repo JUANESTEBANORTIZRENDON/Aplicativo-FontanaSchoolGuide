@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720" role="img">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffdf7"/><stop offset="1" stop-color="#f6efe0"/></linearGradient></defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <circle cx="1210" cy="70" r="150" fill="#d4af37" opacity=".10"/><circle cx="60" cy="680" r="120" fill="#8b1538" opacity=".06"/>
+  <text x="64" y="78" font-family="Segoe UI, 'DM Sans', Arial, sans-serif" font-size="20" font-weight="700" fill="#8b1538" text-anchor="start">ORTOGRAFÍA APLICADA</text>
+  <text x="64" y="128" font-family="Segoe UI, 'DM Sans', Arial, sans-serif" font-size="44" font-weight="800" fill="#192840" text-anchor="start">Hay / ahí / ay</text>
+  <rect x="64" y="148" width="90" height="5" rx="2.5" fill="#d4af37"/>
+  
+    <rect x="64" y="200" width="365.3333333333333" height="250" rx="18" fill="#fff" stroke="#e3e7ee" stroke-width="2"/>
+  <rect x="64" y="200" width="365.3333333333333" height="10" rx="5" fill="#8b1538"/>
+  <text x="246.66666666666666" y="292" font-family="Segoe UI, 'DM Sans', Arial, sans-serif" font-size="58" font-weight="800" fill="#8b1538" text-anchor="middle">hay</text>
+  <text x="246.66666666666666" y="340" font-family="Segoe UI, 'DM Sans', Arial, sans-serif" font-size="24" font-weight="600" fill="#6b7588" text-anchor="middle">existe (verbo haber)</text>
+  <line x1="94" y1="368" x2="399.3333333333333" y2="368" stroke="#e3e7ee" stroke-width="2"/>
+  <text x="246.66666666666666" y="414" font-family="Segoe UI, 'DM Sans', Arial, sans-serif" font-size="24" font-weight="400" fill="#24324a" text-anchor="middle" font-style="italic">«Hay un acuerdo.»</text>
+<rect x="457.3333333333333" y="200" width="365.3333333333333" height="250" rx="18" fill="#fff" stroke="#e3e7ee" stroke-width="2"/>
+  <rect x="457.3333333333333" y="200" width="365.3333333333333" height="10" rx="5" fill="#192840"/>
+  <text x="640" y="292" font-family="Segoe UI, 'DM Sans', Arial, sans-serif" font-size="58" font-weight="800" fill="#192840" text-anchor="middle">ahí</text>
+  <text x="640" y="340" font-family="Segoe UI, 'DM Sans', Arial, sans-serif" font-size="24" font-weight="600" fill="#6b7588" text-anchor="middle">en ese lugar</text>
+  <line x1="487.3333333333333" y1="368" x2="792.6666666666666" y2="368" stroke="#e3e7ee" stroke-width="2"/>
+  <text x="640" y="414" font-family="Segoe UI, 'DM Sans', Arial, sans-serif" font-size="24" font-weight="400" fill="#24324a" text-anchor="middle" font-style="italic">«El soporte está ahí.»</text>
+<rect x="850.6666666666666" y="200" width="365.3333333333333" height="250" rx="18" fill="#fff" stroke="#e3e7ee" stroke-width="2"/>
+  <rect x="850.6666666666666" y="200" width="365.3333333333333" height="10" rx="5" fill="#9a6b00"/>
+  <text x="1033.3333333333333" y="292" font-family="Segoe UI, 'DM Sans', Arial, sans-serif" font-size="58" font-weight="800" fill="#9a6b00" text-anchor="middle">ay</text>
+  <text x="1033.3333333333333" y="340" font-family="Segoe UI, 'DM Sans', Arial, sans-serif" font-size="24" font-weight="600" fill="#6b7588" text-anchor="middle">exclamación</text>
+  <line x1="880.6666666666666" y1="368" x2="1186" y2="368" stroke="#e3e7ee" stroke-width="2"/>
+  <text x="1033.3333333333333" y="414" font-family="Segoe UI, 'DM Sans', Arial, sans-serif" font-size="24" font-weight="400" fill="#24324a" text-anchor="middle" font-style="italic">«¡Ay, se me olvidó!»</text>
+    <rect x="64" y="596" width="1152" height="66" rx="16" fill="#192840" stroke="none" stroke-width="0"/>
+  <circle cx="104" cy="629" r="16" fill="#d4af37"/><text x="104" y="637" font-family="Segoe UI, 'DM Sans', Arial, sans-serif" font-size="24" font-weight="800" fill="#192840" text-anchor="middle">!</text>
+  <text x="136" y="638" font-family="Segoe UI, 'DM Sans', Arial, sans-serif" font-size="24" font-weight="600" fill="#fff" text-anchor="start">«Hay» equivale a «existe»; «ahí» equivale a «en ese lugar».</text>
+</svg>

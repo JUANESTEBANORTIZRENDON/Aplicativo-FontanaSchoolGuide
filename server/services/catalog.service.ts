@@ -43,6 +43,10 @@ export async function createEvaluationVersion(activityId: string, input: Evaluat
   const run = async (tx: Db) => {
     const activity = await findActivityById(tx, activityId);
     if (!activity) throw new NotFoundError('Actividad no encontrada.', 'ACTIVITY_NOT_FOUND');
+    // Desde el panel no se configura evaluación en lecciones ni contenidos en preparación (no se califican).
+    if (context && (activity.type === 'LESSON' || activity.type === 'PLACEHOLDER')) {
+      throw new ValidationError('Esta actividad no se califica; no lleva evaluación.', { activityId: 'Actividad sin evaluación.' }, 'ACTIVITY_NOT_GRADED');
+    }
     await tx.$queryRaw`SELECT id FROM induccion.actividades WHERE id = ${activityId}::uuid FOR UPDATE`;
     const version = ((await latestEvaluationVersion(tx, activityId))?.version ?? 0) + 1;
     await archiveActiveEvaluations(tx, activityId);

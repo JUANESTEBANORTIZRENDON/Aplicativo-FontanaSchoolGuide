@@ -10,13 +10,14 @@ import type { DictationSubmitBody, ExcelSubmitBody, TypingCompleteBody } from '.
 
 // El acceso lo decide el servidor en cada solicitud: un módulo bloqueado responde 403 con su motivo
 // también al entrar por URL directa. Un módulo aprobado sigue abierto para ver el resultado.
-export async function officeAccess(request: Request, _response: Response, next: NextFunction): Promise<void> {
-  await getAccessibleModule(request.usuario!.id, OFFICE_MODULE_SLUG, { allowCompleted: true });
+// El estado calculado se guarda en la respuesta para que el controlador no lo vuelva a consultar.
+export async function officeAccess(request: Request, response: Response, next: NextFunction): Promise<void> {
+  await getAccessibleModule(request.usuario!.id, OFFICE_MODULE_SLUG, { allowCompleted: true, onSnapshot: (snapshot) => { response.locals.snapshot = snapshot; } });
   next();
 }
 
 export async function moduleState(request: Request, response: Response): Promise<void> {
-  response.json({ data: await moduleService.getModuleState(request.usuario!.id) });
+  response.json({ data: await moduleService.getModuleState(request.usuario!.id, new Date(), response.locals.snapshot) });
 }
 
 export async function content(request: Request, response: Response): Promise<void> {
@@ -30,11 +31,15 @@ export async function registerView(request: Request, response: Response): Promis
 }
 
 export async function result(request: Request, response: Response): Promise<void> {
-  response.json({ data: await moduleService.getResult(request.usuario!.id) });
+  response.json({ data: await moduleService.getResult(request.usuario!.id, new Date(), response.locals.snapshot) });
 }
 
 export async function typingPrepare(request: Request, response: Response): Promise<void> {
   response.status(201).json({ data: await typingService.prepareAttempt(request.usuario!.id) });
+}
+
+export async function typingResume(request: Request, response: Response): Promise<void> {
+  response.json({ data: await typingService.resumePrepared(request.usuario!.id) });
 }
 
 export async function typingStart(request: Request, response: Response): Promise<void> {

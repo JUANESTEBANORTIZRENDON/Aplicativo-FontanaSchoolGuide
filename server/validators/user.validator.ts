@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { Role, UserStatus } from '../domain/enums.js';
 import { dateParam, email, pagination, password, reason, trimmed, uuid } from './common.js';
 
+export const USER_SORT_FIELDS = ['nombre', 'documento', 'rol', 'estado', 'perfil', 'ultimoAcceso'] as const;
+export type UserSortField = (typeof USER_SORT_FIELDS)[number];
+
 const rol = z.enum([Role.ADMIN, Role.ADVISOR]);
 const estado = z.enum([UserStatus.ACTIVE, UserStatus.INACTIVE, UserStatus.LOCKED]);
 const documento = trimmed(30, 'El número de documento').regex(/^[A-Za-z0-9-]+$/, 'El documento solo admite letras, números y guiones.');
@@ -33,6 +36,10 @@ export type UpdateUserBody = z.infer<typeof updateUserBody>;
 export const changeStatusBody = z.object({ estado, reason: reason() }).strict();
 export type ChangeStatusBody = z.infer<typeof changeStatusBody>;
 
+// El administrador define la contraseña nueva; el asesor deberá cambiarla en su próximo ingreso.
+export const setPasswordBody = z.object({ password, reason: reason().optional() }).strict();
+export type SetPasswordBody = z.infer<typeof setPasswordBody>;
+
 export const resetPasswordBody = z.object({ reason: reason().optional() }).strict();
 export type ResetPasswordBody = z.infer<typeof resetPasswordBody>;
 
@@ -44,6 +51,9 @@ export const listUsersQuery = z.object({
   progressStatus: z.enum(['NOT_STARTED', 'AVAILABLE', 'IN_PROGRESS', 'PASSED', 'FAILED', 'BLOCKED']).optional(),
   lastActivityFrom: dateParam.optional(),
   lastActivityTo: dateParam.optional(),
+  // Orden por la columna elegida en la tabla; sin sortBy rige el orden por fecha de creación.
+  sortBy: z.enum(USER_SORT_FIELDS).optional(),
+  sortDir: z.enum(['asc', 'desc']).default('asc'),
   ...pagination,
 });
 export type ListUsersQuery = z.infer<typeof listUsersQuery>;

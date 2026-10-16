@@ -26,6 +26,9 @@ model Usuario {
   estado                             String    @default("activo") @db.VarChar(20)
   tieneExperienciaCobranzasDigitales Boolean?  @map("tiene_experiencia_cobranzas_digitales")
   fechaRespuestaExperiencia          DateTime? @map("fecha_respuesta_experiencia") @db.Timestamptz(6)
+  // Cuándo terminó la inducción inicial («Conoce la empresa»). La pregunta de experiencia ya no forma parte de ella:
+  // se responde dentro del módulo «Inducción a las cobranzas».
+  fechaInduccionCompletada           DateTime? @map("fecha_induccion_completada") @db.Timestamptz(6)
   fechaHistoriaCompletada            DateTime? @map("fecha_historia_completada") @db.Timestamptz(6)
   fechaMetodoCompletado              DateTime? @map("fecha_metodo_completado") @db.Timestamptz(6)
   debeCompletarDatos                 Boolean   @default(true) @map("debe_completar_datos")
@@ -39,22 +42,24 @@ model Usuario {
   creador                            Usuario?  @relation("UsuarioCreador", fields: [creadoPor], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_usuarios_creado_por")
   creados                            Usuario[] @relation("UsuarioCreador")
 
-  perfilAsesor        AdvisorProfile?
-  progresoModulos     UserModuleProgress[]
-  progresoActividad   UserActivityProgress[]
-  intentos            Attempt[]
-  resultadosTyping    TypingResult[]
-  resultadosSimulador SimulatorResult[]
-  sellos              Seal[]
-  certificados        Certificate[]
-  excepciones         UserActivityOverride[] @relation("ExcepcionUsuario")
-  excepcionesCreadas  UserActivityOverride[] @relation("ExcepcionCreador")
-  auditoria           AdminAuditLog[]
-  seccionesVistas     ActivitySectionView[]
-  configsOfimatica    OfficeModuleConfig[]
-  textosMecanografia  TypingText[]
-  actividadesExcel    ExcelActivity[]
-  ejerciciosDictado   DictationExercise[]
+  perfilAsesor          AdvisorProfile?
+  progresoModulos       UserModuleProgress[]
+  progresoActividad     UserActivityProgress[]
+  intentos              Attempt[]
+  resultadosTyping      TypingResult[]
+  resultadosSimulador   SimulatorResult[]
+  sellos                Seal[]
+  certificados          Certificate[]
+  excepciones           UserActivityOverride[] @relation("ExcepcionUsuario")
+  excepcionesCreadas    UserActivityOverride[] @relation("ExcepcionCreador")
+  limitesIntento        UserAttemptLimit[]     @relation("LimiteIntentoUsuario")
+  limitesIntentoCreados UserAttemptLimit[]     @relation("LimiteIntentoCreador")
+  auditoria             AdminAuditLog[]
+  seccionesVistas       ActivitySectionView[]
+  configsOfimatica      OfficeModuleConfig[]
+  textosMecanografia    TypingText[]
+  actividadesExcel      ExcelActivity[]
+  ejerciciosDictado     DictationExercise[]
 
   @@index([estado], map: "idx_usuarios_estado")
   @@index([rol], map: "idx_usuarios_rol")
@@ -231,22 +236,23 @@ model ModulePrerequisite {
 }
 
 model Activity {
-  id           String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  moduleId     String                 @map("module_id") @db.Uuid
-  type         ActivityType
-  order        Int                    @map("order")
-  status       CatalogStatus          @default(DRAFT)
-  title        String                 @db.VarChar(150)
-  isRequired   Boolean                @default(true) @map("is_required")
-  route        String?                @db.VarChar(200)
-  version      Int                    @default(1)
-  createdAt    DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
-  module       TrainingModule         @relation(fields: [moduleId], references: [id], onDelete: Restrict)
-  evaluations  Evaluation[]
-  progress     UserActivityProgress[]
-  overrides    UserActivityOverride[]
-  sectionViews ActivitySectionView[]
+  id            String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  moduleId      String                 @map("module_id") @db.Uuid
+  type          ActivityType
+  order         Int                    @map("order")
+  status        CatalogStatus          @default(DRAFT)
+  title         String                 @db.VarChar(150)
+  isRequired    Boolean                @default(true) @map("is_required")
+  route         String?                @db.VarChar(200)
+  version       Int                    @default(1)
+  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  module        TrainingModule         @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+  evaluations   Evaluation[]
+  progress      UserActivityProgress[]
+  overrides     UserActivityOverride[]
+  attemptLimits UserAttemptLimit[]
+  sectionViews  ActivitySectionView[]
 
   @@unique([moduleId, order])
   @@index([moduleId, status])
@@ -476,6 +482,26 @@ model UserActivityOverride {
   @@index([userId, activityId, revokedAt, expiresAt])
   @@index([createdById, createdAt])
   @@map("excepciones_actividad")
+  @@schema("induccion")
+}
+
+// Cupo de intentos de un asesor en una actividad. Sustituye el máximo de la evaluación solo para ese asesor;
+// sin fila, rige la configuración de la evaluación. Cada cambio queda en la auditoría.
+model UserAttemptLimit {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  activityId  String   @map("activity_id") @db.Uuid
+  maxAttempts Int      @map("max_attempts")
+  reason      String
+  createdById String   @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user        Usuario  @relation("LimiteIntentoUsuario", fields: [userId], references: [id], onDelete: Restrict)
+  activity    Activity @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  createdBy   Usuario  @relation("LimiteIntentoCreador", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([userId, activityId])
+  @@map("limites_intento_usuario")
   @@schema("induccion")
 }
 

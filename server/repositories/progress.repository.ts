@@ -30,6 +30,12 @@ export function overridesForUser(db: Db, userId: string) {
   return db.userActivityOverride.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
 }
 
+// Cupos de intentos fijados para este asesor (sustituyen el máximo de la evaluación).
+export async function attemptLimitsForUser(db: Db, userId: string): Promise<Map<string, number>> {
+  const rows = await db.userAttemptLimit.findMany({ where: { userId }, select: { activityId: true, maxAttempts: true } });
+  return new Map(rows.map((row) => [row.activityId, row.maxAttempts]));
+}
+
 // Intentos del asesor en las actividades indicadas, de todas las versiones de su evaluación: cambiar la
 // configuración (más intentos, otra nota mínima) no borra lo que el asesor ya usó.
 export function attemptsForUser(db: Db, userId: string, activityIds: string[]) {

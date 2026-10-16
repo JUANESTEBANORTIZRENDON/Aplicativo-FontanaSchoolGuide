@@ -1,7 +1,8 @@
 import '../styles.css';
 import '../practice.css';
 import './office.css';
-import { api, escapar } from '../http';
+import { mountHeaderAccount } from '../header-account';
+import { escapar } from '../http';
 import { ApiError, officeApi, SECTION_KEYS, type Lesson, type ModuleState, type SectionKey } from './api';
 
 // Módulo "Ofimática para tus cobranzas": bienvenida, mecanografía, Excel, ortografía y resultado.
@@ -32,6 +33,53 @@ export function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'No pudimos completar la acción. Intenta nuevamente.';
 }
 
+// Tarjeta de carga con indicador circular: se muestra mientras el servidor responde.
+export function loadingCard(message: string, detail = ''): string {
+  return `<section class="office-card office-loading-card" role="status" aria-live="polite">
+    <span class="office-spinner" aria-hidden="true"></span>
+    <p class="office-loading-title">${escapar(message)}</p>
+    ${detail ? `<p class="office-loading-detail">${escapar(detail)}</p>` : ''}
+  </section>`;
+}
+
+// Capa de carga sobre una tarjeta que debe seguir visible (por ejemplo, el texto de la prueba al iniciarla).
+// Devuelve la función que la quita.
+export function loadingOverlay(card: HTMLElement, message: string): () => void {
+  const layer = document.createElement('div');
+  layer.className = 'office-loading-overlay';
+  layer.setAttribute('role', 'status');
+  layer.innerHTML = `<span class="office-spinner" aria-hidden="true"></span><p class="office-loading-title">${escapar(message)}</p>`;
+  card.append(layer);
+  return () => layer.remove();
+}
+
+// Pantalla de carga fija sobre toda la página: se usa al calificar (el formulario puede ser largo y la
+// tarjeta quedaría fuera de la vista). Devuelve la función que la quita.
+export function loadingScreen(message: string, detail = ''): () => void {
+  const layer = document.createElement('div');
+  layer.className = 'office-loading-screen';
+  layer.innerHTML = loadingCard(message, detail);
+  document.body.append(layer);
+  return () => layer.remove();
+}
+
+// Las ilustraciones de lecciones y preguntas se amplían a pantalla completa con un clic.
+function bindImageZoom(container: HTMLElement): void {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'office-zoom';
+  dialog.innerHTML = '<button type="button" class="office-zoom-close" aria-label="Cerrar imagen ampliada">✕</button><img alt="">';
+  document.body.append(dialog);
+  const image = dialog.querySelector('img')!;
+  container.addEventListener('click', (event) => {
+    const source = (event.target as HTMLElement).closest<HTMLImageElement>('img.office-zoomable');
+    if (!source) return;
+    image.src = source.currentSrc || source.src;
+    image.alt = source.alt;
+    dialog.showModal();
+  });
+  dialog.addEventListener('click', () => dialog.close());
+}
+
 export function showError(container: HTMLElement, error: unknown): void {
   let box = container.querySelector<HTMLElement>('.office-error');
   if (!box) {
@@ -47,21 +95,17 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
   document.body.className = 'practice-screen office-screen';
   const root = document.querySelector<HTMLElement>('#app-content')!;
   root.innerHTML = `
-    <div class="training-session"><span>${escapar(nombre)} · Ofimática para tus cobranzas</span><button id="office-logout" type="button">Cerrar sesión</button></div>
     <header><a class="brand" href="${escapar(backHref)}" aria-label="Fontana, volver a tu ruta de formación"><span class="brand-image"><img src="/imagenes/fontana-logo.png" alt=""><strong class="brand-name">FONTANA</strong></span></a><span class="header-divider"></span><span class="platform">AULA DE FORMACIÓN</span></header>
     <main class="office-main">
       <nav class="office-steps" aria-label="Secciones del módulo"></nav>
-      <section id="office-view" class="office-view" tabindex="-1" aria-live="polite"><p class="office-loading">Cargando tu módulo…</p></section>
+      <section id="office-view" class="office-view" tabindex="-1" aria-live="polite">${loadingCard('Cargando tu módulo…')}</section>
       <footer><span>Fontana · Aula de formación</span><span>Módulo 01</span></footer>
     </main>`;
   document.body.hidden = false;
   const stepsNav = root.querySelector<HTMLElement>('.office-steps')!;
   const view = root.querySelector<HTMLElement>('#office-view')!;
-  const logout = root.querySelector<HTMLButtonElement>('#office-logout')!;
-  logout.addEventListener('click', async () => {
-    logout.disabled = true;
-    try { await api('/auth/logout', { method: 'POST' }); location.assign('/login'); } catch { logout.disabled = false; }
-  });
+  mountHeaderAccount(nombre, 'Ofimática para tus cobranzas');
+  bindImageZoom(root);
 
   let state: ModuleState;
   try {
@@ -77,7 +121,7 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
   function renderSteps(): void {
     stepsNav.innerHTML = `<ol>${state.sections.map((section, index) => {
       const done = section.status === 'COMPLETED';
-      const label = done ? 'Completado' : section.status === 'NO_ATTEMPTS' ? 'Sin intentos' : section.key === current ? 'Estás aquí' : 'Pendiente';
+      const label = done ? (section.alert ? 'Completado · con alertas' : 'Completado') : section.status === 'NO_ATTEMPTS' ? 'Sin intentos' : section.key === current ? 'Estás aquí' : 'Pendiente';
       return `<li data-status="${section.status}"${section.key === current ? ' aria-current="step"' : ''}>
         <button type="button" data-section="${section.key}"><span class="office-step-number">${done ? '✓' : String(index + 1).padStart(2, '0')}</span><span>${escapar(TITLES[section.key])}<small>${label}</small></span></button>
       </li>`;
@@ -95,7 +139,7 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
 
   async function render(): Promise<void> {
     renderSteps();
-    view.replaceChildren();
+    view.innerHTML = loadingCard(`Cargando ${TITLES[current]}…`);
     try {
       if (current === 'bienvenida') await renderWelcome(ctx);
       else if (current === 'mecanografia') (await import('./typing')).renderTyping(ctx);
@@ -158,16 +202,24 @@ async function renderWelcome(ctx: OfficeContext): Promise<void> {
 // Resultado y sello
 // ---------------------------------------------------------------------------------------------
 
+// Ilustraciones de las lecciones (src/office/imagenes): una por lección, nombrada excel-<clave> u orto-<clave>.
+// Una imagen subida por el administrador al almacenamiento tiene prioridad sobre la ilustración incluida.
+const LESSON_IMAGES = import.meta.glob('./imagenes/*.svg', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+// Ilustración incluida por nombre de archivo (sin extensión), por ejemplo «excel-q-suma».
+export const bundledAsset = (name: string): string | null => LESSON_IMAGES[`./imagenes/${name}.svg`] ?? null;
+const bundledImage = (key: string): string | null => LESSON_IMAGES[`./imagenes/excel-${key}.svg`] ?? LESSON_IMAGES[`./imagenes/orto-${key}.svg`] ?? null;
+
 export function lessonCard(lesson: Lesson): string {
   const image = lesson.image;
+  const src = image?.url ?? bundledImage(lesson.key);
   const picture = image
-    ? (image.url
-      ? `<img src="${escapar(image.url)}" alt="${escapar(image.alt)}" width="${image.width}" height="${image.height}" loading="lazy" decoding="async">`
+    ? (src
+      ? `<img class="office-zoomable" title="Haz clic para ampliar" src="${escapar(src)}" alt="${escapar(image.url ? image.alt : `Ilustración de la lección «${lesson.title}»`)}" width="${image.width}" height="${image.height}" loading="lazy" decoding="async">`
       : `<div class="office-image-placeholder" role="img" aria-label="${escapar(image.alt)}" style="aspect-ratio:${image.width}/${image.height}"><span>Imagen en preparación</span><small>${escapar(image.alt)}</small></div>`)
     : '';
   return `
     <article class="office-lesson">
-      ${picture ? `<figure>${picture}<figcaption>${escapar(image!.caption)}</figcaption></figure>` : ''}
+      ${picture ? `<figure>${picture}<figcaption>${escapar(image!.caption)}${src ? ' <span class="office-zoom-hint">· Haz clic en la imagen para ampliarla</span>' : ''}</figcaption></figure>` : ''}
       <div>
         <h3>${escapar(lesson.title)}</h3>
         <p>${escapar(lesson.summary)}</p>
@@ -183,7 +235,10 @@ export function lessonCard(lesson: Lesson): string {
 async function renderResult(ctx: OfficeContext): Promise<void> {
   const result = await officeApi.result();
   const state = await ctx.refresh();
-  const sectionLine = result.sections.map((section) => `<li data-status="${section.status}"><span>${escapar(section.title)}</span><strong>${section.status === 'COMPLETED' ? 'Aprobado' : section.status === 'NO_ATTEMPTS' ? 'Sin intentos' : 'Pendiente'}</strong></li>`).join('');
+  const sectionLine = result.sections.map((section) => `<li data-status="${section.status}"${section.alert ? ' data-alert="true"' : ''}><span>${escapar(section.title)}</span><strong>${section.status === 'COMPLETED' ? (section.alert ? 'Presentado · con alertas' : 'Aprobado') : section.status === 'NO_ATTEMPTS' ? 'Sin intentos' : 'Pendiente'}</strong></li>`).join('');
+  const PART_TITLE: Record<string, string> = { mecanografia: 'Mecanografía', excel: 'Excel', ortografia: 'Ortografía' };
+  const score = result.moduleScore;
+  const scoreBlock = score ? `<div class="office-module-score"><div><strong>${score.score.toFixed(1)}</strong><span>nota del módulo (de 100)</span></div><ul>${score.parts.map((part) => `<li>${escapar(PART_TITLE[part.key] ?? part.key)}: ${part.score.toFixed(0)} puntos <small>(pesa ${part.weight} %)</small></li>`).join('')}</ul></div>` : '';
   const next = result.nextStep.module;
   ctx.view.innerHTML = `
     <section class="office-card" aria-labelledby="result-title">
@@ -193,6 +248,7 @@ async function renderResult(ctx: OfficeContext): Promise<void> {
         ? `<div class="office-seal" role="img" aria-label="Sello del módulo obtenido"><span>✓</span><div><strong>¡Módulo aprobado!</strong><small>Obtuviste el sello el ${escapar(new Intl.DateTimeFormat('es-CO', { dateStyle: 'long', timeZone: 'America/Bogota' }).format(new Date(result.sealIssuedAt ?? Date.now())))}.</small></div></div>`
         : `<p class="office-lead">Aprueba mecanografía, Excel y ortografía para obtener el sello. Progreso del módulo: ${escapar(result.progressPercent)} %.</p>`}
       <ul class="office-summary">${sectionLine}</ul>
+      ${scoreBlock}
       <div class="office-columns">
         <div><h2>Lo que haces bien</h2>${result.strengths.length ? `<ul>${result.strengths.map((item) => `<li>${escapar(item)}</li>`).join('')}</ul>` : '<p>Aún no hay resultados para destacar.</p>'}</div>
         <div><h2>Lo que debes reforzar</h2>${result.reinforce.length ? `<ul>${result.reinforce.map((item) => `<li>${escapar(item)}</li>`).join('')}</ul>` : '<p>No tienes refuerzos pendientes. ¡Muy bien!</p>'}</div>
@@ -200,10 +256,40 @@ async function renderResult(ctx: OfficeContext): Promise<void> {
       <p class="office-note">${escapar(result.nextStep.text)}</p>
       <div class="office-actions">
         ${result.sealIssued && next
-          ? (next.enabled ? `<a class="primary" href="${escapar(next.route)}">Ir a ${escapar(next.name)} →</a>` : `<p class="office-error">${escapar(next.blockedReason ?? 'Módulo no disponible.')}</p>`)
+          ? (next.enabled ? `<a class="primary" id="result-next" href="${escapar(next.route)}">Ir a ${escapar(next.name)} →</a>` : `<p class="office-error">${escapar(next.blockedReason ?? 'Módulo no disponible.')}</p>`)
           : `<button class="primary" id="result-continue" type="button">Continuar con ${escapar(TITLES[state.currentSection])} →</button>`}
         <a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a>
       </div>
     </section>`;
   ctx.view.querySelector<HTMLButtonElement>('#result-continue')?.addEventListener('click', () => ctx.go(state.currentSection));
+  const nextLink = ctx.view.querySelector<HTMLAnchorElement>('#result-next');
+  nextLink?.addEventListener('click', (event) => {
+    event.preventDefault();
+    playSealAnimation('Ofimática para tus cobranzas', () => location.assign(nextLink.href));
+  });
+}
+
+// Animación de sellado al pasar al siguiente módulo: el sello cae sobre la tarjeta y luego se navega.
+function playSealAnimation(moduleName: string, done: () => void): void {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const layer = document.createElement('div');
+  layer.className = 'office-seal-stage';
+  layer.setAttribute('role', 'status');
+  layer.innerHTML = `
+    <div class="office-seal-paper">
+      <p class="eyebrow">MÓDULO COMPLETADO</p>
+      <h2>${escapar(moduleName)}</h2>
+      <div class="office-seal-stamp" aria-hidden="true">
+        <svg viewBox="0 0 200 200"><defs><path id="seal-arc" d="M100,100 m-63,0 a63,63 0 1,1 126,0 a63,63 0 1,1 -126,0"/></defs>
+          <circle cx="100" cy="100" r="92" fill="none" stroke="currentColor" stroke-width="6"/>
+          <circle cx="100" cy="100" r="80" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 5"/>
+          <text font-size="15" font-weight="800" letter-spacing="3" fill="currentColor"><textPath href="#seal-arc" startOffset="2%">FONTANA · AULA DE FORMACIÓN · SELLO ·</textPath></text>
+          <text x="100" y="95" text-anchor="middle" font-size="34" font-weight="900" fill="currentColor">✓</text>
+          <text x="100" y="125" text-anchor="middle" font-size="18" font-weight="900" letter-spacing="2" fill="currentColor">APROBADO</text>
+        </svg>
+      </div>
+      <p class="office-seal-caption">¡Sello obtenido! Pasando al siguiente módulo…</p>
+    </div>`;
+  document.body.append(layer);
+  window.setTimeout(done, reduced ? 900 : 2600);
 }

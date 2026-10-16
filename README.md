@@ -48,7 +48,7 @@ Al terminar las cinco etapas de `/induccion`, la confirmación de lectura habili
 
 ### Reglas de la ruta de formación
 
-- Catálogo inicial: 1 Ofimática para tus cobranzas → 2 Simulador de cobranzas → 3 Tipificación de llamadas → 4 Certificado (requiere los tres sellos).
+- Catálogo inicial: 1 Ofimática para tus cobranzas → 2 Inducción a las cobranzas → 3 Simulador de cobranzas → 4 Tipificación de llamadas → 5 Certificado (requiere los cuatro sellos).
 - `computeModuleViews` (dominio) calcula el estado efectivo de cada módulo combinando el estado del catálogo, prerrequisitos, sellos, progreso, intentos y excepciones vigentes. La usan el área del asesor, el panel y la sincronización que alimenta las métricas.
 - Un módulo `INACTIVE` se muestra "No disponible", con el botón deshabilitado. Un módulo aprobado muestra "Completado"; el módulo 1 tiene pantalla de resultado y sigue abierto para repasarlo (los demás se habilitarán cuando tengan la suya).
 - Intentos: numeración consecutiva con bloqueo de fila, límite `maxAttempts` más excepciones vigentes y espera `waitMinutes` tras un fallo. Una configuración evaluable nueva crea otra versión; nunca se edita una versión existente.
@@ -68,11 +68,11 @@ Al terminar las cinco etapas de `/induccion`, la confirmación de lectura habili
 | 40 | Ortografía aplicada | `DICTATION` | Sí | `.../ortografia` |
 | 50 | Resultado y sello | `LESSON` | No | `.../resultado` |
 
-El sello se emite cuando las tres actividades obligatorias están aprobadas, una sola vez, y desbloquea el Simulador de cobranzas. El placeholder anterior (orden 1) queda `ARCHIVED` y se conserva.
+El sello se emite cuando las tres actividades obligatorias están aprobadas, una sola vez, y desbloquea la Inducción a las cobranzas. El placeholder anterior (orden 1) queda `ARCHIVED` y se conserva.
 
 - **El servidor decide.** El navegador nunca calcula una nota que cuente, nunca aprueba una sección ni emite el sello.
 - **Mecanografía propia** (sin proveedores externos): el servidor entrega el texto y un `nonce` (solo se guarda su SHA-256), registra el inicio oficial y calcula caracteres correctos por minuto, PPM, precisión y errores al cerrar. Un intento ya cerrado, de otro asesor, con `nonce` inválido o fuera de ventana se rechaza. Un intento abandonado o vencido cuenta como fallido. Tras fallar hay que completar una práctica breve (`last_practice_at`).
-- **Excel con datos ficticios**: la mini hoja es accesible y las fórmulas pasan por un evaluador propio (solo `=REF-REF`, `=REF+REF` y `SUMA/SUM`; sin `eval`). Cada intento usa una semilla reproducible y la clave de respuestas nunca viaja al navegador.
+- **Evaluación de Excel**: 10 preguntas de opción múltiple (A–D) sobre uso básico (SUMA, resta, Autosuma, filtro, ordenar, Ctrl + C/V/X/Z/B/G y formato de moneda), cada una con un caso ilustrado que imita la ventana de Excel. El orden depende de una semilla por intento y la clave de respuestas nunca viaja al navegador (`server/domain/excel-quiz.ts`). Las ilustraciones están en `src/office/imagenes` y se regeneran con `node docs-assets/ofimatica/generar-imagenes-excel.cjs src/office/imagenes`.
 - **Dictado con sistema experto determinístico** (`server/domain/spelling/`): nota = 100 menos el peso de cada error; aprueba con la nota mínima y sin errores críticos. **Ollama nunca califica**: solo redacta recomendaciones sobre un resultado ya calculado; si falla o está desactivado se usa la plantilla.
 - **Configuración versionada** (`config_modulo_ofimatica`): cada cambio crea una versión nueva, archiva la anterior, sincroniza las evaluaciones y se audita con motivo. Cada intento guarda su `configSnapshot`. Se administra en el panel: **Ofimática** → *Configuración*.
 - **Audios e imágenes** en almacenamiento privado (`STORAGE_DIR`), entregados por `GET /api/media/:key?exp&sig` con firma HMAC, vencimiento corto y sesión activa. Las 6 imágenes se generan una sola vez (ver `docs-assets/ofimatica/IMAGENES.md`) y se suben desde el panel.
@@ -103,6 +103,18 @@ npm.cmd test               # suite completa con supertest (requiere DATABASE_URL
 Los ejercicios de dictado quedan en **borrador** hasta subir el audio autorizado desde el panel. En desarrollo, `DICTATION_DEV_TTS=true` los activa con la voz del navegador (la interfaz lo marca como audio de prueba). Asesores demo del módulo: `1000000102` (en curso), `1000000103` (aprobado), `1000000104` (sin intentos), `1000000146` (mecanografía aprobada), `1000000147` (práctica pendiente), `1000000148` (dictado con error crítico), `1000000149` (módulo completo), `1000000150` (intento vencido).
 
 Para probarlo: inicia sesión con un asesor demo → "Tu ruta de formación" → **Ofimática para tus cobranzas**.
+
+### Audios del dictado
+
+Cada ejercicio tiene un audio generado con **voz sintética local** que lee exactamente su `expectedText`. No hay voces grabadas ni servicios en la nube.
+
+- **Motor:** [Piper](https://github.com/rhasspy/piper) 1.8 (voz neuronal offline), con la voz `es_MX-claude-high` de `rhasspy/piper-voices` (licencia Apache-2.0 según su `MODEL_CARD`). Si Piper no está disponible, se usa la voz de Windows en español (SAPI).
+- **Instalación (una vez por equipo, idempotente):** `powershell -ExecutionPolicy Bypass -File server/scripts/tts/setup-tts.ps1`. Instala Python 3.12, `piper-tts` (pip --user), la voz (en `%LOCALAPPDATA%\fontana-tts\voices`, fuera del repositorio) y `ffmpeg` con winget, y deja la configuración en `%LOCALAPPDATA%\fontana-tts\config.json`.
+- **Generar y validar (sin escribir nada):** `npm.cmd run dictation:audio`. Los archivos quedan en `%TEMP%\fontana-dictado` para escucharlos.
+- **Cargar y asociar:** `npm.cmd run dictation:audio -- --apply --admin-documento <documento de un administrador>`. Agrega `--no-activate` para dejar el ejercicio en borrador, `--only <key>` para uno solo y `--force-audio` para regenerar uno que ya tiene audio. Usa `uploadMedia` (valida bytes mágicos y tamaño) y `updateDictation` (audita y exige que el audio exista para activar).
+- **Requisitos que valida el script:** OGG Opus mono 48 kHz a 48 kbps normalizado a -16 LUFS; entre 20 y 30 s (busca 24 a 28 s ajustando el ritmo de Piper entre 1.0 y 1.3); menos de 2 MB; sin silencios de más de 2 s ni saturación; nombre `dictado-<key>-v<version>.ogg`. Si no lo logra en 3 intentos, no carga ese ejercicio y lo informa.
+- **Dónde viven:** en `STORAGE_DIR` (por defecto `../fontana-storage`, fuera del repositorio y de `dist/`). No se versionan en Git porque se regeneran con el script. En producción `STORAGE_DIR` debe apuntar a un disco persistente del servidor.
+- **Ejercicio nuevo:** créalo en el panel (Ofimática › Dictados) en borrador y ejecuta el script con `--only <key>`. Si cambias el `expectedText` de un ejercicio con intentos, se crea una versión nueva y hay que generar su audio.
 
 ## Desarrollo local
 
@@ -211,7 +223,7 @@ Ejecuta `npm run db:seed` y `npm run db:seed:demo` sobre la base de desarrollo, 
 | 1000000100 | Administración | `/admin` | Panel con Asesores, Módulos y actividades, Métricas y Auditoría. |
 | 1000000101 | Asesor | login | Va a "Llena tus datos"; después, módulo 1 disponible y el resto bloqueados. |
 | 1000000102 | Asesor | `/induccion` | Módulo 1 "En curso" con "Continuar". |
-| 1000000103 | Asesor | `/induccion` | Módulo 1 "Completado", módulo 2 con "Continuar", módulo 3 "Aprueba Simulador de cobranzas para continuar". |
+| 1000000103 | Asesor | `/induccion` | Módulo 1 "Completado", módulo 2 con "Continuar", módulo 3 "Aprueba Inducción a las cobranzas para continuar". |
 | 1000000104 | Asesor | `/induccion` | Módulo 1 "Sin intentos" y botón deshabilitado. En el panel, su ficha muestra 0 intentos restantes. |
 | 1000000105 | Asesor | `/induccion` | Módulo 1 con la hora a partir de la cual podrá reintentar (30 min tras el fallo). |
 | 1000000106 | Asesor / panel | `/induccion`, ficha | "Continuar" de nuevo; en la ficha, próximo intento número 4 y excepción vigente. |
@@ -223,7 +235,7 @@ Ejecuta `npm run db:seed` y `npm run db:seed:demo` sobre la base de desarrollo, 
 | 1000000112 | Panel | Métricas | Aparece en "Asesores detenidos" (7 días). |
 | 1000000113 | Asesor / panel | login, ficha | No inicia sesión; su historial de intentos sigue visible. |
 | 1000000114 | Asesor / panel | login, Auditoría | Mensaje genérico al entrar; el bloqueo y su motivo están en auditoría. |
-| 1000000115 | Asesor | `/induccion/modulos/simulador-cobranzas` | Puede entrar al módulo 2 reabierto y conserva el sello. |
+| 1000000115 | Asesor | `/induccion/modulos/induccion-cobranzas` | Puede entrar al módulo 2 reabierto y conserva el sello. |
 | 1000000116–145 | Panel | Asesores, Métricas | Paginación "Cargar más", filtros por módulo/estado/fecha y métricas con datos. |
 
 En **Módulos y actividades** aparece "Demo · actividad retirada" inactiva con progreso previo de dos asesores (la desactivación conserva el historial).

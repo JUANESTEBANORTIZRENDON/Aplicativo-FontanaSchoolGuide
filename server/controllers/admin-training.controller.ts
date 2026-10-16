@@ -2,11 +2,12 @@ import type { Request, Response } from 'express';
 import { validBody, validParams, validQuery } from '../middleware/validate.js';
 import { listAuditPage } from '../services/audit.service.js';
 import { getAdvisorFile } from '../services/advisor-file.service.js';
+import * as attemptLimitService from '../services/attempt-limit.service.js';
 import * as catalogService from '../services/catalog.service.js';
 import * as certificateService from '../services/certificate.service.js';
 import * as metricsService from '../services/metrics.service.js';
 import * as overrideService from '../services/override.service.js';
-import { idempotencyKey, type AuditQuery, type CatalogStatusBody, type EvaluationBody, type ReactivateBody, type ReasonBody } from '../validators/admin.validator.js';
+import { idempotencyKey, type AttemptLimitBody, type AuditQuery, type CatalogStatusBody, type EvaluationBody, type ReactivateBody, type ReasonBody } from '../validators/admin.validator.js';
 import { actionContext } from './admin-users.controller.js';
 
 export async function advisorProgress(request: Request, response: Response): Promise<void> {
@@ -40,6 +41,12 @@ export async function reactivate(request: Request, response: Response): Promise<
   const key = idempotencyKey.parse(request.get('idempotency-key'));
   const result = await overrideService.reactivate(userId, activityId, validBody<ReactivateBody>(request), key, actionContext(request));
   response.status(result.created ? 201 : 200).json({ data: result.override, meta: { created: result.created } });
+}
+
+export async function setAttemptLimit(request: Request, response: Response): Promise<void> {
+  const { userId, activityId } = validParams<{ userId: string; activityId: string }>(request);
+  const body = validBody<AttemptLimitBody>(request);
+  response.json({ data: await attemptLimitService.setAttemptLimit(userId, activityId, body.maxAttempts, body.reason, actionContext(request)) });
 }
 
 export async function revokeOverride(request: Request, response: Response): Promise<void> {

@@ -189,7 +189,10 @@ export function computeModuleViews(modules: ModuleInput[], state: UserTrainingSt
     }
 
     const availabilities = required.map((activity) => state.availability.get(activity.id)).filter((value): value is Availability => Boolean(value));
-    if (availabilities.some((availability) => availability.exhausted)) {
+    // Una actividad sin intentos no frena las demás: el asesor sigue con lo que le falta y el administrador
+    // decide si reactiva la agotada. El módulo solo se detiene cuando todo lo pendiente está agotado.
+    const pending = required.filter((activity) => !(state.activityProgress.get(activity.id)?.status === 'PASSED' || state.availability.get(activity.id)?.passed));
+    if (pending.length > 0 && pending.every((activity) => state.availability.get(activity.id)?.exhausted)) {
       return { ...base, status: 'FAILED', progressPercent: percent, actionLabel: 'Sin intentos', enabled: false, blockedReason: EXHAUSTED_REASON };
     }
 

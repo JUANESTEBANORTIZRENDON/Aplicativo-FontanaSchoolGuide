@@ -70,10 +70,11 @@ button.office-secondary:disabled { opacity: .5; cursor: not-allowed; }
 .office-right { background: #f1fbf5; border: 1px solid #8fd0ad; }
 
 /* Lecciones */
-.office-lesson { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 24px; align-items: start; }
+/* La ilustración ocupa todo el ancho de la tarjeta y el texto va debajo: así se lee sin esforzar la vista. */
+.office-lesson { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; align-items: start; }
 .office-lesson figure { margin: 0; }
 .office-lesson img { width: 100%; height: auto; border-radius: 14px; border: 1px solid #e5e8ef; }
-.office-lesson figcaption { margin-top: 6px; color: #626672; font-size: 13px; }
+.office-lesson figcaption { margin-top: 8px; color: #626672; font-size: 14px; }
 .office-image-placeholder { display: grid; place-content: center; gap: 6px; padding: 20px; text-align: center; border: 2px dashed #d4af37; border-radius: 14px; background: #fffaf0; color: #5a4310; }
 .office-image-placeholder small { color: #626672; }
 .office-rule { padding: 10px 12px; border-left: 4px solid #d4af37; background: #fff8e6; border-radius: 6px; }
@@ -137,3 +138,70 @@ button.office-secondary:disabled { opacity: .5; cursor: not-allowed; }
   .office-steps ol { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .office-screen * { scroll-behavior: auto !important; } }
+
+/* Repaso de una sección ya terminada */
+.office-review { margin-top: 18px; padding: 14px 18px; border: 1px solid #e5e8ef; border-radius: 14px; background: #fff; }
+.office-review summary { color: #8b1538; font-weight: 700; cursor: pointer; }
+.office-review[open] summary { margin-bottom: 8px; }
+
+/* Evaluación de Excel: opción múltiple con casos ilustrados */
+.quiz { display: grid; gap: 22px; margin-top: 18px; }
+.quiz-question { margin: 0; padding: 20px; border: 1px solid #e5e8ef; border-radius: 16px; background: #fff; min-width: 0; }
+.quiz-question legend { display: flex; gap: 12px; align-items: flex-start; padding: 0; margin-bottom: 14px; color: #192840; font-weight: 700; font-size: 16px; line-height: 1.45; }
+.quiz-number { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #8b1538; color: #fff; font-size: 14px; }
+.quiz-image { display: block; width: 100%; height: auto; margin-bottom: 14px; border: 1px solid #e5e8ef; border-radius: 12px; }
+.quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.quiz-option { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid #d4dae3; border-radius: 12px; background: #fff; cursor: pointer; color: #24324a; }
+.quiz-option input { position: absolute; opacity: 0; pointer-events: none; }
+.quiz-option:has(input:checked) { border-color: #8b1538; background: #fdf5f7; box-shadow: inset 3px 0 #8b1538; }
+.quiz-option:has(input:focus-visible) { outline: 2px solid #d4af37; outline-offset: 2px; }
+.quiz-letter { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; background: #eef1f6; color: #192840; font-weight: 800; }
+.quiz-option:has(input:checked) .quiz-letter { background: #8b1538; color: #fff; }
+.office-feedback li span + span { display: block; margin-top: 4px; }
+@media (max-width: 700px) { .quiz-options { grid-template-columns: 1fr; } }
+
+/* Carga con indicador circular (mecanografía y cambio de sección) */
+.office-loading-card { display: grid; justify-items: center; gap: 10px; padding: 56px 24px; text-align: center; }
+.office-spinner { width: 46px; height: 46px; border: 4px solid #f0dde3; border-top-color: #8b1538; border-right-color: #d4af37; border-radius: 50%; animation: office-spin .85s linear infinite; }
+.office-loading-title { margin: 6px 0 0; color: #192840; font-weight: 700; font-size: 17px; }
+.office-loading-detail { margin: 0; color: #626672; font-size: 14px; }
+.office-card { position: relative; }
+.office-loading-overlay { position: absolute; inset: 0; z-index: 5; display: grid; place-content: center; justify-items: center; gap: 10px; border-radius: inherit; background: rgba(255, 252, 245, .86); backdrop-filter: blur(2px); }
+@keyframes office-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .office-spinner { animation-duration: 2.5s; } }
+
+/* Imagen ampliada y pantalla de carga al calificar */
+.office-zoomable { cursor: zoom-in; transition: box-shadow .2s; }
+.office-zoomable:hover { box-shadow: 0 10px 30px rgba(25, 40, 64, .18); }
+.office-zoom-hint { color: #8b1538; font-weight: 600; }
+.office-zoom { width: min(96vw, 1500px); max-height: 94vh; padding: 0; border: 0; border-radius: 14px; background: #fff; overflow: auto; cursor: zoom-out; }
+.office-zoom::backdrop { background: rgba(14, 25, 42, .75); }
+.office-zoom img { display: block; width: 100%; height: auto; }
+.office-zoom-close { position: absolute; top: 10px; right: 10px; width: 40px; height: 40px; border: 0; border-radius: 50%; background: #192840; color: #fff; font-size: 18px; cursor: pointer; }
+.office-loading-screen { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgba(255, 250, 240, .75); backdrop-filter: blur(3px); }
+.office-loading-screen .office-loading-card { width: min(460px, 100%); box-shadow: 0 24px 70px rgba(25, 40, 64, .2); }
+
+/* Nota del módulo */
+.office-module-score { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; margin: 18px 0; padding: 16px 20px; border: 1px solid #e5e8ef; border-radius: 16px; background: #fff; }
+.office-module-score > div { display: grid; }
+.office-module-score strong { color: #8b1538; font: 800 34px 'Manrope', sans-serif; line-height: 1; }
+.office-module-score span { color: #626672; font-size: 13px; }
+.office-module-score ul { margin: 0; padding-left: 18px; color: #24324a; line-height: 1.7; }
+.office-module-score small { color: #626672; }
+.office-summary li[data-alert="true"] { border-color: #e9c46a; background: #fff8e6; }
+
+/* Animación de sellado */
+.office-seal-stage { position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center; padding: 20px; background: rgba(25, 40, 64, .55); backdrop-filter: blur(3px); animation: seal-fade .35s ease-out both; }
+.office-seal-paper { position: relative; width: min(440px, 100%); padding: 34px 28px 30px; border-radius: 22px; text-align: center; background: linear-gradient(160deg, #fffdf7, #f6efe0); box-shadow: 0 30px 80px rgba(14, 25, 42, .35); overflow: hidden; }
+.office-seal-paper h2 { margin: 6px 0 14px; color: #192840; font: 800 22px 'Manrope', sans-serif; }
+.office-seal-stamp { width: 190px; height: 190px; margin: 0 auto; color: #8b1538; animation: seal-stamp .7s cubic-bezier(.2, 1.4, .4, 1) .45s both; }
+.office-seal-stamp svg { width: 100%; height: 100%; filter: drop-shadow(0 4px 0 rgba(139, 21, 56, .15)); }
+.office-seal-caption { margin: 16px 0 0; color: #24324a; font-weight: 700; opacity: 0; animation: seal-fade .4s ease-out 1.2s both; }
+.office-seal-paper::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 3px #d4af37; opacity: 0; animation: seal-glow .9s ease-out 1s both; }
+@keyframes seal-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes seal-stamp { 0% { opacity: 0; transform: scale(2.6) rotate(-28deg); } 70% { opacity: 1; transform: scale(.92) rotate(-8deg); } 100% { opacity: 1; transform: scale(1) rotate(-12deg); } }
+@keyframes seal-glow { 0% { opacity: 0; } 40% { opacity: 1; } 100% { opacity: .4; } }
+@media (prefers-reduced-motion: reduce) {
+  .office-seal-stage, .office-seal-stamp, .office-seal-caption, .office-seal-paper::after { animation-duration: .01s; animation-delay: 0s; }
+  .office-seal-stamp { transform: rotate(-12deg); }
+}
