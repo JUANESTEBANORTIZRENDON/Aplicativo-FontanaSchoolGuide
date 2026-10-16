@@ -18,6 +18,17 @@ const ACTION_TEXT: Record<string, string> = {
   REACTIVATE: 'Reactivar actividad', EXTRA_ATTEMPT: 'Intento adicional', RESET_WAIT: 'Quitar tiempo de espera', UNLOCK: 'Desbloquear módulo', REOPEN_MODULE: 'Reabrir módulo',
 };
 
+// Cuenta de pruebas con reinicio de curso (el servidor también lo exige).
+const COURSE_RESET_DOCUMENT = '1021803088';
+
+// Borra todo el progreso del asesor para volver a probar el curso desde cero.
+async function resetCourse(user: { id: string; nombreCompleto: string }, after: () => unknown): Promise<void> {
+  const data = await askForm(`Reiniciar el curso de ${user.nombreCompleto}`, `
+    <p class="dialog-note dialog-danger"><strong>Se borrará todo su progreso:</strong> intentos y notas, sellos, certificados, excepciones, cupos de intentos, lecciones vistas, su respuesta de experiencia y la inducción inicial. Empezará desde cero. La cuenta y la auditoría se conservan. No se puede deshacer.</p>`, { submit: 'Reiniciar curso' });
+  if (!data) return;
+  await run(() => api(`/admin/users/${user.id}/reset-course`, { method: 'POST', body: JSON.stringify({ reason: data.reason }) }), 'Curso reiniciado: el asesor empieza desde cero.', after);
+}
+
 const text = (value: string) => STATUS_TEXT[value] ?? value;
 const badge = (value: string) => `<span class="status status-${escapar(value.toLowerCase())}">${escapar(text(value))}</span>`;
 const empty = (columns: number, message = 'Sin registros.') => `<tr><td colspan="${columns}" class="empty-row">${message}</td></tr>`;
@@ -161,6 +172,7 @@ async function advisorsSection(view: HTMLElement): Promise<void> {
       <td class="row-actions">
         ${user.rol === 'asesor' ? `<a class="row-action" href="#ficha/${user.id}">Ver avance</a>` : ''}
         <button class="row-action" data-action="edit" data-id="${user.id}">Editar</button>
+        ${user.numeroDocumento === COURSE_RESET_DOCUMENT ? `<button class="row-action row-action-danger" data-action="reset-course" data-id="${user.id}">Reiniciar curso</button>` : ''}
       </td></tr>`).join('') || (reset ? empty(7, 'No hay usuarios para mostrar.') : ''));
     cursor = page.meta.nextCursor;
     more.hidden = !cursor;
@@ -171,6 +183,7 @@ async function advisorsSection(view: HTMLElement): Promise<void> {
     if (!button) return;
     const user = loaded.get(button.dataset.id!)!;
     if (button.dataset.action === 'edit') await editUser(user, () => load(true));
+    else if (button.dataset.action === 'reset-course') await resetCourse(user, () => load(true));
   });
 
   view.querySelector<HTMLFormElement>('#create-form')!.addEventListener('submit', async (event) => {
@@ -312,7 +325,8 @@ async function advisorFileSection(view: HTMLElement, userId: string): Promise<vo
     <section class="auth-card admin-card file-head">
       <div><h2>${escapar(data.user.nombreCompleto)}</h2>
         <p>Documento ${escapar(data.user.numeroDocumento)} · ${escapar(data.user.correo ?? 'sin correo')} · experiencia: ${data.user.tieneExperienciaCobranzasDigitales === true ? 'con experiencia' : data.user.tieneExperienciaCobranzasDigitales === false ? 'nuevo' : 'sin responder'} · último acceso ${escapar(formatDate(data.user.ultimoAcceso))}</p></div>
-      ${pill(data.user.estado === 'activo' ? 'active' : data.user.estado === 'bloqueado' ? 'blocked' : 'inactive', data.user.estado.charAt(0).toUpperCase() + data.user.estado.slice(1))}
+      <div class="file-head-actions">${data.user.numeroDocumento === COURSE_RESET_DOCUMENT ? '<button class="row-action row-action-danger" data-reset-course>Reiniciar curso</button>' : ''}
+      ${pill(data.user.estado === 'activo' ? 'active' : data.user.estado === 'bloqueado' ? 'blocked' : 'inactive', data.user.estado.charAt(0).toUpperCase() + data.user.estado.slice(1))}</div>
     </section>
     <section class="stat-grid">
       <div class="stat stat-wide"><span>Dónde va</span><strong>${whereText}</strong><small>${whereSub}</small></div>
@@ -343,6 +357,7 @@ async function advisorFileSection(view: HTMLElement, userId: string): Promise<vo
   const reload = rerender;
   view.addEventListener('click', async (event) => {
     const target = event.target as HTMLElement;
+    if (target.closest('[data-reset-course]')) { await resetCourse(data.user, reload); return; }
     const reactivate = target.closest<HTMLButtonElement>('[data-reactivate]');
     const resetWait = target.closest<HTMLButtonElement>('[data-reset-wait]');
     const limit = target.closest<HTMLButtonElement>('[data-limit]');

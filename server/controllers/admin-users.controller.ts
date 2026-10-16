@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { Role, UserStatus } from '../domain/enums.js';
 import { validBody, validParams, validQuery } from '../middleware/validate.js';
 import type { ActionContext } from '../services/audit.service.js';
+import * as courseResetService from '../services/course-reset.service.js';
 import * as userService from '../services/user.service.js';
 import type { ChangeStatusBody, CreateUserBody, ListUsersQuery, ResetPasswordBody, SetPasswordBody, UpdateUserBody } from '../validators/user.validator.js';
 
@@ -39,6 +40,11 @@ export async function setPassword(request: Request, response: Response): Promise
   const { id } = validParams<{ id: string }>(request);
   const body = validBody<SetPasswordBody>(request);
   response.json({ data: await userService.setPassword(id, body.password, body.reason, actionContext(request)) });
+}
+
+export async function resetCourse(request: Request, response: Response): Promise<void> {
+  const { id } = validParams<{ id: string }>(request);
+  response.json({ data: await courseResetService.resetCourse(id, validBody<{ reason: string }>(request).reason, actionContext(request)) });
 }
 
 // ---- Alias de la ruta anterior /api/admin/asesores ----------------------------------------

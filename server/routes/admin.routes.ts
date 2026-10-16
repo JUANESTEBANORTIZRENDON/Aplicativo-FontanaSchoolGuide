@@ -23,6 +23,7 @@ adminRouter.post('/users', validate({ body: createUserBody }), users.createUser)
 adminRouter.patch('/users/:id', validate({ params: idParams, body: updateUserBody }), users.updateUser);
 adminRouter.patch('/users/:id/status', validate({ params: idParams, body: changeStatusBody }), users.changeStatus);
 adminRouter.post('/users/:id/reset-password', validate({ params: idParams, body: resetPasswordBody }), users.resetPassword);
+adminRouter.post('/users/:id/reset-course', validate({ params: idParams, body: reasonBody }), users.resetCourse);
 adminRouter.put('/users/:id/password', validate({ params: idParams, body: setPasswordBody }), users.setPassword);
 adminRouter.get('/advisors/:id/progress', validate({ params: idParams }), training.advisorProgress);
 adminRouter.get('/advisors/:id/office', validate({ params: idParams }), officeAdmin.advisorOffice);
