@@ -133,6 +133,32 @@ export async function prepareAttempt(userId: string, now = new Date()) {
   }, { timeout: 30_000 });
 }
 
+// Reabre una prueba preparada que todavía no se inicia (por ejemplo, tras recargar la página). Mismo intento y mismo
+// texto; el nonce se renueva para que el anterior deje de servir. Si el tiempo ya corre, no se puede retomar.
+export async function resumePrepared(userId: string, now = new Date()) {
+  return prisma.$transaction(async (tx) => {
+    const activityId = await typingActivityId(tx);
+    await progressRow(tx, userId, activityId);
+    await lockActivityProgress(tx, userId, activityId);
+    const open = await tx.attempt.findFirst({
+      where: { userId, status: 'IN_PROGRESS', evaluation: { activityId } }, include: { typingInternal: { include: { text: true } } },
+    });
+    const result = open?.typingInternal;
+    if (!open || !result) throw new NotFoundError('No tienes una prueba de mecanografía preparada.', 'TYPING_NOT_PREPARED');
+    if (result.startedOfficialAt) {
+      throw new ConflictError('Tu prueba ya había iniciado y el tiempo siguió corriendo: no se puede retomar. Podrás preparar otra cuando venza.', 'TYPING_ATTEMPT_STARTED');
+    }
+    if (now > result.expiresAt) throw new ConflictError('La prueba preparada venció. Prepara una nueva.', 'TYPING_ATTEMPT_EXPIRED');
+    const snapshot = snapshotFromJson(result.configSnapshot);
+    const nonce = randomBytes(32).toString('base64url');
+    await tx.typingAttemptResult.update({ where: { attemptId: open.id }, data: { nonceHash: hashNonce(nonce) } });
+    return {
+      attemptId: open.id, number: open.number, text: result.text.content, textTitle: result.text.title, nonce,
+      durationSeconds: snapshot.typingDurationSeconds, startWindowSeconds: snapshot.typingStartWindowSeconds, expiresAt: result.expiresAt.toISOString(),
+    };
+  }, { timeout: 30_000 });
+}
+
 async function ownAttempt(tx: Tx, userId: string, attemptId: string) {
   await tx.$queryRaw`SELECT id FROM induccion.intentos WHERE id = ${attemptId}::uuid FOR UPDATE`;
   const attempt = await tx.attempt.findUnique({

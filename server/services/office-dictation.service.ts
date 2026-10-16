@@ -205,7 +205,10 @@ export async function submitDictation(
         criticalCount: evaluation.criticalCount, passed: evaluation.passed, rulesVersion: version, completedAt: now,
       },
     });
-    await submitAttemptTx(tx, userId, attempt.id, { score: evaluation.score, passed: evaluation.passed, now });
+    // El dictado pesa menos en el módulo: presentarlo completa la sección (el intento queda aprobado para el
+    // avance y el sello). La calidad real queda en resultados_dictado (passed, nota y errores críticos) como
+    // alerta, para el sistema experto que se configurará al terminar todos los módulos.
+    await submitAttemptTx(tx, userId, attempt.id, { score: evaluation.score, passed: true, now });
     return { evaluation, snapshot, number: attempt.number, expectedText: result.expectedText };
   });
 

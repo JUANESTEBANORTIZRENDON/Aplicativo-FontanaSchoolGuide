@@ -7,7 +7,7 @@ export type AdminHelpers = {
   askForm: (title: string, fields: string, options?: { reason?: boolean; submit?: string }) => Promise<Record<string, string> | null>;
   run: (action: () => Promise<unknown>, success: string, after?: () => unknown) => Promise<void>;
   feedback: (message: string, error?: boolean) => void;
-  rerender: () => void;
+  rerender: () => Promise<void>;
   badge: (value: string) => string;
   empty: (columns: number, message?: string) => string;
 };

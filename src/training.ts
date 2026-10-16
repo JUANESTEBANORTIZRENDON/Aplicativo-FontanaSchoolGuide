@@ -184,61 +184,52 @@ next.addEventListener('click', () => {
 });
 showStage(0);
 
-// La experiencia se guarda en el perfil antes de abrir la práctica asignada.
+// Al terminar la inducción inicial se abre la ruta de formación; la experiencia se pregunta en el módulo 02.
 companyRead.addEventListener('change', () => {
   if (!companyRead.checked) {
-    experienceForm.reset();
     experienceResult.hidden = true;
     experienceResult.textContent = '';
   }
   updateExperienceAccess();
 });
-experienceForm.addEventListener('change', () => { experienceResult.hidden = true; });
-let savingExperience = false;
+let finishing = false;
 experienceForm.addEventListener('submit', async (event: SubmitEvent) => {
   event.preventDefault();
-  if (savingExperience || currentStage !== stages.length - 1 || !companyRead.checked || !experienceForm.reportValidity()) return;
-  const response = new FormData(experienceForm).get('experience');
-  if (response !== 'experienced' && response !== 'new') return;
-  savingExperience = true;
+  if (finishing || currentStage !== stages.length - 1 || !companyRead.checked) return;
+  finishing = true;
   const submit = experienceForm.querySelector<HTMLButtonElement>('button[type="submit"]')!;
   const originalLabel = submit.textContent;
   submit.disabled = true;
-  submit.textContent = 'Preparando tu práctica…';
-  experienceFields.disabled = true;
+  submit.textContent = 'Preparando tu ruta…';
   companyRead.disabled = true;
   experienceResult.hidden = true;
   try {
-    const result = await fetch('/api/auth/experiencia', {
-      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tieneExperienciaCobranzasDigitales: response === 'experienced' }),
-    });
+    const result = await fetch('/api/auth/induccion/completar', { method: 'POST', credentials: 'same-origin' });
     if (result.status === 401) { location.assign('/login'); return; }
-    if (result.status === 404) throw new Error('El servidor necesita actualizarse para guardar tu respuesta. Reinicia el servidor de Fontana e intenta nuevamente.');
+    if (result.status === 404) throw new Error('El servidor necesita actualizarse. Reinicia el servidor de Fontana e intenta nuevamente.');
     if (!result.ok) {
       const body: unknown = await result.json().catch(() => null);
       const message = body && typeof body === 'object' && 'message' in body ? body.message : undefined;
-      throw new Error(typeof message === 'string' ? message : 'No pudimos guardar tu respuesta. Intenta nuevamente.');
+      throw new Error(typeof message === 'string' ? message : 'No pudimos continuar. Intenta nuevamente.');
     }
-    showAppLoading('Preparando tu módulo de práctica…');
-    location.assign(response === 'experienced' ? '/practica/experiencia' : '/practica/nuevo');
+    showAppLoading('Preparando tu ruta de formación…');
+    location.assign('/practica');
   } catch (error) {
     experienceResult.textContent = error instanceof TypeError
       ? 'No pudimos conectar con el servidor. Revisa tu conexión e intenta nuevamente.'
-      : error instanceof Error ? error.message : 'No pudimos guardar tu respuesta. Intenta nuevamente.';
+      : error instanceof Error ? error.message : 'No pudimos continuar. Intenta nuevamente.';
     experienceResult.hidden = false;
     companyRead.disabled = false;
-    experienceFields.disabled = false;
     submit.disabled = false;
     submit.textContent = originalLabel;
-    savingExperience = false;
+    finishing = false;
   }
 });
 
 // Al volver, lo que el asesor ya completó queda desbloqueado: los bloqueos solo aplican la primera vez.
-export function restoreProgress(progress: { historia: boolean; metodo: boolean; experiencia: boolean | null }): void {
-  const historia = progress.historia || progress.metodo || progress.experiencia !== null;
-  const metodo = progress.metodo || progress.experiencia !== null;
+export function restoreProgress(progress: { historia: boolean; metodo: boolean; completada: boolean }): void {
+  const historia = progress.historia || progress.metodo || progress.completada;
+  const metodo = progress.metodo || progress.completada;
   if (historia) {
     savedProgress.historia = true;
     storyCards.forEach((_, index) => openStory(index));
@@ -255,10 +246,9 @@ export function restoreProgress(progress: { historia: boolean; metodo: boolean; 
     highestUnlockedStage = stages.length - 1;
     showStage(currentStage);
   }
-  if (progress.experiencia !== null) {
-    // Muestra la respuesta guardada; puede cambiarla y volver a confirmar.
+  if (progress.completada) {
+    // Inducción ya terminada: se puede repasar con la confirmación marcada.
     companyRead.checked = true;
-    experienceForm.querySelector<HTMLInputElement>(`input[value="${progress.experiencia ? 'experienced' : 'new'}"]`)!.checked = true;
     updateExperienceAccess();
   }
 }

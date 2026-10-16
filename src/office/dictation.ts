@@ -1,6 +1,6 @@
 import { escapar } from '../http';
 import { ApiError, officeApi, type Correction, type DictationInfo, type DictationResult, type Lesson } from './api';
-import { errorMessage, lessonCard, showError, type OfficeContext } from './office';
+import { errorMessage, lessonCard, loadingScreen, showError, type OfficeContext } from './office';
 
 // Ortografía aplicada: lecciones cortas y un dictado. La nota la calcula el sistema experto del servidor;
 // las recomendaciones (con Ollama o por plantilla) llegan ya redactadas junto con el resultado.
@@ -20,15 +20,21 @@ export async function renderDictation(ctx: OfficeContext): Promise<void> {
   if (section.status === 'COMPLETED') {
     ctx.view.innerHTML = `
       <section class="office-card">
-        <p class="eyebrow">ORTOGRAFÍA APLICADA</p><h1>Dictado aprobado</h1>
-        <p class="office-lead">Superaste los ${cfg.minScore} puntos sin errores críticos.</p>
-        <div class="office-actions"><button class="primary" id="dictation-next" type="button">Ver mi resultado y sello →</button></div>
+        <p class="eyebrow">ORTOGRAFÍA APLICADA</p><h1>${section.alert ? 'Dictado presentado' : 'Dictado aprobado'}</h1>
+        <p class="office-lead">${section.alert
+          ? 'Tu dictado quedó registrado. Tu ortografía necesita refuerzo: repasa las lecciones, sobre todo las de palabras que suenan igual y las tildes.'
+          : `Superaste los ${cfg.minScore} puntos sin errores críticos.`}</p>
+        <div class="office-actions"><button class="primary" id="dictation-next" type="button">Ver mi resultado y sello →</button>${REVIEW_BUTTON}</div>
       </section>`;
     ctx.view.querySelector('#dictation-next')!.addEventListener('click', () => ctx.go('resultado'));
+    bindReview(ctx);
     return;
   }
   if (section.status === 'NO_ATTEMPTS') {
-    ctx.view.innerHTML = `<section class="office-card"><p class="eyebrow">ORTOGRAFÍA APLICADA</p><h1>Sin intentos disponibles</h1><p class="office-error">Agotaste los intentos del dictado. Solicita una reactivación al administrador.</p><a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a></section>`;
+    ctx.view.innerHTML = `<section class="office-card"><p class="eyebrow">ORTOGRAFÍA APLICADA</p><h1>Sin intentos disponibles</h1><p class="office-error">Agotaste los intentos del dictado. Solicita una reactivación al administrador.</p>
+      <p class="office-lead">Mientras tanto puedes repasar las lecciones.</p>
+      <div class="office-actions">${REVIEW_BUTTON}<a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a></div></section>`;
+    bindReview(ctx);
     return;
   }
   const { lessons } = await officeApi.content<{ lessons: Lesson[] }>('ortografia');
@@ -41,23 +47,43 @@ export async function renderDictation(ctx: OfficeContext): Promise<void> {
   renderLessons(ctx, lessons, viewed);
 }
 
-function renderLessons(ctx: OfficeContext, lessons: Lesson[], viewed: Set<string>): void {
-  let index = Math.max(0, lessons.findIndex((lesson) => !viewed.has(lesson.key)));
+// Repaso: las lecciones se pueden volver a leer en cualquier momento (aprobado, sin intentos o antes del dictado).
+const REVIEW_BUTTON = '<button class="office-secondary" id="orto-review" type="button">Repasar las lecciones</button>';
+
+function bindReview(ctx: OfficeContext): void {
+  const button = ctx.view.querySelector<HTMLButtonElement>('#orto-review');
+  button?.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      const { lessons } = await officeApi.content<{ lessons: Lesson[] }>('ortografia');
+      renderLessons(ctx, lessons, new Set(), true);
+    } catch (error) {
+      button.disabled = false;
+      showError(ctx.view, error);
+    }
+  });
+}
+
+function renderLessons(ctx: OfficeContext, lessons: Lesson[], viewed: Set<string>, review = false): void {
+  let index = review ? 0 : Math.max(0, lessons.findIndex((lesson) => !viewed.has(lesson.key)));
   const draw = () => {
     const lesson = lessons[index]!;
     void officeApi.view(lesson.key).then(() => viewed.add(lesson.key)).catch(() => undefined);
     ctx.view.innerHTML = `
       <section class="office-card" aria-labelledby="orto-title">
-        <p class="eyebrow">ORTOGRAFÍA APLICADA · LECCIÓN ${index + 1} DE ${lessons.length}</p>
+        <p class="eyebrow">ORTOGRAFÍA APLICADA · ${review ? 'REPASO · ' : ''}LECCIÓN ${index + 1} DE ${lessons.length}</p>
         <h1 id="orto-title">${escapar(lesson.title)}</h1>
         ${lessonCard(lesson)}
         <div class="office-actions">
           <button class="office-secondary" id="lesson-prev" type="button" ${index === 0 ? 'disabled' : ''}>← Anterior</button>
           ${index < lessons.length - 1
             ? '<button class="primary" id="lesson-next" type="button">Siguiente lección →</button>'
-            : '<button class="primary" id="lesson-exercise" type="button">Ir al dictado →</button>'}
+            : review
+              ? '<button class="primary" id="lesson-done" type="button">Terminar repaso</button>'
+              : '<button class="primary" id="lesson-exercise" type="button">Ir al dictado →</button>'}
         </div>
       </section>`;
+    ctx.view.querySelector('#lesson-done')?.addEventListener('click', () => void renderDictation(ctx).catch((error) => showError(ctx.view, error)));
     ctx.view.querySelector('#lesson-prev')!.addEventListener('click', () => { index -= 1; draw(); });
     ctx.view.querySelector('#lesson-next')?.addEventListener('click', () => { index += 1; draw(); });
     ctx.view.querySelector('#lesson-exercise')?.addEventListener('click', () => renderExercise(ctx));
@@ -67,15 +93,15 @@ function renderLessons(ctx: OfficeContext, lessons: Lesson[], viewed: Set<string
 
 function renderExercise(ctx: OfficeContext): void {
   const cfg = ctx.state.config.dictation;
-  const section = ctx.state.sections.find((item) => item.key === 'ortografia')!;
   const exercise: DictationInfo | null = ctx.state.dictation;
   if (!exercise) {
     ctx.view.innerHTML = `
       <section class="office-card">
         <p class="eyebrow">ORTOGRAFÍA APLICADA · DICTADO</p><h1>El dictado estará disponible pronto</h1>
         <p class="office-lead">Todavía no hay un ejercicio con audio autorizado. Vuelve más tarde; tu avance queda guardado.</p>
-        <a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a>
+        <div class="office-actions">${REVIEW_BUTTON}<a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a></div>
       </section>`;
+    bindReview(ctx);
     return;
   }
   ctx.view.innerHTML = `
@@ -84,12 +110,14 @@ function renderExercise(ctx: OfficeContext): void {
       <h1 id="dictation-title">${escapar(exercise.title)}</h1>
       <p class="office-lead">Escucha la observación y escríbela tal como la dirías en una gestión de cobranza. Puedes reproducirla hasta ${cfg.maxPlays} veces.</p>
       <ul class="office-goals">
-        <li><strong>Para aprobar:</strong> ${cfg.minScore} puntos y ningún error crítico.</li>
-        <li><strong>Intentos:</strong> te quedan ${section.attemptsRemaining ?? cfg.maxAttempts} de ${section.maxAttempts ?? cfg.maxAttempts}.</li>
+        <li><strong>Un solo intento:</strong> el dictado mide tu ortografía. Revisa bien antes de enviar.</li>
+        <li><strong>Reproducciones:</strong> puedes escucharlo hasta ${cfg.maxPlays} veces para corregir lo que escribiste.</li>
+        <li><strong>Meta de ortografía:</strong> ${cfg.minScore} puntos y ningún error crítico. Si no la alcanzas, verás tus correcciones y podrás seguir con el módulo.</li>
         ${exercise.devTts ? '<li><strong>Audio de prueba:</strong> este ejercicio se reproduce con la voz del navegador porque todavía no tiene audio autorizado.</li>' : ''}
       </ul>
-      <div class="office-actions"><button class="primary" id="dictation-begin" type="button">Iniciar dictado</button></div>
+      <div class="office-actions"><button class="primary" id="dictation-begin" type="button">Iniciar dictado</button>${REVIEW_BUTTON}</div>
     </section>`;
+  bindReview(ctx);
   const begin = ctx.view.querySelector<HTMLButtonElement>('#dictation-begin')!;
   begin.addEventListener('click', async () => {
     begin.disabled = true;
@@ -173,11 +201,14 @@ function renderRunning(ctx: OfficeContext, exercise: DictationInfo, attemptId: s
     sent = true;
     submit.disabled = true;
     submit.textContent = 'Calificando…';
+    const hide = loadingScreen('Revisando tu dictado…', 'Comparamos palabra por palabra y preparamos tus recomendaciones.');
     try {
       const result = await officeApi.dictationSubmit(exercise.id, { attemptId, typedText: input.value });
       await ctx.refresh().catch(() => undefined);
+      hide();
       renderResult(ctx, result);
     } catch (error) {
+      hide();
       sent = false;
       submit.disabled = false;
       submit.textContent = 'Enviar dictado';
@@ -200,7 +231,8 @@ function renderResult(ctx: OfficeContext, result: DictationResult): void {
   ctx.view.innerHTML = `
     <section class="office-card" aria-labelledby="dictation-result-title">
       <p class="eyebrow">ORTOGRAFÍA APLICADA · INTENTO ${result.attemptNumber}</p>
-      <h1 id="dictation-result-title">${result.passed ? '¡Dictado aprobado!' : 'Todavía no apruebas el dictado'}</h1>
+      <h1 id="dictation-result-title">${result.passed ? '¡Dictado aprobado!' : 'Dictado presentado: tu ortografía necesita refuerzo'}</h1>
+      ${result.passed ? '' : '<p class="office-warning" role="note">No alcanzaste la meta de ortografía. Puedes continuar con el módulo; revisa las correcciones y repasa las lecciones.</p>'}
       <div class="office-metrics">
         <div><strong>${result.score.toFixed(0)}</strong><span>puntos de 100</span><small>Mínimo: ${result.minScore}</small></div>
         <div><strong>${result.criticalCount}</strong><span>errores críticos</span><small>Para aprobar: ninguno</small></div>
@@ -221,12 +253,12 @@ function renderResult(ctx: OfficeContext, result: DictationResult): void {
         <p><strong>Próximo paso:</strong> ${escapar(rec.proximoPaso)}</p>
       </div>
       <div class="office-actions">
-        ${result.passed ? '<button class="primary" id="dictation-next" type="button">Ver mi resultado y sello →</button>'
-          : result.attemptsRemaining ? `<button class="primary" id="dictation-retry" type="button">Intentar de nuevo (${result.attemptsRemaining} restantes)</button>`
-            : '<p class="office-error">Agotaste los intentos. Solicita una reactivación al administrador.</p>'}
+        <button class="primary" id="dictation-next" type="button">Ver mi resultado y sello →</button>
+        ${REVIEW_BUTTON}
       </div>
     </section>`;
   ctx.view.querySelector('#dictation-next')?.addEventListener('click', () => ctx.go('resultado'));
+  bindReview(ctx);
   const retry = ctx.view.querySelector<HTMLButtonElement>('#dictation-retry');
   retry?.addEventListener('click', async () => {
     retry.disabled = true;

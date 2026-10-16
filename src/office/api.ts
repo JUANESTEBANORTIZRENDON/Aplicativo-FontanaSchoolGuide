@@ -14,6 +14,8 @@ export type SectionState = {
   activityId: string | null;
   graded: boolean;
   status: 'COMPLETED' | 'PENDING' | 'NO_ATTEMPTS';
+  // Solo ortografía: el dictado se presentó con errores (alerta para refuerzo, no bloquea el módulo).
+  alert?: boolean;
   attemptsRemaining: number | null;
   maxAttempts: number | null;
   waitUntil: string | null;
@@ -62,6 +64,7 @@ export const officeApi = {
   result: () => get<ResultView>('/result'),
 
   typingPrepare: () => post<TypingPrepared>('/typing/attempts'),
+  typingResume: () => post<TypingPrepared>('/typing/attempts/resume'),
   typingStart: (id: string) => post<{ startedOfficialAt: string; durationSeconds: number; startWindowSeconds: number }>(`/typing/attempts/${id}/start`),
   typingComplete: (id: string, body: { nonce: string; typedText: string; clientDurationSeconds: number }) => post<TypingResult>(`/typing/attempts/${id}/complete`, body),
   typingPracticeTexts: () => get<{ texts: string[] }>('/typing/practice'),
@@ -69,7 +72,7 @@ export const officeApi = {
 
   excelActivity: () => get<ExcelActivityInfo>('/excel/activity'),
   excelStart: (id: string) => post<ExcelPractice>(`/excel/activity/${id}/attempts`),
-  excelSubmit: (id: string, body: { attemptId: string; steps: { questionId: string; value: string | number | Record<string, string | number> }[] }) => post<ExcelResult>(`/excel/activity/${id}/submit`, body),
+  excelSubmit: (id: string, body: { attemptId: string; answers: { questionId: string; optionId: QuizOptionId }[] }) => post<ExcelResult>(`/excel/activity/${id}/submit`, body),
 
   dictationNext: () => get<{ exercise: DictationInfo | null }>('/dictation/next'),
   dictationStart: (id: string) => post<DictationStarted>(`/dictation/${id}/attempts`),
@@ -83,19 +86,16 @@ export type TypingResult = {
   metrics: { correctCpm: number; ppm: number; accuracy: number; errors: number; correctCharacters: number; totalCharacters: number; durationSeconds: number };
 };
 
-export type SheetColumn = { key: string; label: string; type: 'text' | 'number' | 'date' | 'time' | 'currency' };
-export type SheetRow = Record<string, string | number> & { id: string };
-export type ExcelStep = { questionId: string; lesson: string; kind: string; instruction: string; options?: { value: string; label: string }[] };
-export type ExcelPractice = {
-  attemptId: string; number: number; resumed: boolean; title: string; baseDate: string; steps: ExcelStep[];
-  sheets: Record<'busquedas' | 'volver' | 'acuerdos' | 'pagos', { columns: SheetColumn[]; rows: SheetRow[] }>;
-};
+// Evaluación de Excel: preguntas de opción múltiple con un caso ilustrado (la respuesta correcta queda en el servidor).
+export type QuizOptionId = 'a' | 'b' | 'c' | 'd';
+export type QuizQuestion = { id: string; lesson: string; image: string; prompt: string; options: { id: QuizOptionId; text: string }[] };
+export type ExcelPractice = { attemptId: string; number: number; resumed: boolean; title: string; questions: QuizQuestion[] };
 export type ExcelActivityInfo = {
-  id: string; title: string; attemptId: string | null; lessons: Lesson[]; minScore: number; maxAttempts: number;
-} & Partial<Pick<ExcelPractice, 'steps' | 'sheets' | 'baseDate'>>;
+  id: string; title: string; attemptId: string | null; lessons: Lesson[]; minScore: number; maxAttempts: number; questions?: QuizQuestion[];
+};
 export type ExcelResult = {
   attemptNumber: number; score: number; passed: boolean; minScore: number; attemptsRemaining: number | null;
-  steps: { questionId: string; lesson: string; correct: boolean; awardedScore: number; weight: number; feedback: string }[];
+  steps: { questionId: string; lesson: string; correct: boolean; awardedScore: number; weight: number; chosen: string | null; correctOption: string; feedback: string }[];
 };
 
 export type DictationStarted = { attemptId: string; number: number; resumed: boolean; exerciseId: string; playsAllowed: number; playsUsed: number; playsRemaining: number };
@@ -112,7 +112,8 @@ export type DictationResult = {
 
 export type ResultView = {
   sealIssued: boolean; sealIssuedAt: string | null; moduleStatus: string; progressPercent: string;
-  sections: { key: string; title: string; status: string }[];
+  sections: { key: string; title: string; status: string; alert?: boolean }[];
+  moduleScore: { score: number; parts: { key: string; score: number; weight: number }[] } | null;
   strengths: string[]; reinforce: string[];
   nextStep: { text: string; module?: ModuleState['nextModule']; section?: SectionKey };
 };

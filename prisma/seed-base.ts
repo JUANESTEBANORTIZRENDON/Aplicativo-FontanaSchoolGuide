@@ -8,10 +8,30 @@ import { DICTATIONS, EXCEL_ANSWER_KEY, EXCEL_SCENARIO_DATA, SPELLING_RULES, TYPI
 // Catálogo inicial (sección 6.1). Upsert por slug; se puede ejecutar varias veces.
 export const CATALOG = [
   { order: 1, slug: 'ofimatica-mecanografia', name: 'Ofimática para tus cobranzas', route: '/induccion/modulos/ofimatica-mecanografia', prerequisites: [] as string[] },
-  { order: 2, slug: 'simulador-cobranzas', name: 'Simulador de cobranzas', route: '/induccion/modulos/simulador-cobranzas', prerequisites: ['ofimatica-mecanografia'] },
-  { order: 3, slug: 'tipificacion-llamadas', name: 'Tipificación de llamadas', route: '/induccion/modulos/tipificacion-llamadas', prerequisites: ['simulador-cobranzas'] },
-  { order: 4, slug: 'certificado', name: 'Certificado', route: '/induccion/certificado', prerequisites: ['ofimatica-mecanografia', 'simulador-cobranzas', 'tipificacion-llamadas'] },
+  { order: 2, slug: 'induccion-cobranzas', name: 'Inducción a las cobranzas', route: '/induccion/modulos/induccion-cobranzas', prerequisites: ['ofimatica-mecanografia'] },
+  { order: 3, slug: 'simulador-cobranzas', name: 'Simulador de cobranzas', route: '/induccion/modulos/simulador-cobranzas', prerequisites: ['induccion-cobranzas'] },
+  { order: 4, slug: 'tipificacion-llamadas', name: 'Tipificación de llamadas', route: '/induccion/modulos/tipificacion-llamadas', prerequisites: ['simulador-cobranzas'] },
+  { order: 5, slug: 'certificado', name: 'Certificado', route: '/induccion/certificado', prerequisites: ['ofimatica-mecanografia', 'induccion-cobranzas', 'simulador-cobranzas', 'tipificacion-llamadas'] },
 ];
+
+export const INDUCTION_MODULE_SLUG = 'induccion-cobranzas';
+
+// Introducción (solo para quien no tiene experiencia) y examen de inducción: 80 % y 3 intentos. Idempotente.
+async function seedInduction(prisma: PrismaClient, moduleId: string, route: string): Promise<void> {
+  await prisma.activity.upsert({
+    where: { moduleId_order: { moduleId, order: 1 } },
+    create: { moduleId, order: 1, type: 'LESSON', status: 'ACTIVE', isRequired: false, title: 'Introducción a las cobranzas', route },
+    update: {},
+  });
+  const exam = await prisma.activity.upsert({
+    where: { moduleId_order: { moduleId, order: 2 } },
+    create: { moduleId, order: 2, type: 'QUIZ', status: 'ACTIVE', isRequired: true, title: 'Examen de inducción', route },
+    update: {},
+  });
+  if (!(await prisma.evaluation.findFirst({ where: { activityId: exam.id } }))) {
+    await prisma.evaluation.create({ data: { activityId: exam.id, version: 1, title: 'Examen de inducción', status: 'ACTIVE', minimumScore: 80, maxAttempts: 3, waitMinutes: 0 } });
+  }
+}
 
 export const TEST_ADVISOR = { documento: '1000000001', nombre: 'Asesor Prueba Fontana', password: 'FontanaTest2026!' };
 
@@ -24,9 +44,10 @@ export async function seedCatalog(prisma: PrismaClient): Promise<Map<string, str
       update: { name: item.name, route: item.route },
     });
     ids.set(item.slug, module.id);
-    // Módulos 2 y 3: una actividad PLACEHOLDER activa y obligatoria, sin evaluación.
-    // El módulo 1 tiene sus actividades reales (seedOfficeModule).
-    if (item.slug !== 'certificado' && item.slug !== OFFICE_MODULE_SLUG) {
+    // La inducción tiene introducción y examen (sin contenido todavía); el módulo 1 tiene sus actividades reales
+    // (seedOfficeModule); los demás, una actividad PLACEHOLDER activa y obligatoria, sin evaluación.
+    if (item.slug === INDUCTION_MODULE_SLUG) await seedInduction(prisma, module.id, item.route);
+    else if (item.slug !== 'certificado' && item.slug !== OFFICE_MODULE_SLUG) {
       await prisma.activity.upsert({
         where: { moduleId_order: { moduleId: module.id, order: 1 } },
         create: { moduleId: module.id, order: 1, type: 'PLACEHOLDER', status: 'ACTIVE', isRequired: true, title: `${item.name}: contenido en preparación`, route: item.route },
@@ -71,7 +92,7 @@ export async function seedOfficeModule(prisma: PrismaClient, moduleId: string): 
   const evaluations: Record<string, { minimumScore: number; maxAttempts: number }> = {
     mecanografia: { minimumScore: 100, maxAttempts: 3 },
     excel: { minimumScore: 80, maxAttempts: 3 },
-    ortografia: { minimumScore: 85, maxAttempts: 3 },
+    ortografia: { minimumScore: 85, maxAttempts: 1 },
   };
   for (const item of sections) {
     const order = SECTION_ORDER[item.section];
