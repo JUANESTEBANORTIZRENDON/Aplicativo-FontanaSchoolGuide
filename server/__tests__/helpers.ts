@@ -4,6 +4,7 @@ import request from 'supertest';
 import { app } from '../app.js';
 import { prisma } from '../config/prisma.js';
 import { rateLimitStore } from '../middleware/rateLimit.js';
+import * as attemptService from '../services/attempt.service.js';
 import { initializeForUser } from '../services/progress.service.js';
 
 export const PASSWORD = 'ClaveDePrueba2026!';
@@ -48,15 +49,30 @@ export function resetRateLimits(): void {
   rateLimitStore.clear();
 }
 
+// Actividades del catálogo. a1 es la mecanografía del módulo 1 (tres intentos, sin espera, nota mínima 100:
+// aprueba por la regla de caracteres por minuto). a2 y a3 son los placeholders de los módulos 2 y 3
+// (evaluación demo de tres intentos y 30 minutos de espera).
 export async function activityIds() {
-  const modules = await prisma.trainingModule.findMany({ include: { activities: { where: { order: 1 } } }, orderBy: { order: 'asc' } });
+  const modules = await prisma.trainingModule.findMany({ include: { activities: { orderBy: { order: 'asc' } } }, orderBy: { order: 'asc' } });
   const bySlug = (slug: string) => modules.find((module) => module.slug === slug)!;
+  const m1 = bySlug('ofimatica-mecanografia');
+  const section = (order: number) => m1.activities.find((activity) => activity.order === order)!.id;
   return {
-    modules: { m1: bySlug('ofimatica-mecanografia'), m2: bySlug('simulador-cobranzas'), m3: bySlug('tipificacion-llamadas'), cert: bySlug('certificado') },
-    a1: bySlug('ofimatica-mecanografia').activities[0]!.id,
-    a2: bySlug('simulador-cobranzas').activities[0]!.id,
-    a3: bySlug('tipificacion-llamadas').activities[0]!.id,
+    modules: { m1, m2: bySlug('simulador-cobranzas'), m3: bySlug('tipificacion-llamadas'), cert: bySlug('certificado') },
+    office: { welcome: section(10), typing: section(20), excel: section(30), dictation: section(40), result: section(50) },
+    a1: section(20),
+    a2: bySlug('simulador-cobranzas').activities.find((activity) => activity.order === 1)!.id,
+    a3: bySlug('tipificacion-llamadas').activities.find((activity) => activity.order === 1)!.id,
   };
+}
+
+// Aprueba las tres actividades obligatorias del módulo 1 (emite el sello y desbloquea el simulador).
+export async function passOfficeModule(userId: string): Promise<void> {
+  const { office } = await activityIds();
+  for (const activityId of [office.typing, office.excel, office.dictation]) {
+    const { attempt } = await attemptService.startAttempt(userId, activityId);
+    await attemptService.submitAttempt(userId, attempt.id, { score: 100, passed: true });
+  }
 }
 
 export const newKey = () => randomUUID();
@@ -72,6 +88,10 @@ export async function cleanupSuite(suite: string): Promise<void> {
   await prisma.$transaction([
     prisma.adminAuditLog.deleteMany({ where: { OR: [{ actorUserId: { in: ids } }, { entityId: { in: [...ids, ...overrides, ...certificates] } }] } }),
     prisma.typingResult.deleteMany({ where: { userId: { in: ids } } }),
+    prisma.typingAttemptResult.deleteMany({ where: { attemptId: { in: attempts } } }),
+    prisma.excelAttemptResult.deleteMany({ where: { attemptId: { in: attempts } } }),
+    prisma.dictationAttemptResult.deleteMany({ where: { attemptId: { in: attempts } } }),
+    prisma.activitySectionView.deleteMany({ where: { userId: { in: ids } } }),
     prisma.attemptAnswer.deleteMany({ where: { attemptId: { in: attempts } } }),
     prisma.seal.deleteMany({ where: { userId: { in: ids } } }),
     prisma.certificate.updateMany({ where: { id: { in: certificates } }, data: { previousCertificateId: null } }),
@@ -81,6 +101,11 @@ export async function cleanupSuite(suite: string): Promise<void> {
     prisma.userActivityProgress.deleteMany({ where: { userId: { in: ids } } }),
     prisma.userModuleProgress.deleteMany({ where: { userId: { in: ids } } }),
     prisma.advisorProfile.deleteMany({ where: { userId: { in: ids } } }),
+    // Las versiones de configuración y el contenido creados por usuarios de prueba se conservan sin autor.
+    prisma.officeModuleConfig.updateMany({ where: { createdById: { in: ids } }, data: { createdById: null } }),
+    prisma.typingText.updateMany({ where: { createdById: { in: ids } }, data: { createdById: null } }),
+    prisma.excelActivity.updateMany({ where: { createdById: { in: ids } }, data: { createdById: null } }),
+    prisma.dictationExercise.updateMany({ where: { createdById: { in: ids } }, data: { createdById: null } }),
     prisma.usuario.updateMany({ where: { creadoPor: { in: ids } }, data: { creadoPor: null } }),
     prisma.usuario.deleteMany({ where: { id: { in: ids } } }),
   ]);

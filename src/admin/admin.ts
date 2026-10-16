@@ -1,8 +1,9 @@
 import './admin.css';
 import { api, escapar, formatDate } from '../http';
+import { officeFileHtml, officeSection } from './office-admin';
 
 // Panel administrativo. Navegación por hash dentro de /admin:
-// #asesores, #ficha/<id>, #modulos, #metricas, #auditoria.
+// #asesores, #ficha/<id>, #modulos, #ofimatica, #metricas, #auditoria.
 
 type Usuario = { id: string; nombreCompleto: string; numeroDocumento: string; rol: string; estado: string; correo: string | null; telefono: string | null; debeCompletarDatos: boolean; fechaCreacion: string; ultimoAcceso: string | null };
 type Shell = (title: string, subtitle: string, content: string) => void;
@@ -175,6 +176,7 @@ type AdvisorFile = {
   certificates: { id: string; code: string; status: string; issuedAt: string; revokedAt: string | null; revokeReason: string | null; previousCertificateId: string | null }[];
   overrides: { id: string; action: string; extraAttempts: number; reason: string; expiresAt: string | null; revokedAt: string | null; createdAt: string; state: string; activity: { title: string; module: { name: string } }; createdBy: { nombreCompleto: string } }[];
   audit: { id: string; action: string; reason: string | null; createdAt: string; actor: { nombreCompleto: string } }[];
+  office?: Parameters<typeof officeFileHtml>[0];
 };
 
 async function advisorFileSection(view: HTMLElement, userId: string): Promise<void> {
@@ -197,6 +199,7 @@ async function advisorFileSection(view: HTMLElement, userId: string): Promise<vo
       <div class="table-wrap"><table><thead><tr><th>#</th><th>Actividad</th><th>Versión</th><th>Estado</th><th>Nota</th><th>Inicio</th><th>Envío</th><th>Duración</th></tr></thead><tbody>
       ${data.attempts.map((a) => `<tr><td>${a.number}</td><td>${escapar(a.evaluation.activity.title)}</td><td>v${a.evaluation.version}</td><td>${badge(a.status)}</td><td>${escapar(a.score ?? '—')}</td><td>${formatDate(a.startedAt)}</td><td>${formatDate(a.submittedAt)}</td><td>${a.durationSeconds !== null ? `${Math.round(a.durationSeconds / 60)} min` : '—'}</td></tr>`).join('') || empty(8)}
       </tbody></table></div></section>
+    ${officeFileHtml(data.office, { badge, empty })}
     <section class="auth-card admin-card"><div class="section-title"><div><h2>Sellos y certificados</h2></div></div>
       <div class="table-wrap"><table><thead><tr><th>Sello</th><th>Estado</th><th>Emitido</th></tr></thead><tbody>
       ${data.seals.map((s) => `<tr><td>${escapar(s.module.name)}</td><td>${badge(s.status)}</td><td>${formatDate(s.issuedAt)}</td></tr>`).join('') || empty(3)}
@@ -303,7 +306,9 @@ async function metricsSection(view: HTMLElement, query = new URLSearchParams({ l
     distribution: { moduleId: string; status: string; advisors: number }[];
     time: { byActivity: { title: string; attempts: number; avgSeconds: string | null; medianSeconds: string | null }[] };
     stalled: { days: number; count: number; items: { nombreCompleto: string; numeroDocumento: string; lastActivityAt: string }[] };
-    typing: { results: number; sinDatos: boolean; avgWpm: string | null; avgAccuracy: string | null; avgErrors: string | null; approvalRate: Ratio };
+    typing: { results: number; sinDatos: boolean; avgWpm: string | null; avgCorrectCpm: string | null; avgAccuracy: string | null; avgErrors: string | null; approvalRate: Ratio };
+    excel: { results: number; sinDatos: boolean; avgScore: Ratio; approvalRate: Ratio; steps: { questionId: string; lesson: string; attempts: number; correct: number; successRate: Ratio }[] };
+    dictation: { results: number; sinDatos: boolean; avgScore: Ratio; avgWordMatch: Ratio; approvalRate: Ratio; topErrors: { category: string; rule: string; total: number }[] };
     reactivations: { total: number; byAction: { key: string; total: number }[]; byAdmin: { key: string; total: number }[]; nextAttemptPassRate: Ratio };
     location: { items: { nombreCompleto: string; numeroDocumento: string; estado: string; moduleName: string | null; moduleStatus: string | null; activityTitle: string | null; lastActivityAt: string | null }[] };
   } }>(`/admin/metrics/summary?${query}`);
@@ -342,10 +347,22 @@ async function metricsSection(view: HTMLElement, query = new URLSearchParams({ l
       </tbody></table></div></section>
     <div class="metric-cards">
       <div class="metric-card"><span>Mecanografía: PPM promedio</span><strong>${data.typing.sinDatos ? 'Sin datos' : escapar(data.typing.avgWpm)}</strong></div>
+      <div class="metric-card"><span>Caracteres correctos por minuto</span><strong>${data.typing.sinDatos ? 'Sin datos' : escapar(data.typing.avgCorrectCpm)}</strong></div>
+      <div class="metric-card"><span>Aprobación en mecanografía</span><strong>${data.typing.sinDatos ? 'Sin datos' : pct(data.typing.approvalRate)}</strong></div>
+      <div class="metric-card"><span>Nota promedio de Excel</span><strong>${data.excel.sinDatos ? 'Sin datos' : escapar(data.excel.avgScore.value)}</strong></div>
+      <div class="metric-card"><span>Nota promedio del dictado</span><strong>${data.dictation.sinDatos ? 'Sin datos' : escapar(data.dictation.avgScore.value)}</strong></div>
       <div class="metric-card"><span>Precisión promedio</span><strong>${data.typing.sinDatos ? 'Sin datos' : `${escapar(data.typing.avgAccuracy)} %`}</strong></div>
       <div class="metric-card"><span>Errores promedio</span><strong>${data.typing.sinDatos ? 'Sin datos' : escapar(data.typing.avgErrors)}</strong></div>
       <div class="metric-card"><span>Aprobación tras reactivar</span><strong>${pct(data.reactivations.nextAttemptPassRate)}</strong></div>
     </div>
+    <section class="auth-card admin-card"><div class="section-title"><div><h2>Ofimática: aciertos de Excel por paso</h2><p>Aprobación de la práctica: ${pct(data.excel.approvalRate)}.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Paso</th><th>Lección</th><th>Intentos</th><th>Aciertos</th><th>Tasa de acierto</th></tr></thead><tbody>
+      ${data.excel.steps.map((step) => `<tr><td>${escapar(step.questionId)}</td><td>${escapar(step.lesson)}</td><td>${step.attempts}</td><td>${step.correct}</td><td>${pct(step.successRate)}</td></tr>`).join('') || empty(5, 'Sin datos.')}
+      </tbody></table></div></section>
+    <section class="auth-card admin-card"><div class="section-title"><div><h2>Ofimática: errores más frecuentes del dictado</h2><p>Aprobación del dictado: ${pct(data.dictation.approvalRate)}.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Categoría</th><th>Regla</th><th>Veces</th></tr></thead><tbody>
+      ${data.dictation.topErrors.map((error) => `<tr><td>${escapar(error.category)}</td><td>${escapar(error.rule)}</td><td>${error.total}</td></tr>`).join('') || empty(3, 'Sin datos.')}
+      </tbody></table></div></section>
     <section class="auth-card admin-card"><div class="section-title"><div><h2>Reactivaciones</h2></div></div>
       <div class="split-lists"><ul class="audit-list">${data.reactivations.byAction.map((r) => `<li>${escapar(ACTION_TEXT[r.key] ?? r.key)}: <strong>${r.total}</strong></li>`).join('') || '<li>Sin datos.</li>'}</ul>
       <ul class="audit-list">${data.reactivations.byAdmin.map((r) => `<li>${escapar(r.key)}: <strong>${r.total}</strong></li>`).join('') || '<li>Sin datos.</li>'}</ul></div></section>`;
@@ -400,6 +417,7 @@ async function auditSection(view: HTMLElement): Promise<void> {
 const SECTIONS = [
   { hash: '#asesores', label: 'Asesores' },
   { hash: '#modulos', label: 'Módulos y actividades' },
+  { hash: '#ofimatica', label: 'Ofimática' },
   { hash: '#metricas', label: 'Métricas' },
   { hash: '#auditoria', label: 'Auditoría' },
 ];
@@ -423,6 +441,7 @@ export function renderAdmin(shell: Shell): void {
     try {
       if (hash.startsWith('#ficha/')) await advisorFileSection(view, hash.slice('#ficha/'.length));
       else if (hash === '#modulos') await modulesSection(view);
+      else if (hash === '#ofimatica') await officeSection(view, { askForm, run, feedback, rerender, badge, empty });
       else if (hash === '#metricas') await metricsSection(view);
       else if (hash === '#auditoria') await auditSection(view);
       else await advisorsSection(view);

@@ -31,6 +31,10 @@ export function apiNotFound(request: Request, response: Response): void {
 export function errorHandler(error: unknown, request: Request, response: Response, _next: NextFunction): void {
   if (error instanceof AppError) { send(request, response, error.status, error.code, error.message, error.details); return; }
   if (error instanceof ZodError) { send(request, response, 400, 'VALIDATION_ERROR', 'Revisa los datos enviados.', zodDetails(error)); return; }
+  if (typeof error === 'object' && error !== null && (error as { type?: string }).type === 'entity.too.large') {
+    send(request, response, 413, 'PAYLOAD_TOO_LARGE', 'El archivo supera el tamaño permitido.');
+    return;
+  }
   if (error instanceof SyntaxError && 'body' in error) { send(request, response, 400, 'INVALID_JSON', 'El cuerpo de la solicitud no es JSON válido.'); return; }
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === 'P2002') { send(request, response, 409, 'CONFLICT', 'Ya existe un registro con esos datos.', { fields: error.meta?.target ?? null }); return; }

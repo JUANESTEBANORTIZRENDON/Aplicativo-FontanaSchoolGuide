@@ -7,8 +7,10 @@ import { CERTIFICATE_MODULE_SLUG } from './enums.js';
 
 export const MODULE_INACTIVE_REASON = 'Módulo no disponible temporalmente';
 export const EXHAUSTED_REASON = 'Agotaste los intentos disponibles. Solicita una reactivación al administrador.';
-// Aún no existe pantalla de resultados; cuando exista, los módulos aprobados se habilitan.
+// Módulos con pantalla de resultados: al aprobarlos siguen abiertos para repasar su resumen.
+// Los demás se habilitan cuando tengan su pantalla de resultados.
 export const RESULT_SCREEN_AVAILABLE = false;
+export const RESULT_SCREEN_SLUGS: ReadonlySet<string> = new Set(["ofimatica-mecanografia"]);
 
 const GRANT_ACTIONS: OverrideAction[] = ['EXTRA_ATTEMPT', 'REACTIVATE'];
 
@@ -179,7 +181,7 @@ export function computeModuleViews(modules: ModuleInput[], state: UserTrainingSt
       if (moduleOverrides.some((override) => override.action === 'REOPEN_MODULE')) {
         return { ...base, status: 'IN_PROGRESS', progressPercent: percent, actionLabel: 'Continuar', enabled: true, blockedReason: null };
       }
-      return { ...base, status: 'PASSED', progressPercent: percent, actionLabel: 'Completado', enabled: RESULT_SCREEN_AVAILABLE, blockedReason: null };
+      return { ...base, status: 'PASSED', progressPercent: percent, actionLabel: 'Completado', enabled: RESULT_SCREEN_AVAILABLE || RESULT_SCREEN_SLUGS.has(module.slug), blockedReason: null };
     }
 
     if (missing.length > 0 && !moduleOverrides.some((override) => override.action === 'UNLOCK')) {

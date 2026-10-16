@@ -140,16 +140,67 @@ export async function stalledAdvisors(days: number, now: Date, limit: number, cu
   return { count: count?.n ?? 0, threshold, items };
 }
 
+// Mecanografía interna del módulo de Ofimática: solo intentos completados (los vencidos y abandonados
+// cuentan como intentos fallidos en la tasa de aprobación general, no en las métricas de escritura).
 export async function typingStats(filters: MetricsFilters) {
-  const [row] = await prisma.$queryRaw<{ results: number; advisors: number; avgWpm: string | null; avgAccuracy: string | null; avgErrors: string | null; linked: number; passed: number }[]>`
+  const [row] = await prisma.$queryRaw<{ results: number; advisors: number; avgPpm: string | null; avgCorrectCpm: string | null; avgAccuracy: string | null; avgErrors: string | null; passed: number }[]>`
     WITH ${advisorsCte(filters)}
-    SELECT count(*)::int AS results, count(DISTINCT t.user_id)::int AS advisors,
-           round(avg(t.wpm), 2)::text AS "avgWpm", round(avg(t.accuracy), 2)::text AS "avgAccuracy", round(avg(t.errors), 2)::text AS "avgErrors",
-           count(i.id)::int AS linked, count(i.id) FILTER (WHERE i.status = 'PASSED')::int AS passed
-    FROM induccion.resultados_mecanografia t
-    LEFT JOIN induccion.intentos i ON i.id = t.attempt_id
-    WHERE t.user_id IN (SELECT id FROM adv) ${range(Prisma.sql`t.created_at`, filters)}`;
+    SELECT count(*)::int AS results, count(DISTINCT i.user_id)::int AS advisors,
+           round(avg(t.ppm), 2)::text AS "avgPpm", round(avg(t.correct_cpm), 2)::text AS "avgCorrectCpm",
+           round(avg(t.accuracy), 2)::text AS "avgAccuracy", round(avg(t.error_count), 2)::text AS "avgErrors",
+           count(*) FILTER (WHERE t.passed)::int AS passed
+    FROM induccion.resultados_mecanografia_interna t
+    JOIN induccion.intentos i ON i.id = t.attempt_id
+    WHERE t.close_reason = 'COMPLETED' AND i.user_id IN (SELECT id FROM adv) ${range(Prisma.sql`t.completed_at`, filters)}`;
   return row!;
+}
+
+export async function dictationStats(filters: MetricsFilters) {
+  const [row] = await prisma.$queryRaw<{ results: number; advisors: number; avgScore: string | null; avgWordMatch: string | null; passed: number }[]>`
+    WITH ${advisorsCte(filters)}
+    SELECT count(*)::int AS results, count(DISTINCT i.user_id)::int AS advisors,
+           round(avg(r.score), 2)::text AS "avgScore", round(avg(r.word_match_percent), 2)::text AS "avgWordMatch",
+           count(*) FILTER (WHERE r.passed)::int AS passed
+    FROM induccion.resultados_dictado r
+    JOIN induccion.intentos i ON i.id = r.attempt_id
+    WHERE r.completed_at IS NOT NULL AND i.user_id IN (SELECT id FROM adv) ${range(Prisma.sql`r.completed_at`, filters)}`;
+  return row!;
+}
+
+// Errores más frecuentes del dictado, por categoría y regla.
+export function dictationErrors(filters: MetricsFilters) {
+  return prisma.$queryRaw<{ category: string; rule: string; total: number }[]>`
+    WITH ${advisorsCte(filters)}
+    SELECT coalesce(e.item->>'category', e.item->>'type') AS category, coalesce(e.item->>'ruleKey', '(sin regla)') AS rule, count(*)::int AS total
+    FROM induccion.resultados_dictado r
+    JOIN induccion.intentos i ON i.id = r.attempt_id
+    CROSS JOIN LATERAL jsonb_array_elements(coalesce(r.detected_errors::jsonb, '[]'::jsonb)) AS e(item)
+    WHERE r.completed_at IS NOT NULL AND i.user_id IN (SELECT id FROM adv) ${range(Prisma.sql`r.completed_at`, filters)}
+    GROUP BY 1, 2 ORDER BY 3 DESC, 1, 2 LIMIT 20`;
+}
+
+export async function excelStats(filters: MetricsFilters) {
+  const [row] = await prisma.$queryRaw<{ results: number; advisors: number; avgScore: string | null; passed: number }[]>`
+    WITH ${advisorsCte(filters)}
+    SELECT count(*)::int AS results, count(DISTINCT i.user_id)::int AS advisors, round(avg(x.score), 2)::text AS "avgScore",
+           count(*) FILTER (WHERE x.passed)::int AS passed
+    FROM induccion.resultados_excel x
+    JOIN induccion.intentos i ON i.id = x.attempt_id
+    WHERE x.completed_at IS NOT NULL AND i.user_id IN (SELECT id FROM adv) ${range(Prisma.sql`x.completed_at`, filters)}`;
+  return row!;
+}
+
+// Tasa de acierto de la práctica de Excel por paso.
+export function excelSteps(filters: MetricsFilters) {
+  return prisma.$queryRaw<{ questionId: string; lesson: string; attempts: number; correct: number }[]>`
+    WITH ${advisorsCte(filters)}
+    SELECT s.item->>'questionId' AS "questionId", s.item->>'lesson' AS lesson, count(*)::int AS attempts,
+           count(*) FILTER (WHERE (s.item->>'correct')::boolean)::int AS correct
+    FROM induccion.resultados_excel x
+    JOIN induccion.intentos i ON i.id = x.attempt_id
+    CROSS JOIN LATERAL jsonb_array_elements(coalesce(x.step_results::jsonb, '[]'::jsonb)) AS s(item)
+    WHERE x.completed_at IS NOT NULL AND i.user_id IN (SELECT id FROM adv) ${range(Prisma.sql`x.completed_at`, filters)}
+    GROUP BY 1, 2 ORDER BY 1`;
 }
 
 export function reactivationsBy(dimension: 'action' | 'reason' | 'activity' | 'admin', filters: MetricsFilters) {

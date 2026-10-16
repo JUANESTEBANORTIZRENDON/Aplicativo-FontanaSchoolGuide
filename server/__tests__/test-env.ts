@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { config } from 'dotenv';
 import { assertSafeDatabase } from '../../prisma/guard.js';
 
@@ -15,5 +17,10 @@ export function useTestDatabase(): void {
   process.env.TYPING_WEBHOOK_SECRET = TEST_WEBHOOK_SECRET;
   process.env.SESSION_SECRET ||= 'secreto-de-pruebas-con-mas-de-32-caracteres';
   process.env.CERTIFICATES_ENABLED = 'false';
+  // Audios e imágenes de prueba en una carpeta temporal; Ollama y la voz de prueba, desactivados.
+  process.env.STORAGE_DIR = path.join(tmpdir(), 'fontana-test-storage');
+  process.env.DICTATION_DEV_TTS = 'false';
+  process.env.OLLAMA_ENABLED = 'false';
+  process.env.TRUST_PROXY = 'false';
   assertSafeDatabase('npm test', url);
 }

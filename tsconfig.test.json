@@ -10,7 +10,8 @@
   "include": [
     "server/**/*.ts",
     "prisma/**/*.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vitest.unit.config.ts"
   ],
   "exclude": []
 }
