@@ -1,4 +1,5 @@
 import { escapar } from '../http';
+import { isLowScore, lowScoreAlertHtml } from '../low-score';
 import { ApiError, officeApi, type Correction, type DictationInfo, type DictationResult, type Lesson } from './api';
 import { errorMessage, lessonCard, loadingScreen, showError, type OfficeContext } from './office';
 
@@ -233,6 +234,7 @@ function renderResult(ctx: OfficeContext, result: DictationResult): void {
       <p class="eyebrow">ORTOGRAFÍA APLICADA · INTENTO ${result.attemptNumber}</p>
       <h1 id="dictation-result-title">${result.passed ? '¡Dictado aprobado!' : 'Dictado presentado: tu ortografía necesita refuerzo'}</h1>
       ${result.passed ? '' : '<p class="office-warning" role="note">No alcanzaste la meta de ortografía. Puedes continuar con el módulo; revisa las correcciones y repasa las lecciones.</p>'}
+      ${isLowScore(result.score) ? lowScoreAlertHtml('el dictado de ortografía') : ''}
       <div class="office-metrics">
         <div><strong>${result.score.toFixed(0)}</strong><span>puntos de 100</span><small>Mínimo: ${result.minScore}</small></div>
         <div><strong>${result.criticalCount}</strong><span>errores críticos</span><small>Para aprobar: ninguno</small></div>

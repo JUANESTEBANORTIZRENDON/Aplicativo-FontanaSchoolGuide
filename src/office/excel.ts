@@ -1,4 +1,5 @@
 import { escapar } from '../http';
+import { isLowScore, lowScoreAlertHtml } from '../low-score';
 import { ApiError, officeApi, type ExcelPractice, type ExcelResult, type Lesson, type QuizOptionId, type QuizQuestion } from './api';
 import { bundledAsset, errorMessage, lessonCard, loadingScreen, showError, type OfficeContext } from './office';
 
@@ -174,6 +175,7 @@ function renderResult(ctx: OfficeContext, activityId: string, result: ExcelResul
     <section class="office-card" aria-labelledby="excel-result-title">
       <p class="eyebrow">EXCEL PARA COBRANZAS · INTENTO ${result.attemptNumber || ''}</p>
       <h1 id="excel-result-title">${result.passed ? '¡Evaluación aprobada!' : 'Todavía no alcanzas el puntaje'}</h1>
+      ${isLowScore(result.score) ? lowScoreAlertHtml('la evaluación de Excel') : ''}
       <div class="office-metrics">
         <div><strong>${result.score.toFixed(0)}</strong><span>puntos de 100</span><small>Mínimo: ${result.minScore}</small></div>
         <div><strong>${result.steps.filter((step) => step.correct).length} / ${result.steps.length}</strong><span>respuestas correctas</span></div>
