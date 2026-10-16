@@ -33,6 +33,10 @@ export type UpdateUserBody = z.infer<typeof updateUserBody>;
 export const changeStatusBody = z.object({ estado, reason: reason() }).strict();
 export type ChangeStatusBody = z.infer<typeof changeStatusBody>;
 
+// El administrador define la contraseña nueva; el asesor deberá cambiarla en su próximo ingreso.
+export const setPasswordBody = z.object({ password, reason: reason().optional() }).strict();
+export type SetPasswordBody = z.infer<typeof setPasswordBody>;
+
 export const resetPasswordBody = z.object({ reason: reason().optional() }).strict();
 export type ResetPasswordBody = z.infer<typeof resetPasswordBody>;
 

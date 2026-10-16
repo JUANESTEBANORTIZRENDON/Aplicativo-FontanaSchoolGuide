@@ -132,6 +132,26 @@ export async function resetPassword(id: string, reason: string | undefined, cont
   return { user, temporaryPassword };
 }
 
+// El administrador fija la contraseña de un asesor. Cierra sus sesiones y le exige cambiarla al ingresar.
+// El valor nunca se audita.
+export async function setPassword(id: string, password: string, reason: string | undefined, context: ActionContext): Promise<UsuarioPublico> {
+  if (id === context.actorUserId) throw new ForbiddenError('Para cambiar tu propia contraseña usa otra vía.', 'SELF_PASSWORD_RESET');
+  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+  return prisma.$transaction(async (tx) => {
+    await lockUser(tx, id);
+    const before = await findPublicById(tx, id);
+    if (!before) throw new NotFoundError('Usuario no encontrado.', 'USER_NOT_FOUND');
+    if (before.rol !== Role.ADVISOR) throw new ValidationError('Solo se puede cambiar la contraseña de un asesor.', { id: 'El usuario no es asesor.' }, 'NOT_ADVISOR');
+    const after = await tx.usuario.update({
+      where: { id },
+      data: { passwordHash, debeCambiarPassword: true, versionSesion: { increment: 1 } },
+      select: usuarioPublicoSelect,
+    });
+    await audit(tx, context, { action: 'USER_PASSWORD_SET', entityType: 'Usuario', entityId: id, before: { debeCambiarPassword: before.debeCambiarPassword }, after: { debeCambiarPassword: true }, reason });
+    return after;
+  });
+}
+
 function filtersFrom(query: Pick<ListUsersQuery, 'search' | 'role' | 'status' | 'moduleId' | 'progressStatus' | 'lastActivityFrom' | 'lastActivityTo'>): UserListFilters {
   const range = rangeToUtc(query.lastActivityFrom, query.lastActivityTo);
   return {

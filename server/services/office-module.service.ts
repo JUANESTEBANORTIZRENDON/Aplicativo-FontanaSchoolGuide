@@ -43,7 +43,7 @@ export async function getModuleState(userId: string, now = new Date()) {
       key, title: SECTION_TITLE[key], activityId: activity?.id ?? null, graded, status,
       route: activity?.route ?? null,
       attemptsRemaining: graded ? availability?.remaining ?? null : null,
-      maxAttempts: graded ? evaluation?.maxAttempts ?? null : null,
+      maxAttempts: graded ? (activity ? snapshot.attemptLimits.get(activity.id) : undefined) ?? evaluation?.maxAttempts ?? null : null,
       waitUntil: availability?.waitUntil?.toISOString() ?? null,
       lessonsViewed: key === 'excel' || key === 'ortografia' ? viewedKeys(key) : [],
       lessonsTotal: key === 'excel' ? EXCEL_LESSON_KEYS.length : key === 'ortografia' ? SPELLING_LESSON_KEYS.length : 0,

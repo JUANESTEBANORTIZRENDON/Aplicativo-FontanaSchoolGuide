@@ -101,6 +101,18 @@ describe('gestión de usuarios', () => {
     expect((await loginAgent(user.numeroDocumento, 'asesor', temporary)).response.status).toBe(200);
   });
 
+  it('fija la contraseña elegida por el administrador sin auditar el valor', async () => {
+    const user = await createTestUser(SUITE);
+    const chosen = 'NuevaClave-Segura-2026';
+    const response = await agent.put(`/api/admin/users/${user.id}/password`).set(ORIGIN).send({ password: chosen, reason: 'Cambio solicitado por el asesor' });
+    expect(response.status).toBe(200);
+    expect(response.body.data.debeCambiarPassword).toBe(true);
+    const audit = await prisma.adminAuditLog.findFirstOrThrow({ where: { entityId: user.id, action: 'USER_PASSWORD_SET' } });
+    expect(JSON.stringify(audit)).not.toContain(chosen);
+    expect((await loginAgent(user.numeroDocumento, 'asesor', chosen)).response.status).toBe(200);
+    expect((await agent.put(`/api/admin/users/${user.id}/password`).set(ORIGIN).send({ password: 'corta' })).status).toBe(400);
+  });
+
   it('lista con filtros y paginación por cursor estable', async () => {
     for (let index = 0; index < 3; index++) await createTestUser(SUITE, { nombre: `Filtro Cursor ${index}` });
     const first = await agent.get('/api/admin/users').query({ search: 'Filtro Cursor', limit: 2 });

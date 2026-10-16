@@ -25,6 +25,14 @@ export const reactivateBody = z.object({
 }).strict();
 export type ReactivateBody = z.infer<typeof reactivateBody>;
 
+// Cupo de intentos de un asesor en una actividad. null restablece el valor de la evaluación.
+export const attemptLimitParams = z.object({ userId: uuid, activityId: uuid });
+export const attemptLimitBody = z.object({
+  maxAttempts: z.coerce.number().int().min(1).max(50).nullable(),
+  reason: reason(OVERRIDE_REASON_MIN),
+}).strict();
+export type AttemptLimitBody = z.infer<typeof attemptLimitBody>;
+
 export const idempotencyKey = z.uuid({ message: 'El encabezado Idempotency-Key debe ser un UUID.' });
 
 export const reasonBody = z.object({ reason: reason() }).strict();

@@ -3,7 +3,7 @@ import { Role, UserStatus } from '../domain/enums.js';
 import { validBody, validParams, validQuery } from '../middleware/validate.js';
 import type { ActionContext } from '../services/audit.service.js';
 import * as userService from '../services/user.service.js';
-import type { ChangeStatusBody, CreateUserBody, ListUsersQuery, ResetPasswordBody, UpdateUserBody } from '../validators/user.validator.js';
+import type { ChangeStatusBody, CreateUserBody, ListUsersQuery, ResetPasswordBody, SetPasswordBody, UpdateUserBody } from '../validators/user.validator.js';
 
 export function actionContext(request: Request): ActionContext {
   return { actorUserId: request.usuario!.id, requestId: request.requestId, ip: request.ip };
@@ -33,6 +33,12 @@ export async function resetPassword(request: Request, response: Response): Promi
   const { id } = validParams<{ id: string }>(request);
   const result = await userService.resetPassword(id, validBody<ResetPasswordBody>(request).reason, actionContext(request));
   response.json({ data: result });
+}
+
+export async function setPassword(request: Request, response: Response): Promise<void> {
+  const { id } = validParams<{ id: string }>(request);
+  const body = validBody<SetPasswordBody>(request);
+  response.json({ data: await userService.setPassword(id, body.password, body.reason, actionContext(request)) });
 }
 
 // ---- Alias de la ruta anterior /api/admin/asesores ----------------------------------------

@@ -9,7 +9,7 @@ import {
 } from '../domain/progress.js';
 import { activeEvaluations, listVisibleModules, type CatalogModule } from '../repositories/catalog.repository.js';
 import {
-  activeSealsForUser, activityProgressForUser, attemptsForUser, createMissingModuleProgress, createSeal, dependentsOf,
+  activeSealsForUser, activityProgressForUser, attemptLimitsForUser, attemptsForUser, createMissingModuleProgress, createSeal, dependentsOf,
   findActiveSeal, moduleProgressForUser, overridesForUser, upsertModuleProgress,
 } from '../repositories/progress.repository.js';
 
@@ -35,6 +35,8 @@ export type TrainingSnapshot = {
   overrides: OverrideLite[];
   availability: Map<string, Availability>;
   evaluations: Awaited<ReturnType<typeof activeEvaluations>>;
+  // Cupo de intentos fijado para este asesor por actividad; sin entrada rige el de la evaluación.
+  attemptLimits: Map<string, number>;
 };
 
 // Carga todo lo necesario para calcular el estado efectivo de un usuario.
@@ -48,17 +50,18 @@ export async function loadSnapshot(db: Db, userId: string, now = new Date(), opt
     moduleProgress.splice(0, moduleProgress.length, ...await moduleProgressForUser(db, userId));
   }
   const activityIds = modules.flatMap((module) => module.activities.map((activity) => activity.id));
-  const [activityProgress, seals, overrides, evaluations] = await Promise.all([
+  const [activityProgress, seals, overrides, evaluations, attemptLimits] = await Promise.all([
     activityProgressForUser(db, userId),
     activeSealsForUser(db, userId),
     overridesForUser(db, userId),
     activeEvaluations(db, activityIds),
+    attemptLimitsForUser(db, userId),
   ]);
   const attempts = await attemptsForUser(db, userId, [...evaluations.keys()]);
   const availability = new Map<string, Availability>();
   for (const [activityId, evaluation] of evaluations) {
     availability.set(activityId, computeAvailability(
-      evaluation,
+      { ...evaluation, maxAttempts: attemptLimits.get(activityId) ?? evaluation.maxAttempts },
       attempts.filter((attempt) => attempt.evaluation.activityId === activityId),
       overrides.filter((override) => override.activityId === activityId),
       now,
@@ -79,7 +82,7 @@ export async function loadSnapshot(db: Db, userId: string, now = new Date(), opt
       await db.userModuleProgress.updateMany({ where: { userId, moduleId: view.moduleId, status: { not: 'PASSED' } }, data: { status: view.status } });
     }
   }
-  return { modules, views, overrides, availability, evaluations };
+  return { modules, views, overrides, availability, evaluations, attemptLimits };
 }
 
 export async function computeModuleState(userId: string, db: Db = prisma, options: { sync?: boolean } = {}): Promise<ModuleView[]> {

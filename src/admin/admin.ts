@@ -32,11 +32,12 @@ function feedback(message: string, error = false): void {
 }
 
 // Diálogo genérico que exige motivo. Devuelve los datos del formulario o null si se cancela.
-function askForm(title: string, fields: string, options: { reason?: boolean; submit?: string } = {}): Promise<Record<string, string> | null> {
+function askForm(title: string, fields: string, options: { reason?: boolean; submit?: string; validate?: (data: Record<string, string>) => string | null } = {}): Promise<Record<string, string> | null> {
   const dialog = document.querySelector<HTMLDialogElement>('#admin-dialog')!;
   dialog.innerHTML = `<form method="dialog" class="auth-form">
     <h2>${escapar(title)}</h2>${fields}
     ${options.reason === false ? '' : '<label>Motivo <small>Obligatorio, mínimo 10 caracteres</small><textarea name="reason" required minlength="10" maxlength="500" rows="3"></textarea></label>'}
+    <p class="dialog-error" role="alert" hidden></p>
     <div class="dialog-actions"><button type="button" class="secondary-action" data-cancel>Cancelar</button><button class="primary-action" value="ok">${escapar(options.submit ?? 'Confirmar')}</button></div>
   </form>`;
   return new Promise((resolve) => {
@@ -44,7 +45,16 @@ function askForm(title: string, fields: string, options: { reason?: boolean; sub
     dialog.querySelector('[data-cancel]')!.addEventListener('click', () => { dialog.close(); resolve(null); });
     form.addEventListener('submit', (event) => {
       if (!form.reportValidity()) { event.preventDefault(); return; }
-      resolve(Object.fromEntries([...new FormData(form)].map(([key, value]) => [key, String(value)])));
+      const data = Object.fromEntries([...new FormData(form)].map(([key, value]) => [key, String(value)]));
+      const problem = options.validate?.(data) ?? null;
+      if (problem) {
+        event.preventDefault();
+        const box = dialog.querySelector<HTMLElement>('.dialog-error')!;
+        box.textContent = problem;
+        box.hidden = false;
+        return;
+      }
+      resolve(data);
     });
     dialog.addEventListener('cancel', () => resolve(null), { once: true });
     dialog.showModal();
@@ -62,6 +72,42 @@ async function run(action: () => Promise<unknown>, success: string, after?: () =
 
 // ---------------------------------------------------------------------------------------------
 // Asesores
+
+// Un solo diálogo para todo lo del usuario: datos, estado y contraseña (esta última solo en asesores).
+async function editUser(user: Usuario, after: () => unknown): Promise<void> {
+  const isAdvisor = user.rol === 'asesor';
+  const data = await askForm(`Editar a ${user.nombreCompleto}`, `
+    <fieldset class="dialog-group"><legend>Datos</legend>
+      <label>Nombre completo<input name="nombreCompleto" required maxlength="150" value="${escapar(user.nombreCompleto)}"></label>
+      <label>Número de documento<input name="numeroDocumento" required maxlength="30" value="${escapar(user.numeroDocumento)}"></label>
+      <label>Correo<input name="correo" type="email" maxlength="150" value="${escapar(user.correo)}"></label>
+      <label>Teléfono<input name="telefono" maxlength="30" value="${escapar(user.telefono)}"></label>
+      <label>Rol<select name="rol"><option value="asesor" ${isAdvisor ? 'selected' : ''}>Asesor</option><option value="administrador" ${!isAdvisor ? 'selected' : ''}>Administrador</option></select></label>
+    </fieldset>
+    <fieldset class="dialog-group"><legend>Acceso</legend>
+      <label>Estado de la cuenta<select name="estado">${['activo', 'inactivo', 'bloqueado'].map((s) => `<option value="${s}" ${s === user.estado ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`).join('')}</select></label>
+      <small class="dialog-hint">Desactivar o bloquear cierra de inmediato las sesiones abiertas. El historial se conserva.</small>
+      ${isAdvisor ? `<label>Nueva contraseña <small>Déjala vacía para no cambiarla</small><input name="password" type="password" minlength="10" maxlength="72" autocomplete="new-password"></label>
+      <small class="dialog-hint">El asesor deberá cambiarla en su próximo ingreso y sus sesiones abiertas se cerrarán.</small>` : ''}
+    </fieldset>
+    <label>Motivo <small>Obligatorio (mínimo 10 caracteres) si cambias el estado o la contraseña</small><textarea name="reason" maxlength="500" rows="2"></textarea></label>`, {
+    reason: false,
+    submit: 'Guardar cambios',
+    validate: (form) => ((form.estado !== user.estado || form.password) && form.reason.trim().length < 10 ? 'Escribe un motivo de al menos 10 caracteres para cambiar el estado o la contraseña.' : null),
+  });
+  if (!data) return;
+  const reason = data.reason.trim();
+  try {
+    const body: Record<string, unknown> = { nombreCompleto: data.nombreCompleto, numeroDocumento: data.numeroDocumento, telefono: data.telefono || null };
+    if (data.correo) body.correo = data.correo;
+    if (data.rol !== user.rol) body.rol = data.rol;
+    await api(`/admin/users/${user.id}`, { method: 'PATCH', body: JSON.stringify(body) });
+    if (data.estado !== user.estado) await api(`/admin/users/${user.id}/status`, { method: 'PATCH', body: JSON.stringify({ estado: data.estado, reason }) });
+    if (data.password) await api(`/admin/users/${user.id}/password`, { method: 'PUT', body: JSON.stringify({ password: data.password, reason }) });
+    await after();
+    feedback(data.password ? 'Cambios guardados y contraseña actualizada.' : 'Cambios guardados.');
+  } catch (error) { feedback((error as Error).message, true); }
+}
 
 async function advisorsSection(view: HTMLElement): Promise<void> {
   const modules = (await api<{ data: { id: string; name: string }[] }>('/admin/modules')).data;
@@ -109,10 +155,8 @@ async function advisorsSection(view: HTMLElement): Promise<void> {
       <td>${badge(user.estado === 'activo' ? 'ACTIVE' : user.estado === 'bloqueado' ? 'BLOCKED' : 'INACTIVE').replace(/>[^<]+</, `>${escapar(user.estado)}<`)}</td>
       <td>${user.rol === 'asesor' ? (user.debeCompletarDatos ? 'Pendiente' : 'Completo') : '—'}</td><td>${formatDate(user.ultimoAcceso)}</td>
       <td class="row-actions">
-        ${user.rol === 'asesor' ? `<a class="row-action" href="#ficha/${user.id}">Ficha</a>` : ''}
+        ${user.rol === 'asesor' ? `<a class="row-action" href="#ficha/${user.id}">Ver avance</a>` : ''}
         <button class="row-action" data-action="edit" data-id="${user.id}">Editar</button>
-        <button class="row-action" data-action="status" data-id="${user.id}">Estado</button>
-        ${user.rol === 'asesor' ? `<button class="row-action" data-action="reset" data-id="${user.id}">Contraseña</button>` : ''}
       </td></tr>`).join('') || (reset ? empty(7, 'No hay usuarios para mostrar.') : ''));
     cursor = page.meta.nextCursor;
     more.hidden = !cursor;
@@ -122,32 +166,7 @@ async function advisorsSection(view: HTMLElement): Promise<void> {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
     if (!button) return;
     const user = loaded.get(button.dataset.id!)!;
-    if (button.dataset.action === 'edit') {
-      const data = await askForm('Editar usuario', `
-        <label>Nombre completo<input name="nombreCompleto" required maxlength="150" value="${escapar(user.nombreCompleto)}"></label>
-        <label>Número de documento<input name="numeroDocumento" required maxlength="30" value="${escapar(user.numeroDocumento)}"></label>
-        <label>Correo<input name="correo" type="email" maxlength="150" value="${escapar(user.correo)}"></label>
-        <label>Teléfono<input name="telefono" maxlength="30" value="${escapar(user.telefono)}"></label>
-        <label>Rol<select name="rol"><option value="asesor" ${user.rol === 'asesor' ? 'selected' : ''}>Asesor</option><option value="administrador" ${user.rol !== 'asesor' ? 'selected' : ''}>Administrador</option></select></label>`, { reason: false, submit: 'Guardar' });
-      if (!data) return;
-      const body: Record<string, unknown> = { nombreCompleto: data.nombreCompleto, numeroDocumento: data.numeroDocumento, telefono: data.telefono || null };
-      if (data.correo) body.correo = data.correo;
-      if (data.rol !== user.rol) body.rol = data.rol;
-      await run(() => api(`/admin/users/${user.id}`, { method: 'PATCH', body: JSON.stringify(body) }), 'Usuario actualizado.', () => load(true));
-    } else if (button.dataset.action === 'status') {
-      const data = await askForm(`Cambiar estado de ${user.nombreCompleto}`, `
-        <label>Nuevo estado<select name="estado">${['activo', 'inactivo', 'bloqueado'].filter((s) => s !== user.estado).map((s) => `<option value="${s}">${s}</option>`).join('')}</select></label>
-        <p class="dialog-note">Desactivar o bloquear cierra de inmediato las sesiones abiertas. El historial se conserva.</p>`);
-      if (!data) return;
-      await run(() => api(`/admin/users/${user.id}/status`, { method: 'PATCH', body: JSON.stringify(data) }), 'Estado actualizado.', () => load(true));
-    } else if (button.dataset.action === 'reset') {
-      const data = await askForm(`Restablecer contraseña de ${user.nombreCompleto}`, '<p class="dialog-note">Se generará una contraseña temporal que verás una sola vez.</p>');
-      if (!data) return;
-      try {
-        const result = await api<{ data: { temporaryPassword: string } }>(`/admin/users/${user.id}/reset-password`, { method: 'POST', body: JSON.stringify(data) });
-        feedback(`Contraseña temporal: ${result.data.temporaryPassword} — compártela por un canal seguro; no se volverá a mostrar.`);
-      } catch (error) { feedback((error as Error).message, true); }
-    }
+    if (button.dataset.action === 'edit') await editUser(user, () => load(true));
   });
 
   view.querySelector<HTMLFormElement>('#create-form')!.addEventListener('submit', async (event) => {
@@ -167,10 +186,16 @@ async function advisorsSection(view: HTMLElement): Promise<void> {
 // ---------------------------------------------------------------------------------------------
 // Ficha del asesor
 
+type AdvisorActivity = {
+  activityId: string; title: string; type: string; order: number; status: string; isRequired: boolean; hasEvaluation: boolean;
+  attemptsRemaining: number | null; attemptsUsed: number; attemptsMax: number | null; customLimit: boolean; passed: boolean;
+  exhausted: boolean; waitUntil: string | null; nextAttemptNumber: number | null;
+};
 type AdvisorFile = {
   user: Usuario;
-  modules: { moduleId: string; name: string; status: string; progressPercent: string; blockedReason: string | null; hasSeal: boolean; lastActivityAt: string | null }[];
-  catalog: { moduleId: string; name: string; activities: { activityId: string; title: string; status: string; hasEvaluation: boolean; attemptsRemaining: number | null; exhausted: boolean; waitUntil: string | null; nextAttemptNumber: number | null }[] }[];
+  modules: { moduleId: string; slug: string; name: string; order: number; status: string; catalogStatus: string; progressPercent: string; blockedReason: string | null; hasSeal: boolean; lastActivityAt: string | null }[];
+  catalog: { moduleId: string; name: string; order: number; activities: AdvisorActivity[] }[];
+  activities: { activityId: string; status: string }[];
   attempts: { id: string; number: number; status: string; score: string | null; startedAt: string; submittedAt: string | null; durationSeconds: number | null; evaluation: { version: number; activity: { title: string } } }[];
   seals: { id: string; status: string; issuedAt: string; module: { name: string } }[];
   certificates: { id: string; code: string; status: string; issuedAt: string; revokedAt: string | null; revokeReason: string | null; previousCertificateId: string | null }[];
@@ -179,63 +204,148 @@ type AdvisorFile = {
   office?: Parameters<typeof officeFileHtml>[0];
 };
 
+const ACTIVITY_TYPE_TEXT: Record<string, string> = {
+  LESSON: 'Lección', QUIZ: 'Evaluación', TYPING: 'Mecanografía', SIMULATOR: 'Simulador', TYPIFICATION: 'Tipificación',
+  EXCEL_PRACTICE: 'Práctica de Excel', DICTATION: 'Dictado', PLACEHOLDER: 'Contenido',
+};
+const CERTIFICATE_SLUG = 'certificado';
+
+const pill = (kind: string, label: string) => `<span class="status status-${kind}">${escapar(label)}</span>`;
+
+// Resume una actividad en una sola etiqueta que el administrador entienda de un vistazo.
+function activityPill(activity: AdvisorActivity, moduleStatus: string, progress: string | undefined): string {
+  if (activity.status !== 'ACTIVE') return pill('draft', 'Inactiva');
+  if (activity.passed || progress === 'PASSED') return pill('passed', 'Aprobada');
+  if (activity.exhausted) return pill('failed', 'Sin intentos');
+  if (moduleStatus === 'BLOCKED') return pill('blocked', 'Bloqueada');
+  if (activity.waitUntil) return pill('in_progress', 'En espera');
+  if (progress === 'IN_PROGRESS') return pill('in_progress', 'En curso');
+  if (progress === 'AVAILABLE' || activity.attemptsUsed > 0) return pill('available', 'Disponible');
+  return pill('not_started', 'Sin iniciar');
+}
+
+function moduleVerdict(view: AdvisorFile['modules'][number]): string {
+  if (view.catalogStatus !== 'ACTIVE') return pill('draft', 'No disponible');
+  if (view.status === 'PASSED') return pill('passed', 'Completado');
+  if (view.status === 'FAILED') return pill('failed', 'Sin intentos');
+  if (view.status === 'BLOCKED') return pill('blocked', 'Bloqueado');
+  if (view.status === 'IN_PROGRESS') return pill('in_progress', 'En curso');
+  return pill('available', 'Disponible');
+}
+
+function activityRow(activity: AdvisorActivity, moduleStatus: string, progress: string | undefined, isCurrent: boolean): string {
+  const attempts = !activity.hasEvaluation ? '<span class="muted">Sin evaluación</span>' : `
+    <span class="attempts"><strong>${activity.attemptsUsed}</strong> de <strong>${activity.attemptsMax ?? '—'}</strong> intentos${activity.customLimit ? ' <em class="tag">ajustado</em>' : ''}</span>
+    <span class="muted">Le quedan ${activity.attemptsRemaining ?? 0}</span>`;
+  const wait = activity.waitUntil ? `<span class="wait">Podrá reintentar desde ${escapar(formatDate(activity.waitUntil))}</span>` : '';
+  const actions = [
+    activity.exhausted ? `<button class="primary-small" data-reactivate="${activity.activityId}" data-title="${escapar(activity.title)}">Reactivar prueba</button>` : '',
+    activity.waitUntil ? `<button class="row-action" data-reset-wait="${activity.activityId}" data-title="${escapar(activity.title)}">Quitar espera</button>` : '',
+    activity.hasEvaluation ? `<button class="row-action" data-limit="${activity.activityId}" data-title="${escapar(activity.title)}" data-used="${activity.attemptsUsed}" data-max="${activity.attemptsMax ?? 1}" data-custom="${activity.customLimit}">Cambiar intentos</button>` : '',
+  ].join('');
+  return `<li class="activity-item${isCurrent ? ' is-current' : ''}">
+    <div class="activity-main"><strong>${escapar(activity.title)}</strong><span class="muted">${escapar(ACTIVITY_TYPE_TEXT[activity.type] ?? activity.type)}${activity.isRequired ? '' : ' · opcional'}</span></div>
+    <div class="activity-state">${activityPill(activity, moduleStatus, progress)}</div>
+    <div class="activity-attempts">${attempts}${wait}</div>
+    <div class="activity-actions">${actions}</div></li>`;
+}
+
 async function advisorFileSection(view: HTMLElement, userId: string): Promise<void> {
   const { data } = await api<{ data: AdvisorFile }>(`/admin/advisors/${userId}/progress`);
-  const activityRows = data.catalog.flatMap((module) => module.activities.map((activity) => `<tr>
-    <td>${escapar(module.name)}</td><td>${escapar(activity.title)}</td><td>${badge(activity.status)}</td>
-    <td>${activity.hasEvaluation ? `${activity.attemptsRemaining ?? '—'}${activity.exhausted ? ' (agotados)' : ''}` : 'Sin evaluación'}</td>
-    <td>${activity.waitUntil ? formatDate(activity.waitUntil) : '—'}</td><td>${activity.nextAttemptNumber ?? '—'}</td>
-    <td><button class="row-action" data-reactivate="${activity.activityId}" data-title="${escapar(activity.title)}">Reactivar…</button></td></tr>`)).join('');
+  const progressOf = new Map(data.activities.map((row) => [row.activityId, row.status]));
+  const catalogOf = new Map(data.catalog.map((module) => [module.moduleId, module]));
+  const modules = [...data.modules].sort((a, b) => a.order - b.order);
+  const learning = modules.filter((module) => module.slug !== CERTIFICATE_SLUG && module.catalogStatus === 'ACTIVE');
+  const overall = learning.length ? learning.reduce((sum, module) => sum + Number(module.progressPercent), 0) / learning.length : 0;
+  const passedModules = learning.filter((module) => module.status === 'PASSED' || module.hasSeal).length;
+
+  // "Dónde va": primer módulo activo sin completar que no esté bloqueado; si no hay, el primero pendiente.
+  const pending = modules.filter((module) => module.catalogStatus === 'ACTIVE' && module.status !== 'PASSED' && !module.hasSeal);
+  const currentModule = pending.find((module) => module.status !== 'BLOCKED') ?? pending[0] ?? null;
+  const currentActivities = currentModule ? [...(catalogOf.get(currentModule.moduleId)?.activities ?? [])].sort((a, b) => a.order - b.order) : [];
+  const currentActivity = currentActivities.find((activity) => activity.status === 'ACTIVE' && activity.isRequired && !activity.passed && progressOf.get(activity.activityId) !== 'PASSED') ?? null;
+  const whereText = !currentModule ? 'Ruta completada' : escapar(currentModule.name);
+  const whereSub = !currentModule ? 'Terminó todos los módulos disponibles.' : currentActivity ? `Actividad: ${escapar(currentActivity.title)}` : escapar(currentModule.blockedReason ?? 'Sin actividades pendientes.');
+
+  const moduleCards = modules.map((module) => {
+    const activities = [...(catalogOf.get(module.moduleId)?.activities ?? [])].sort((a, b) => a.order - b.order);
+    const required = activities.filter((activity) => activity.status === 'ACTIVE' && activity.isRequired);
+    const done = required.filter((activity) => activity.passed || progressOf.get(activity.activityId) === 'PASSED').length;
+    const isCurrent = currentModule?.moduleId === module.moduleId;
+    const percent = Math.round(Number(module.progressPercent));
+    return `<details class="module-card${isCurrent ? ' is-current' : ''}" ${module.status === 'PASSED' && !isCurrent ? '' : 'open'}>
+      <summary>
+        <span class="module-order">${module.order}</span>
+        <span class="module-title"><strong>${escapar(module.name)}</strong>${isCurrent ? ' <em class="tag tag-current">Aquí va</em>' : ''}
+          <small>${required.length ? `${done} de ${required.length} actividades aprobadas` : 'Sin actividades obligatorias'}${module.hasSeal ? ' · Sello obtenido' : ''}${module.lastActivityAt ? ` · Último avance ${escapar(formatDate(module.lastActivityAt))}` : ''}</small></span>
+        ${moduleVerdict(module)}
+        <span class="module-percent"><span class="bar" role="progressbar" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"><span style="width:${percent}%"></span></span><b>${percent} %</b></span>
+      </summary>
+      ${module.blockedReason && module.status !== 'PASSED' ? `<p class="module-note">${escapar(module.blockedReason)}</p>` : ''}
+      <ul class="activity-list">${activities.map((activity) => activityRow(activity, module.status, progressOf.get(activity.activityId), isCurrent && currentActivity?.activityId === activity.activityId)).join('') || '<li class="activity-empty">Este módulo aún no tiene actividades.</li>'}</ul>
+    </details>`;
+  }).join('');
+
+  const history = (title: string, body: string) => `<details class="auth-card admin-card history"><summary>${title}</summary>${body}</details>`;
   view.innerHTML = `
     <a class="secondary-link" href="#asesores">← Volver a usuarios</a>
-    <section class="auth-card admin-card"><div class="section-title"><div><h2>${escapar(data.user.nombreCompleto)}</h2>
-      <p>Documento ${escapar(data.user.numeroDocumento)} · ${escapar(data.user.estado)} · ${escapar(data.user.correo ?? 'sin correo')} · creado ${formatDate(data.user.fechaCreacion)} · último acceso ${formatDate(data.user.ultimoAcceso)}</p></div></div>
-      <div class="table-wrap"><table><thead><tr><th>Módulo</th><th>Estado efectivo</th><th>Progreso</th><th>Sello</th><th>Último avance</th><th>Motivo</th></tr></thead><tbody>
-      ${data.modules.map((m) => `<tr><td>${escapar(m.name)}</td><td>${badge(m.status)}</td><td>${escapar(m.progressPercent)} %</td><td>${m.hasSeal ? 'Sí' : '—'}</td><td>${formatDate(m.lastActivityAt)}</td><td>${escapar(m.blockedReason ?? '')}</td></tr>`).join('')}
-      </tbody></table></div></section>
-    <section class="auth-card admin-card"><div class="section-title"><div><h2>Actividades</h2><p>La reactivación individual pide motivo y se registra en auditoría.</p></div></div>
-      <div class="table-wrap"><table><thead><tr><th>Módulo</th><th>Actividad</th><th>Estado</th><th>Intentos restantes</th><th>Espera hasta</th><th>Próximo intento</th><th></th></tr></thead><tbody>${activityRows || empty(7)}</tbody></table></div></section>
-    <section class="auth-card admin-card"><div class="section-title"><div><h2>Intentos y notas</h2></div></div>
-      <div class="table-wrap"><table><thead><tr><th>#</th><th>Actividad</th><th>Versión</th><th>Estado</th><th>Nota</th><th>Inicio</th><th>Envío</th><th>Duración</th></tr></thead><tbody>
+    <section class="auth-card admin-card file-head">
+      <div><h2>${escapar(data.user.nombreCompleto)}</h2>
+        <p>Documento ${escapar(data.user.numeroDocumento)} · ${escapar(data.user.correo ?? 'sin correo')} · último acceso ${escapar(formatDate(data.user.ultimoAcceso))}</p></div>
+      ${pill(data.user.estado === 'activo' ? 'active' : data.user.estado === 'bloqueado' ? 'blocked' : 'inactive', data.user.estado.charAt(0).toUpperCase() + data.user.estado.slice(1))}
+    </section>
+    <section class="stat-grid">
+      <div class="stat stat-wide"><span>Dónde va</span><strong>${whereText}</strong><small>${whereSub}</small></div>
+      <div class="stat"><span>Avance general</span><strong>${Math.round(overall)} %</strong><span class="bar"><span style="width:${Math.round(overall)}%"></span></span></div>
+      <div class="stat"><span>Módulos completados</span><strong>${passedModules} de ${learning.length}</strong><small>Sellos obtenidos</small></div>
+    </section>
+    <section class="auth-card admin-card"><div class="section-title"><div><h2>Ruta de formación</h2>
+      <p>Módulos en orden. Reactiva la prueba cuando se quede sin intentos o ajusta cuántos intentos tiene en cada actividad.</p></div></div>
+      <div class="module-list">${moduleCards}</div></section>
+    ${history('Historial de intentos y notas', `<div class="table-wrap"><table><thead><tr><th>#</th><th>Actividad</th><th>Versión</th><th>Estado</th><th>Nota</th><th>Inicio</th><th>Envío</th><th>Duración</th></tr></thead><tbody>
       ${data.attempts.map((a) => `<tr><td>${a.number}</td><td>${escapar(a.evaluation.activity.title)}</td><td>v${a.evaluation.version}</td><td>${badge(a.status)}</td><td>${escapar(a.score ?? '—')}</td><td>${formatDate(a.startedAt)}</td><td>${formatDate(a.submittedAt)}</td><td>${a.durationSeconds !== null ? `${Math.round(a.durationSeconds / 60)} min` : '—'}</td></tr>`).join('') || empty(8)}
-      </tbody></table></div></section>
-    ${officeFileHtml(data.office, { badge, empty })}
-    <section class="auth-card admin-card"><div class="section-title"><div><h2>Sellos y certificados</h2></div></div>
-      <div class="table-wrap"><table><thead><tr><th>Sello</th><th>Estado</th><th>Emitido</th></tr></thead><tbody>
+      </tbody></table></div>`)}
+    ${data.office ? history('Resultados de Ofimática', officeFileHtml(data.office, { badge, empty })) : ''}
+    ${history('Sellos y certificados', `<div class="table-wrap"><table><thead><tr><th>Sello</th><th>Estado</th><th>Emitido</th></tr></thead><tbody>
       ${data.seals.map((s) => `<tr><td>${escapar(s.module.name)}</td><td>${badge(s.status)}</td><td>${formatDate(s.issuedAt)}</td></tr>`).join('') || empty(3)}
       </tbody></table></div>
       <div class="table-wrap"><table><thead><tr><th>Código</th><th>Estado</th><th>Emitido</th><th>Anulado</th><th>Motivo</th><th>Reemplaza a</th><th></th></tr></thead><tbody>
       ${data.certificates.map((c) => `<tr><td><strong>${escapar(c.code)}</strong></td><td>${badge(c.status)}</td><td>${formatDate(c.issuedAt)}</td><td>${formatDate(c.revokedAt)}</td><td>${escapar(c.revokeReason ?? '')}</td>
         <td>${escapar(data.certificates.find((p) => p.id === c.previousCertificateId)?.code ?? '—')}</td>
         <td>${c.status === 'ACTIVE' ? `<button class="row-action" data-cert-revoke="${c.id}">Anular</button>` : ''}${c.status !== 'REISSUED' && !data.certificates.some((n) => n.previousCertificateId === c.id) ? `<button class="row-action" data-cert-reissue="${c.id}">Reemitir</button>` : ''}</td></tr>`).join('') || empty(7, 'Sin certificados.')}
-      </tbody></table></div></section>
-    <section class="auth-card admin-card"><div class="section-title"><div><h2>Excepciones</h2><p>Vigentes, vencidas, consumidas y revocadas. Nunca se borran.</p></div></div>
-      <div class="table-wrap"><table><thead><tr><th>Acción</th><th>Actividad</th><th>Estado</th><th>Motivo</th><th>Vence</th><th>Creada por</th><th>Fecha</th><th></th></tr></thead><tbody>
+      </tbody></table></div>`)}
+    ${history('Excepciones concedidas', `<p class="dialog-note">Vigentes, vencidas, consumidas y revocadas. Nunca se borran.</p><div class="table-wrap"><table><thead><tr><th>Acción</th><th>Actividad</th><th>Estado</th><th>Motivo</th><th>Vence</th><th>Creada por</th><th>Fecha</th><th></th></tr></thead><tbody>
       ${data.overrides.map((o) => `<tr><td>${escapar(ACTION_TEXT[o.action] ?? o.action)}${o.extraAttempts ? ` (+${o.extraAttempts})` : ''}</td><td>${escapar(o.activity.module.name)} · ${escapar(o.activity.title)}</td><td>${badge(o.state)}</td><td>${escapar(o.reason)}</td><td>${formatDate(o.expiresAt)}</td><td>${escapar(o.createdBy.nombreCompleto)}</td><td>${formatDate(o.createdAt)}</td>
         <td>${o.state === 'VIGENTE' ? `<button class="row-action" data-revoke="${o.id}">Revocar</button>` : ''}</td></tr>`).join('') || empty(8)}
-      </tbody></table></div></section>
-    <section class="auth-card admin-card"><div class="section-title"><div><h2>Últimas acciones de auditoría</h2></div></div>
-      <ul class="audit-list">${data.audit.map((a) => `<li><strong>${escapar(a.action)}</strong> · ${escapar(a.actor.nombreCompleto)} · ${formatDate(a.createdAt)}${a.reason ? ` — ${escapar(a.reason)}` : ''}</li>`).join('') || '<li>Sin acciones registradas.</li>'}</ul></section>`;
+      </tbody></table></div>`)}
+    ${history('Últimas acciones de auditoría', `<ul class="audit-list">${data.audit.map((a) => `<li><strong>${escapar(a.action)}</strong> · ${escapar(a.actor.nombreCompleto)} · ${formatDate(a.createdAt)}${a.reason ? ` — ${escapar(a.reason)}` : ''}</li>`).join('') || '<li>Sin acciones registradas.</li>'}</ul>`)}`;
 
   const reload = rerender;
   view.addEventListener('click', async (event) => {
     const target = event.target as HTMLElement;
     const reactivate = target.closest<HTMLButtonElement>('[data-reactivate]');
+    const resetWait = target.closest<HTMLButtonElement>('[data-reset-wait]');
+    const limit = target.closest<HTMLButtonElement>('[data-limit]');
     const revoke = target.closest<HTMLButtonElement>('[data-revoke]');
     const certRevoke = target.closest<HTMLButtonElement>('[data-cert-revoke]');
     const certReissue = target.closest<HTMLButtonElement>('[data-cert-reissue]');
+    // Una clave por apertura del diálogo: si la solicitud se reintenta, no se duplica la excepción.
+    const grant = (activityId: string, body: Record<string, unknown>) => api(`/admin/advisors/${userId}/activities/${activityId}/reactivate`, { method: 'POST', body: JSON.stringify(body), headers: { 'Idempotency-Key': crypto.randomUUID() } });
     if (reactivate) {
-      // Una clave por apertura del diálogo: si la solicitud se reintenta, no se duplica la excepción.
-      const idempotencyKey = crypto.randomUUID();
-      const form = await askForm(`Excepción para "${reactivate.dataset.title}"`, `
-        <label>Acción<select name="action">${Object.entries(ACTION_TEXT).map(([value, label]) => `<option value="${value}">${label}</option>`).join('')}</select></label>
-        <label>Intentos adicionales <small>Para intento adicional o reactivación</small><input name="extraAttempts" type="number" min="1" max="10" value="1"></label>
-        <label>Vence <small>Opcional</small><input name="expiresAt" type="datetime-local"></label>`);
-      if (!form) return;
-      const body: Record<string, unknown> = { action: form.action, reason: form.reason };
-      if (form.action === 'EXTRA_ATTEMPT' || form.action === 'REACTIVATE') body.extraAttempts = Number(form.extraAttempts || 1);
-      if (form.expiresAt) body.expiresAt = new Date(form.expiresAt).toISOString();
-      await run(() => api(`/admin/advisors/${userId}/activities/${reactivate.dataset.reactivate}/reactivate`, { method: 'POST', body: JSON.stringify(body), headers: { 'Idempotency-Key': idempotencyKey } }), 'Excepción registrada.', reload);
+      const form = await askForm(`Reactivar "${reactivate.dataset.title}"`, `
+        <p class="dialog-note">El asesor se quedó sin intentos. Se le concederán nuevos intentos y conserva los anteriores en el historial.</p>
+        <label>Intentos que se conceden<input name="extraAttempts" type="number" min="1" max="10" value="1" required></label>`, { submit: 'Reactivar prueba' });
+      if (form) await run(() => grant(reactivate.dataset.reactivate!, { action: 'REACTIVATE', reason: form.reason, extraAttempts: Number(form.extraAttempts || 1) }), 'Prueba reactivada.', reload);
+    } else if (resetWait) {
+      const form = await askForm(`Quitar la espera de "${resetWait.dataset.title}"`, '<p class="dialog-note">El asesor podrá reintentar de inmediato.</p>', { submit: 'Quitar espera' });
+      if (form) await run(() => grant(resetWait.dataset.resetWait!, { action: 'RESET_WAIT', reason: form.reason }), 'Espera eliminada.', reload);
+    } else if (limit) {
+      const used = Number(limit.dataset.used);
+      const form = await askForm(`Intentos de "${limit.dataset.title}"`, `
+        <p class="dialog-note">Ya usó <strong>${used}</strong> intento(s). Los usados se conservan; el nuevo valor es el total permitido para este asesor.</p>
+        <label>Intentos permitidos<input name="maxAttempts" type="number" min="1" max="50" required value="${escapar(limit.dataset.max)}"></label>
+        ${limit.dataset.custom === 'true' ? '<label class="check-label"><input name="restore" type="checkbox" value="1"> Volver al valor que define la evaluación</label>' : ''}`, { submit: 'Guardar intentos' });
+      if (form) await run(() => api(`/admin/advisors/${userId}/activities/${limit.dataset.limit}/attempt-limit`, { method: 'PUT', body: JSON.stringify({ maxAttempts: form.restore ? null : Number(form.maxAttempts), reason: form.reason }) }), 'Intentos actualizados.', reload);
     } else if (revoke) {
       const form = await askForm('Revocar excepción', '');
       if (form) await run(() => api(`/admin/overrides/${revoke.dataset.revoke}/revoke`, { method: 'POST', body: JSON.stringify(form) }), 'Excepción revocada.', reload);
