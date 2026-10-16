@@ -1,0 +1,56 @@
+/* Tokens del simulador. Se declaran en .sim-root (no en :root) para no pisar estilos de Fontana School. */
+.sim-root {
+  --sim-brand-900: #14213d;
+  --sim-brand-700: #1d3fa8;
+  --sim-brand-600: #2563eb;
+  /* Azul cielo de los encabezados de tarjeta: con texto grande en negrita cumple AA (3:1). */
+  --sim-brand-400: #1a9bd7;
+  /* Variante más oscura para botones con texto normal (4.5:1). */
+  --sim-brand-500: #0a7cbd;
+  --sim-brand-50: #eef4ff;
+
+  --sim-surface: #ffffff;
+  --sim-bg: #f1f2f4;
+  --sim-ink: #1f2328;
+  --sim-ink-muted: #5b6470;
+  --sim-border: #d5d9df;
+  --sim-border-strong: #b8bec6;
+  --sim-input-bg: #e8f0fe;
+
+  --sim-success: #1e7d4f;
+  --sim-warning: #f2b705;
+  --sim-danger: #d63a3a;
+  --sim-danger-ink: #b42323;
+  --sim-info: #17b3d6;
+  --sim-warning-bg: #fff3cd;
+  --sim-warning-ink: #664d03;
+  --sim-neutral: #6c757d;
+  --sim-neutral-ink: #4b5259;
+
+  --sim-chart-1: #1e7d4f;
+  --sim-chart-2: #2563eb;
+  --sim-chart-3: #9aa3ad;
+
+  --sim-focus: #0b57d0;
+
+  --sim-radius-sm: 4px;
+  --sim-radius-md: 6px;
+  --sim-radius-pill: 999px;
+
+  --sim-shadow-card: 0 2px 0 #9aa0a6, 0 4px 10px rgb(0 0 0 / 0.08);
+  --sim-shadow-pop: 0 10px 30px rgb(20 33 61 / 0.18);
+
+  --sim-sidebar-rail: 50px;
+  --sim-sidebar-open: 220px;
+  --sim-topbar-h: 64px;
+
+  --sim-space-1: 4px;
+  --sim-space-2: 8px;
+  --sim-space-3: 12px;
+  --sim-space-4: 16px;
+  --sim-space-5: 20px;
+  --sim-space-6: 24px;
+
+  --sim-font: system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+  --sim-font-mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
