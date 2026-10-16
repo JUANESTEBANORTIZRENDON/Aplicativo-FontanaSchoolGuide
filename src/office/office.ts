@@ -158,11 +158,17 @@ async function renderWelcome(ctx: OfficeContext): Promise<void> {
 // Resultado y sello
 // ---------------------------------------------------------------------------------------------
 
+// Ilustraciones de las lecciones (src/office/imagenes): una por lección, nombrada excel-<clave> u orto-<clave>.
+// Una imagen subida por el administrador al almacenamiento tiene prioridad sobre la ilustración incluida.
+const LESSON_IMAGES = import.meta.glob('./imagenes/*.svg', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+const bundledImage = (key: string): string | null => LESSON_IMAGES[`./imagenes/excel-${key}.svg`] ?? LESSON_IMAGES[`./imagenes/orto-${key}.svg`] ?? null;
+
 export function lessonCard(lesson: Lesson): string {
   const image = lesson.image;
+  const src = image?.url ?? bundledImage(lesson.key);
   const picture = image
-    ? (image.url
-      ? `<img src="${escapar(image.url)}" alt="${escapar(image.alt)}" width="${image.width}" height="${image.height}" loading="lazy" decoding="async">`
+    ? (src
+      ? `<img src="${escapar(src)}" alt="${escapar(image.url ? image.alt : `Ilustración de la lección «${lesson.title}»`)}" width="${image.width}" height="${image.height}" loading="lazy" decoding="async">`
       : `<div class="office-image-placeholder" role="img" aria-label="${escapar(image.alt)}" style="aspect-ratio:${image.width}/${image.height}"><span>Imagen en preparación</span><small>${escapar(image.alt)}</small></div>`)
     : '';
   return `
