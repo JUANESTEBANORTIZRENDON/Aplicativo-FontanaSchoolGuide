@@ -156,7 +156,13 @@ async function main(): Promise<void> {
     for (const exercise of latest) {
       const file = audioFileName(exercise.key, exercise.version);
       if (exercise.audioKey && await getStorage().exists(exercise.audioKey) && !options.forceAudio) {
-        table.push({ key: exercise.key, version: exercise.version, archivo: exercise.audioKey, duracion: exercise.audioDurationSeconds ?? '—', tamano: '—', estado: 'omitido (ya tiene audio)' });
+        // El audio ya está cargado: no se regenera. Con --apply (sin --no-activate) solo falta activarlo.
+        let estado = `omitido (ya tiene audio, ${exercise.status})`;
+        if (options.apply && options.activate && exercise.status !== 'ACTIVE') {
+          await updateDictation(exercise.id, { status: 'ACTIVE', reason: `Activación del audio sintético local ya cargado (${voiceLabel}), autorizada por el equipo` }, context!);
+          estado = 'audio existente, ahora ACTIVO';
+        }
+        table.push({ key: exercise.key, version: exercise.version, archivo: exercise.audioKey, duracion: exercise.audioDurationSeconds ?? '—', tamano: '—', estado });
         continue;
       }
       const generated = await generate(options, workDir, exercise.key, exercise.version, exercise.expectedText);
