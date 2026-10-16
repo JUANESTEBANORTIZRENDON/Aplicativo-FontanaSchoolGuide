@@ -79,6 +79,21 @@ export async function completarDatos(usuario: AuthUser, input: CompletarDatosBod
     return await prisma.usuario.update({
       where: { id: usuario.id },
       data: {
+        nombre: input.nombre,
+        apellidos: input.apellidos,
+        nombreCompleto: `${input.nombre} ${input.apellidos}`,
+        tipoDocumento: input.tipoDocumento,
+        numeroDocumento: input.numeroDocumento,
+        fechaNacimiento: new Date(`${input.fechaNacimiento}T00:00:00.000Z`),
+        sexo: input.sexo,
+        tipoSangre: input.tipoSangre,
+        tallaCamisa: input.tallaCamisa,
+        direccionResidencia: input.direccionResidencia,
+        nombreContactoEmergencia: input.nombreContactoEmergencia,
+        numeroContactoEmergencia: input.numeroContactoEmergencia,
+        banco: input.banco,
+        otroBanco: input.banco === 'Otros' ? input.otroBanco : null,
+        numeroCuenta: input.numeroCuenta,
         correo: input.correo,
         telefono: input.telefono || null,
         debeCompletarDatos: false,
@@ -89,6 +104,8 @@ export async function completarDatos(usuario: AuthUser, input: CompletarDatosBod
     });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      const target = String(error.meta?.target ?? '');
+      if (target.includes('numero_documento')) throw new ConflictError('Este número de documento ya está registrado en otra cuenta.', 'DOCUMENT_TAKEN');
       throw new ConflictError('Este correo ya está registrado en otra cuenta. Usa un correo diferente.', 'EMAIL_TAKEN');
     }
     throw error;

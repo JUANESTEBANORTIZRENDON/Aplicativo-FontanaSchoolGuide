@@ -17,6 +17,18 @@ datasource db {
 model Usuario {
   id                                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   nombreCompleto                     String    @map("nombre_completo") @db.VarChar(150)
+  nombre                             String?   @db.VarChar(75)
+  apellidos                          String?   @db.VarChar(75)
+  fechaNacimiento                    DateTime? @map("fecha_nacimiento") @db.Date
+  sexo                               String?   @db.VarChar(10)
+  tipoSangre                         String?   @map("tipo_sangre") @db.VarChar(3)
+  tallaCamisa                        String?   @map("talla_camisa") @db.VarChar(5)
+  direccionResidencia                String?   @map("direccion_residencia") @db.VarChar(250)
+  nombreContactoEmergencia            String?   @map("nombre_contacto_emergencia") @db.VarChar(150)
+  numeroContactoEmergencia            String?   @map("numero_contacto_emergencia") @db.VarChar(30)
+  banco                              String?   @db.VarChar(50)
+  otroBanco                          String?   @map("otro_banco") @db.VarChar(100)
+  numeroCuenta                       String?   @map("numero_cuenta") @db.VarChar(30)
   tipoDocumento                      String    @default("CC") @map("tipo_documento") @db.VarChar(10)
   numeroDocumento                    String    @unique @map("numero_documento") @db.VarChar(30)
   correo                             String?   @db.VarChar(150)

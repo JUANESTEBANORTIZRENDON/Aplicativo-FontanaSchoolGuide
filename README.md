@@ -245,7 +245,7 @@ npm.cmd test
 | `POST /api/auth/logout` | Cerrar sesión. | Autenticado |
 | `POST /api/auth/logout-all` | Cerrar todas las sesiones del usuario. | Autenticado |
 | `GET /api/auth/me` | Usuario, ruta y permisos. | Autenticado |
-| `POST /api/auth/completar-datos` | Correo y teléfono del asesor. | Asesor |
+| `POST /api/auth/completar-datos` | Datos personales, documento, contacto, emergencia y cuenta bancaria del asesor. | Asesor |
 | `POST /api/auth/experiencia` | Guarda la experiencia y asigna la ruta de práctica. | Asesor con perfil completo |
 | `GET /api/advisor/modules` | Ruta, progreso y botones. | Asesor |
 | `GET /api/advisor/modules/:slug` | Acceso validado a un módulo (403 con `blockedReason`). | Asesor |
