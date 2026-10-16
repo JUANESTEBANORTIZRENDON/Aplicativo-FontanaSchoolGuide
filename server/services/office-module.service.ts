@@ -24,7 +24,7 @@ export async function getModuleState(userId: string, now = new Date(), preloaded
   const ids = Object.values(activities.bySection).flatMap((activity) => (activity ? [activity.id] : []));
   const typingActivity = activities.bySection.mecanografia;
   // Consultas independientes entre sí: se lanzan juntas para no sumar la latencia de cada una.
-  const [viewed, progressRows, openTyping, seal, dictation, excel, practiceRequired] = await Promise.all([
+  const [viewed, progressRows, openTyping, seal, dictation, excel, practiceRequired, lastDictation] = await Promise.all([
     viewsOf(prisma, userId, ids),
     prisma.userActivityProgress.findMany({ where: { userId, activityId: { in: ids } } }),
     typingActivity
@@ -37,7 +37,10 @@ export async function getModuleState(userId: string, now = new Date(), preloaded
     describeNext(userId).catch(() => null),
     prisma.excelActivity.count({ where: { status: 'ACTIVE' } }),
     typingActivity ? practicePending(userId, typingActivity.id) : false,
+    prisma.dictationAttemptResult.findFirst({ where: { attempt: { userId }, completedAt: { not: null } }, orderBy: { completedAt: 'desc' }, select: { passed: true } }),
   ]);
+  // Alerta de ortografía: el dictado se presentó pero no alcanzó la nota o tuvo errores críticos.
+  const spellingAlert = lastDictation?.passed === false;
   const viewedKeys = (section: OfficeSection) => viewed.filter((row) => row.activityId === activities.bySection[section]?.id).map((row) => row.sectionKey);
   const progressOf = (id: string | undefined) => progressRows.find((row) => row.activityId === id);
 
@@ -60,6 +63,7 @@ export async function getModuleState(userId: string, now = new Date(), preloaded
       waitUntil: availability?.waitUntil?.toISOString() ?? null,
       lessonsViewed: key === 'excel' || key === 'ortografia' ? viewedKeys(key) : [],
       lessonsTotal: key === 'excel' ? EXCEL_LESSON_KEYS.length : key === 'ortografia' ? SPELLING_LESSON_KEYS.length : 0,
+      alert: key === 'ortografia' && status === 'COMPLETED' && spellingAlert,
     };
   });
 

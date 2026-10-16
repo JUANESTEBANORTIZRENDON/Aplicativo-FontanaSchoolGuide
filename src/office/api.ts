@@ -14,6 +14,8 @@ export type SectionState = {
   activityId: string | null;
   graded: boolean;
   status: 'COMPLETED' | 'PENDING' | 'NO_ATTEMPTS';
+  // Solo ortografía: el dictado se presentó con errores (alerta para refuerzo, no bloquea el módulo).
+  alert?: boolean;
   attemptsRemaining: number | null;
   maxAttempts: number | null;
   waitUntil: string | null;

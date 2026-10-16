@@ -184,13 +184,12 @@ describe('escenarios demo', () => {
     expect(blocked.body.code).toBe('PRACTICE_REQUIRED');
   });
 
-  it('1000000148 · dictado fallido con error crítico y dos intentos restantes', async () => {
+  it('1000000148 · dictado con error crítico: sección completada con alerta', async () => {
     const id = await userId('1000000148');
     const result = await prisma.dictationAttemptResult.findFirstOrThrow({ where: { attempt: { userId: id } } });
     expect(result).toMatchObject({ passed: false, criticalCount: 1 });
     const state = (await (await loginAgent('1000000148', 'asesor', DEMO_PASSWORD)).agent.get('/api/training/office/module')).body.data;
-    expect(state.currentSection).toBe('ortografia');
-    expect(state.sections.find((section: { key: string }) => section.key === 'ortografia').attemptsRemaining).toBe(2);
+    expect(state.sections.find((section: { key: string }) => section.key === 'ortografia')).toMatchObject({ status: 'COMPLETED', alert: true });
   });
 
   it('1000000149 · módulo completo con sello e Inducción desbloqueada', async () => {

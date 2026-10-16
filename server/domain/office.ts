@@ -44,8 +44,10 @@ export const DEFAULT_OFFICE_CONFIG: OfficeConfigValues = {
   excelMinScore: 80,
   excelMaxAttempts: 3,
   dictationMinScore: 85,
-  dictationMaxAttempts: 3,
-  dictationMaxPlays: 2,
+  // Un solo intento: el dictado mide la ortografía del asesor; no se repite hasta aprobar.
+  dictationMaxAttempts: 1,
+  // Seis reproducciones para que el asesor pueda revisar y corregir lo que escribió.
+  dictationMaxPlays: 6,
 };
 
 // Límites de cada valor (los mismos de la restricción CHECK de la base y del esquema zod).

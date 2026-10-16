@@ -92,7 +92,7 @@ describe('módulo Ofimática: acceso y estado', () => {
     expect(state.sections.map((section: { key: string }) => section.key)).toEqual(['bienvenida', 'mecanografia', 'excel', 'ortografia', 'resultado']);
     expect(state.config.typing).toMatchObject({ durationSeconds: 60, minCorrectCpm: 150, minAccuracy: 90, maxAttempts: 3 });
     expect(state.config.excel).toMatchObject({ minScore: 80 });
-    expect(state.config.dictation).toMatchObject({ minScore: 85, maxPlays: 2 });
+    expect(state.config.dictation).toMatchObject({ minScore: 85, maxPlays: 6, maxAttempts: 1 });
     // Registrar la bienvenida mueve el punto de reanudación.
     expect((await agent.post('/api/training/office/sections/bienvenida/view').set(ORIGIN)).status).toBe(201);
     expect((await agent.post('/api/training/office/sections/no-existe/view').set(ORIGIN)).status).toBe(409);

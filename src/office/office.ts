@@ -121,7 +121,7 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
   function renderSteps(): void {
     stepsNav.innerHTML = `<ol>${state.sections.map((section, index) => {
       const done = section.status === 'COMPLETED';
-      const label = done ? 'Completado' : section.status === 'NO_ATTEMPTS' ? 'Sin intentos' : section.key === current ? 'Estás aquí' : 'Pendiente';
+      const label = done ? (section.alert ? 'Completado · con alertas' : 'Completado') : section.status === 'NO_ATTEMPTS' ? 'Sin intentos' : section.key === current ? 'Estás aquí' : 'Pendiente';
       return `<li data-status="${section.status}"${section.key === current ? ' aria-current="step"' : ''}>
         <button type="button" data-section="${section.key}"><span class="office-step-number">${done ? '✓' : String(index + 1).padStart(2, '0')}</span><span>${escapar(TITLES[section.key])}<small>${label}</small></span></button>
       </li>`;

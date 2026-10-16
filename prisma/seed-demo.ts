@@ -57,7 +57,7 @@ export const SCENARIOS: DemoRow[] = [
   { documento: '1000000115', nombre: 'Demo · Asesor Reabierto', escenario: 'M2 aprobado con REOPEN_MODULE vigente', esperado: 'Puede volver a entrar a M2 y conserva el sello' },
   { documento: '1000000146', nombre: 'Demo · Mecanografía Aprobada', escenario: 'Bienvenida vista y mecanografía aprobada', esperado: 'Continúa en Excel; mecanografía completada' },
   { documento: '1000000147', nombre: 'Demo · Práctica Pendiente', escenario: 'Un intento de mecanografía fallido sin práctica', esperado: 'Debe completar la práctica breve antes de repetir' },
-  { documento: '1000000148', nombre: 'Demo · Dictado Con Error Crítico', escenario: 'Mecanografía y Excel aprobados; dictado fallido por error crítico', esperado: 'Ve «haber» por «a ver» como corrección prioritaria; quedan 2 intentos' },
+  { documento: '1000000148', nombre: 'Demo · Dictado Con Error Crítico', escenario: 'Mecanografía y Excel aprobados; dictado fallido por error crítico', esperado: 'Ortografía completada con alerta: ve «haber» por «a ver» como corrección prioritaria' },
   { documento: '1000000149', nombre: 'Demo · Módulo Completo', escenario: 'Módulo 1 completo con sello emitido y lecciones vistas', esperado: 'Pantalla de resultado con sello; Inducción desbloqueada' },
   { documento: '1000000150', nombre: 'Demo · Intento Vencido', escenario: 'Intento de mecanografía vencido (EXPIRED)', esperado: 'Intento fallido con cierre EXPIRED; conserva 2 intentos y exige práctica' },
 ];
@@ -232,7 +232,8 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
         recommendationSource: 'TEMPLATE', completedAt: closedAt,
       },
     });
-    return attemptService.submitAttempt(userId, attempt.id, { score: result.score, passed: result.passed, durationSeconds: 240, now: closedAt });
+    // Igual que el servidor: presentar el dictado completa la sección; la nota queda como alerta en el resultado.
+    return attemptService.submitAttempt(userId, attempt.id, { score: result.score, passed: true, durationSeconds: 240, now: closedAt });
   }
 
   // Módulo 1 aprobado de principio a fin, con sus lecciones vistas.

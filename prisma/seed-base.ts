@@ -92,7 +92,7 @@ export async function seedOfficeModule(prisma: PrismaClient, moduleId: string): 
   const evaluations: Record<string, { minimumScore: number; maxAttempts: number }> = {
     mecanografia: { minimumScore: 100, maxAttempts: 3 },
     excel: { minimumScore: 80, maxAttempts: 3 },
-    ortografia: { minimumScore: 85, maxAttempts: 3 },
+    ortografia: { minimumScore: 85, maxAttempts: 1 },
   };
   for (const item of sections) {
     const order = SECTION_ORDER[item.section];
