@@ -79,13 +79,11 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
   const { findSessionUser } = await import('../server/repositories/usuario.repository.js');
   const { officeActivities, recordView } = await import('../server/repositories/office.repository.js');
   const { computeTypingMetrics, typingPassed, typingScore } = await import('../server/domain/typing.js');
-  const { generateScenario, gradeExcel, solveScenario } = await import('../server/domain/excel.js');
+  const { EXCEL_QUIZ, gradeQuiz } = await import('../server/domain/excel-quiz.js');
   const { evaluateDictation } = await import('../server/domain/spelling/engine.js');
   const { templateRecommendation } = await import('../server/domain/spelling/recommendations.js');
   const { EXCEL_LESSON_KEYS, SPELLING_LESSON_KEYS } = await import('../server/domain/office-content.js');
   const { Prisma } = await import('@prisma/client');
-  type ExcelData = import('../server/domain/excel.js').ExcelScenarioData;
-  type ExcelKey = import('../server/domain/excel.js').ExcelAnswerKey;
 
   const now = new Date();
   const ago = (ms: number) => new Date(now.getTime() - ms);
@@ -193,15 +191,12 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
     });
   }
 
-  // Excel: escenario reproducible (semilla propia); `drop` quita pasos para simular errores.
+  // Excel: evaluación de opción múltiple; `drop` deja sin responder las últimas preguntas para simular errores.
   async function excel(userId: string, at: Date, drop = 0) {
     const { attempt } = await attemptService.startAttempt(userId, X, { now: at });
     const seed = seedCursor++;
-    const data = scenarioRow.scenarioData as unknown as ExcelData;
-    const key = scenarioRow.answerKey as unknown as ExcelKey;
-    const scenario = generateScenario(data, seed);
-    const steps = solveScenario(scenario).slice(0, Math.max(0, 8 - drop));
-    const graded = gradeExcel(scenario, key, steps, config.excelMinScore);
+    const answers = EXCEL_QUIZ.slice(0, Math.max(0, EXCEL_QUIZ.length - drop)).map((question) => ({ questionId: question.id, optionId: question.correct }));
+    const graded = gradeQuiz(answers, config.excelMinScore);
     const closedAt = new Date(at.getTime() + 6 * MIN);
     await prisma.excelAttemptResult.create({
       data: {

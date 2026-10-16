@@ -72,13 +72,33 @@ function askForm(title: string, fields: string, options: { reason?: boolean; sub
   });
 }
 
-// Vuelve a dibujar la sección actual con un contenedor nuevo (sin escuchadores acumulados).
-function rerender(): void {
-  window.dispatchEvent(new HashChangeEvent('hashchange'));
+// Sección actual del panel. rerender la vuelve a pedir al servidor y espera a que termine de dibujarse,
+// para que el aviso de carga no desaparezca antes de que se vean los datos nuevos.
+let currentRoute: (() => Promise<void>) | null = null;
+function rerender(): Promise<void> {
+  return currentRoute ? currentRoute() : Promise.resolve();
+}
+
+// Aviso de carga: cubre el panel mientras se guarda un cambio y se recargan los datos.
+function busy(message: string | null): void {
+  const overlay = document.querySelector<HTMLElement>('#admin-busy');
+  if (!overlay) return;
+  overlay.hidden = message === null;
+  if (message) overlay.querySelector('p')!.textContent = message;
 }
 
 async function run(action: () => Promise<unknown>, success: string, after?: () => unknown): Promise<void> {
-  try { await action(); await after?.(); feedback(success); } catch (error) { feedback((error as Error).message, true); }
+  busy('Guardando cambios…');
+  try {
+    await action();
+    busy('Actualizando la información…');
+    await after?.();
+    feedback(success);
+  } catch (error) {
+    feedback((error as Error).message, true);
+  } finally {
+    busy(null);
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -108,6 +128,7 @@ async function editUser(user: Usuario, after: () => unknown): Promise<void> {
   });
   if (!data) return;
   const reason = data.reason.trim();
+  busy('Guardando cambios…');
   try {
     const body: Record<string, unknown> = { nombreCompleto: data.nombreCompleto, numeroDocumento: data.numeroDocumento, telefono: data.telefono || null };
     if (data.correo) body.correo = data.correo;
@@ -115,9 +136,10 @@ async function editUser(user: Usuario, after: () => unknown): Promise<void> {
     await api(`/admin/users/${user.id}`, { method: 'PATCH', body: JSON.stringify(body) });
     if (data.estado !== user.estado) await api(`/admin/users/${user.id}/status`, { method: 'PATCH', body: JSON.stringify({ estado: data.estado, reason }) });
     if (data.password) await api(`/admin/users/${user.id}/password`, { method: 'PUT', body: JSON.stringify({ password: data.password, reason }) });
+    busy('Actualizando la información…');
     await after();
     feedback(data.password ? 'Cambios guardados y contraseña actualizada.' : 'Cambios guardados.');
-  } catch (error) { feedback((error as Error).message, true); }
+  } catch (error) { feedback((error as Error).message, true); } finally { busy(null); }
 }
 
 // Columnas de la tabla de usuarios que se pueden ordenar; la clave coincide con sortBy del servidor.
@@ -574,7 +596,8 @@ export function renderAdmin(shell: Shell): void {
       ${SECTIONS.map((section) => `<a href="${section.hash}" data-nav="${section.hash}">${section.label}</a>`).join('')}
       <p>Toda acción que modifica datos pide un motivo y queda en auditoría.</p></aside>
     <div class="admin-content"><p id="admin-feedback" class="feedback" role="status" hidden></p><div id="admin-view"></div></div></div>
-    <dialog id="admin-dialog" class="edit-dialog"></dialog>`);
+    <dialog id="admin-dialog" class="edit-dialog"></dialog>
+    <div id="admin-busy" class="admin-busy" role="status" aria-live="polite" hidden><div><span class="admin-spinner" aria-hidden="true"></span><p>Guardando cambios…</p></div></div>`);
 
   async function route(): Promise<void> {
     const hash = location.hash || '#asesores';
@@ -596,6 +619,7 @@ export function renderAdmin(shell: Shell): void {
       feedback((error as Error).message, true);
     }
   }
+  currentRoute = route;
   window.addEventListener('hashchange', () => void route());
   void route();
 }

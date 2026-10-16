@@ -159,5 +159,6 @@ const images = {
     ${tip('En la observación escribe la forma correcta, aunque se diga distinto.')}`),
 };
 
-for (const [name, svg] of Object.entries(images)) fs.writeFileSync(path.join(out, name), svg);
-console.log(Object.keys(images).length + ' imágenes en ' + out);
+// Las imágenes de Excel las genera generar-imagenes-excel.cjs (ventana de Excel realista): aquí solo ortografía.
+for (const [name, svg] of Object.entries(images)) if (!name.startsWith('excel-')) fs.writeFileSync(path.join(out, name), svg);
+console.log('Imágenes de ortografía en ' + out);

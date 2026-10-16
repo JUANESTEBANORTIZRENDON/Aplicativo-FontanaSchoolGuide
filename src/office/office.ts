@@ -1,7 +1,8 @@
 import '../styles.css';
 import '../practice.css';
 import './office.css';
-import { api, escapar } from '../http';
+import { mountHeaderAccount } from '../header-account';
+import { escapar } from '../http';
 import { ApiError, officeApi, SECTION_KEYS, type Lesson, type ModuleState, type SectionKey } from './api';
 
 // Módulo "Ofimática para tus cobranzas": bienvenida, mecanografía, Excel, ortografía y resultado.
@@ -47,7 +48,6 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
   document.body.className = 'practice-screen office-screen';
   const root = document.querySelector<HTMLElement>('#app-content')!;
   root.innerHTML = `
-    <div class="training-session"><span>${escapar(nombre)} · Ofimática para tus cobranzas</span><button id="office-logout" type="button">Cerrar sesión</button></div>
     <header><a class="brand" href="${escapar(backHref)}" aria-label="Fontana, volver a tu ruta de formación"><span class="brand-image"><img src="/imagenes/fontana-logo.png" alt=""><strong class="brand-name">FONTANA</strong></span></a><span class="header-divider"></span><span class="platform">AULA DE FORMACIÓN</span></header>
     <main class="office-main">
       <nav class="office-steps" aria-label="Secciones del módulo"></nav>
@@ -57,11 +57,7 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
   document.body.hidden = false;
   const stepsNav = root.querySelector<HTMLElement>('.office-steps')!;
   const view = root.querySelector<HTMLElement>('#office-view')!;
-  const logout = root.querySelector<HTMLButtonElement>('#office-logout')!;
-  logout.addEventListener('click', async () => {
-    logout.disabled = true;
-    try { await api('/auth/logout', { method: 'POST' }); location.assign('/login'); } catch { logout.disabled = false; }
-  });
+  mountHeaderAccount(nombre, 'Ofimática para tus cobranzas');
 
   let state: ModuleState;
   try {
@@ -161,6 +157,8 @@ async function renderWelcome(ctx: OfficeContext): Promise<void> {
 // Ilustraciones de las lecciones (src/office/imagenes): una por lección, nombrada excel-<clave> u orto-<clave>.
 // Una imagen subida por el administrador al almacenamiento tiene prioridad sobre la ilustración incluida.
 const LESSON_IMAGES = import.meta.glob('./imagenes/*.svg', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
+// Ilustración incluida por nombre de archivo (sin extensión), por ejemplo «excel-q-suma».
+export const bundledAsset = (name: string): string | null => LESSON_IMAGES[`./imagenes/${name}.svg`] ?? null;
 const bundledImage = (key: string): string | null => LESSON_IMAGES[`./imagenes/excel-${key}.svg`] ?? LESSON_IMAGES[`./imagenes/orto-${key}.svg`] ?? null;
 
 export function lessonCard(lesson: Lesson): string {

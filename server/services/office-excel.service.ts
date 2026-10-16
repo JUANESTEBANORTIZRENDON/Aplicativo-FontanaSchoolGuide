@@ -2,9 +2,7 @@ import { randomInt } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { ConflictError, NotFoundError } from '../domain/errors.js';
-import {
-  generateScenario, gradeExcel, publicSteps, type ExcelAnswerKey, type ExcelScenario, type ExcelScenarioData, type StepInput,
-} from '../domain/excel.js';
+import { gradeQuiz, publicQuiz, type QuizAnswer } from '../domain/excel-quiz.js';
 import { EXCEL_LESSONS, OFFICE_IMAGES } from '../domain/office-content.js';
 import type { OfficeConfigSnapshot } from '../domain/office.js';
 import { activeConfig, officeActivities } from '../repositories/office.repository.js';
@@ -15,8 +13,6 @@ import { loadSnapshot } from './progress.service.js';
 
 type Tx = Prisma.TransactionClient;
 
-const asData = (value: Prisma.JsonValue) => value as unknown as ExcelScenarioData;
-const asKey = (value: Prisma.JsonValue) => value as unknown as ExcelAnswerKey;
 
 async function excelActivityId(tx: Tx): Promise<string> {
   const activity = (await officeActivities(tx))?.bySection.excel;
@@ -24,7 +20,8 @@ async function excelActivityId(tx: Tx): Promise<string> {
   return activity.id;
 }
 
-// Escenario activo (la versión más reciente de cada clave ACTIVE). Elige el menos usado por el asesor.
+// La evaluación es de opción múltiple (domain/excel-quiz). El escenario activo solo se guarda como referencia de
+// versión del intento. Se elige el menos usado por el asesor.
 async function pickScenario(tx: Tx, userId: string) {
   const rows = await tx.excelActivity.findMany({ where: { status: 'ACTIVE' }, orderBy: [{ key: 'asc' }, { version: 'desc' }] });
   const latest = new Map<string, (typeof rows)[number]>();
@@ -39,12 +36,9 @@ async function pickScenario(tx: Tx, userId: string) {
   return [...candidates].sort((a, b) => lastUse.get(a.key)! - lastUse.get(b.key)!)[0]!;
 }
 
-function viewOf(activity: { id: string; title: string; scenarioData: Prisma.JsonValue; answerKey: Prisma.JsonValue }, seed: number) {
-  const scenario = generateScenario(asData(activity.scenarioData), seed);
-  const { tasks: _tasks, ...visible } = scenario;
-  void _tasks;
-  return { sheets: visible.sheets, steps: publicSteps(scenario, asKey(activity.answerKey)), baseDate: asData(activity.scenarioData).baseDate };
-}
+const QUIZ_TITLE = 'Evaluación de Excel';
+// Preguntas del intento (orden según su semilla), sin respuestas.
+const viewOf = (seed: number) => ({ questions: publicQuiz(seed) });
 
 const lessonsView = () => EXCEL_LESSONS.map((lesson) => ({ ...lesson, image: OFFICE_IMAGES[lesson.image] ?? null }));
 
@@ -58,10 +52,10 @@ export async function getActivity(userId: string) {
   const config = await activeConfig();
   const base = { lessons: lessonsView(), minScore: config.excelMinScore, maxAttempts: config.excelMaxAttempts };
   if (open) {
-    return { ...base, id: open.excelActivity.id, title: open.excelActivity.title, attemptId: open.attemptId, ...viewOf(open.excelActivity, open.seed) };
+    return { ...base, id: open.excelActivity.id, title: QUIZ_TITLE, attemptId: open.attemptId, ...viewOf(open.seed) };
   }
   const scenario = await pickScenario(prisma, userId);
-  return { ...base, id: scenario.id, title: scenario.title, attemptId: null };
+  return { ...base, id: scenario.id, title: QUIZ_TITLE, attemptId: null };
 }
 
 // POST attempts: crea (o reanuda) el intento y entrega el escenario sin respuestas.
@@ -75,20 +69,18 @@ export async function startPractice(userId: string, excelId: string, now = new D
     const { attempt, resumed } = await startAttemptTx(tx, userId, activityId, { now });
     if (resumed) {
       const existing = await tx.excelAttemptResult.findUnique({ where: { attemptId: attempt.id }, include: { excelActivity: true } });
-      if (existing) return { attemptId: attempt.id, number: attempt.number, resumed: true, title: existing.excelActivity.title, ...viewOf(existing.excelActivity, existing.seed) };
+      if (existing) return { attemptId: attempt.id, number: attempt.number, resumed: true, title: QUIZ_TITLE, ...viewOf(existing.seed) };
     }
     const snapshot = snapshotOf(await activeConfig(tx));
     const seed = randomInt(1, 2_147_483_647);
     await tx.excelAttemptResult.create({
       data: { attemptId: attempt.id, excelActivityId: chosen.id, excelVersion: chosen.version, seed, configSnapshot: snapshot as unknown as Prisma.InputJsonValue },
     });
-    return { attemptId: attempt.id, number: attempt.number, resumed: false, title: chosen.title, ...viewOf(chosen, seed) };
+    return { attemptId: attempt.id, number: attempt.number, resumed: false, title: QUIZ_TITLE, ...viewOf(seed) };
   }, { timeout: 30_000 });
 }
 
-const preview = (value: StepInput['value']): string => (typeof value === 'object' ? JSON.stringify(value) : String(value)).slice(0, 100);
-
-export async function submitPractice(userId: string, excelId: string, input: { attemptId: string; steps: StepInput[] }, now = new Date()) {
+export async function submitPractice(userId: string, excelId: string, input: { attemptId: string; answers: QuizAnswer[] }, now = new Date()) {
   const outcome = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM induccion.intentos WHERE id = ${input.attemptId}::uuid FOR UPDATE`;
     const attempt = await tx.attempt.findUnique({
@@ -100,9 +92,7 @@ export async function submitPractice(userId: string, excelId: string, input: { a
     if (attempt.status !== 'IN_PROGRESS') throw new ConflictError('La práctica ya fue enviada.', 'ATTEMPT_CLOSED');
     const result = attempt.excelResult;
     const snapshot = result.configSnapshot as unknown as OfficeConfigSnapshot;
-    const scenario: ExcelScenario = generateScenario(asData(result.excelActivity.scenarioData), result.seed);
-    const graded = gradeExcel(scenario, asKey(result.excelActivity.answerKey), input.steps, snapshot.excelMinScore);
-    const submitted = new Map(input.steps.map((step) => [step.questionId, step.value]));
+    const graded = gradeQuiz(input.answers, snapshot.excelMinScore);
     await tx.excelAttemptResult.update({
       where: { attemptId: attempt.id },
       data: { score: new Prisma.Decimal(graded.score), passed: graded.passed, stepResults: graded.results as unknown as Prisma.InputJsonValue, completedAt: now },
@@ -110,7 +100,7 @@ export async function submitPractice(userId: string, excelId: string, input: { a
     await submitAttemptTx(tx, userId, attempt.id, {
       score: graded.score, passed: graded.passed, now,
       answers: graded.results.map((step) => ({
-        questionId: step.questionId, optionId: submitted.has(step.questionId) ? preview(submitted.get(step.questionId)!) : null,
+        questionId: step.questionId, optionId: step.chosen,
         isCorrect: step.correct, awardedScore: step.awardedScore,
       })),
     });
@@ -121,10 +111,10 @@ export async function submitPractice(userId: string, excelId: string, input: { a
   const availability = activityId ? snapshot.availability.get(activityId) : undefined;
   return {
     attemptNumber: outcome.number, score: outcome.graded.score, passed: outcome.graded.passed, minScore: outcome.minScore,
-    // Retroalimentación inmediata por paso: acierto o la pista de lo que debía hacer.
+    // Retroalimentación inmediata por pregunta: lo que eligió, la respuesta correcta y la explicación.
     steps: outcome.graded.results.map((step) => ({
       questionId: step.questionId, lesson: step.lesson, correct: step.correct, awardedScore: step.awardedScore, weight: step.weight,
-      feedback: step.correct ? 'Correcto.' : step.hint,
+      chosen: step.chosen, correctOption: step.correctOption, feedback: step.hint,
     })),
     attemptsRemaining: availability?.remaining ?? null,
   };

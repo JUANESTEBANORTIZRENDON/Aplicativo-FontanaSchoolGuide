@@ -234,8 +234,8 @@ export async function iniciarInterfaz(): Promise<void> {
     return;
   }
   if (location.pathname !== route && !reviewing) { location.replace(route); return; }
-  document.querySelector('#app-content')!.insertAdjacentHTML('afterbegin', `<div class="training-session"><span>${escapar(usuario.nombreCompleto)} · Inducción Fontana</span><button id="training-logout" type="button">Cerrar sesión</button></div>`);
-  document.querySelector('#training-logout')!.addEventListener('click', async () => { await api('/auth/logout', { method: 'POST' }); location.assign('/login'); });
+  const { mountHeaderAccount } = await import('./header-account');
+  mountHeaderAccount(usuario.nombreCompleto, 'Inducción Fontana');
   // "Tu camino en Fontana": con la práctica ya asignada, el paso 02 lleva de vuelta a ella.
   document.querySelector('.learning-path ol')!.outerHTML = pasosCamino('empresa', practiceRoute ? route : null);
   const { restoreProgress } = await import('./training');

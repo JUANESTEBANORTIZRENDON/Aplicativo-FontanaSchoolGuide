@@ -106,3 +106,12 @@
 .row-action-danger { color: #9c1730; border-color: #e8b4bc; }
 .row-action-danger:hover { background: #fff0f1; }
 .dialog-danger { padding: 10px 12px; border-radius: 9px; background: #fff0f1; color: #7d1226 !important; line-height: 1.5; }
+
+/* Aviso de carga mientras se guarda un cambio */
+.admin-busy { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: rgba(14,25,42,.35); backdrop-filter: blur(2px); }
+.admin-busy[hidden] { display: none; }
+.admin-busy > div { display: flex; align-items: center; gap: 14px; padding: 18px 26px; border-radius: 14px; background: #fff; box-shadow: 0 20px 60px rgba(20,30,50,.25); }
+.admin-busy p { margin: 0; color: #192840; font-weight: 700; }
+.admin-spinner { width: 26px; height: 26px; border: 3px solid #e9d3da; border-top-color: #8b1538; border-radius: 50%; animation: admin-spin .8s linear infinite; }
+@keyframes admin-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .admin-spinner { animation-duration: 2.4s; } }

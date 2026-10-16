@@ -69,8 +69,6 @@ body.auth-screen { margin: 0; min-height: 100vh; background: #f6f7fb; color: #18
 .edit-dialog p { margin: 0; color: #758196; font-size: 13px; }
 .dialog-actions { display: flex; justify-content: end; gap: 9px; }
 .secondary-action { min-height: 46px; padding: 10px 16px; border: 1px solid #d4dae3; border-radius: 9px; background: white; font: 700 14px 'DM Sans', sans-serif; cursor: pointer; }
-.training-session { position: relative; z-index: 100; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 9px 25px; background: #192840; color: white; font: 600 12px Arial,sans-serif; }
-.training-session button { border: 0; background: none; color: #f4c95d; font: inherit; cursor: pointer; }
 @media (max-width: 850px) { .admin-layout { grid-template-columns: 1fr; } .admin-nav { display: none; } .admin-form { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 600px) { .auth-header { padding: 0 17px; } .auth-account span { display: none; } .auth-main { padding: 30px 16px 70px; } .auth-card.narrow, .admin-card { padding: 21px; } .admin-form { grid-template-columns: 1fr; } .admin-form .primary-action { width: 100%; } .auth-brand { font-size: 15px; } .auth-brand img { width: 30px; height: 30px; } }
 

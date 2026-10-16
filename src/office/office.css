@@ -142,3 +142,19 @@ button.office-secondary:disabled { opacity: .5; cursor: not-allowed; }
 .office-review { margin-top: 18px; padding: 14px 18px; border: 1px solid #e5e8ef; border-radius: 14px; background: #fff; }
 .office-review summary { color: #8b1538; font-weight: 700; cursor: pointer; }
 .office-review[open] summary { margin-bottom: 8px; }
+
+/* Evaluación de Excel: opción múltiple con casos ilustrados */
+.quiz { display: grid; gap: 22px; margin-top: 18px; }
+.quiz-question { margin: 0; padding: 20px; border: 1px solid #e5e8ef; border-radius: 16px; background: #fff; min-width: 0; }
+.quiz-question legend { display: flex; gap: 12px; align-items: flex-start; padding: 0; margin-bottom: 14px; color: #192840; font-weight: 700; font-size: 16px; line-height: 1.45; }
+.quiz-number { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #8b1538; color: #fff; font-size: 14px; }
+.quiz-image { display: block; width: 100%; height: auto; margin-bottom: 14px; border: 1px solid #e5e8ef; border-radius: 12px; }
+.quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.quiz-option { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid #d4dae3; border-radius: 12px; background: #fff; cursor: pointer; color: #24324a; }
+.quiz-option input { position: absolute; opacity: 0; pointer-events: none; }
+.quiz-option:has(input:checked) { border-color: #8b1538; background: #fdf5f7; box-shadow: inset 3px 0 #8b1538; }
+.quiz-option:has(input:focus-visible) { outline: 2px solid #d4af37; outline-offset: 2px; }
+.quiz-letter { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; background: #eef1f6; color: #192840; font-weight: 800; }
+.quiz-option:has(input:checked) .quiz-letter { background: #8b1538; color: #fff; }
+.office-feedback li span + span { display: block; margin-top: 4px; }
+@media (max-width: 700px) { .quiz-options { grid-template-columns: 1fr; } }

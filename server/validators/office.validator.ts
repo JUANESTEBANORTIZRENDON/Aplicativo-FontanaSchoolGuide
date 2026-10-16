@@ -15,15 +15,10 @@ export const typingCompleteBody = z.object({
 }).strict();
 export type TypingCompleteBody = z.infer<typeof typingCompleteBody>;
 
-// Un paso de la práctica de Excel: texto, número o un objeto corto de campos (agregar una fila, un acuerdo).
-const stepValue = z.union([
-  z.string().max(600),
-  z.number().finite(),
-  z.record(z.string().max(40), z.union([z.string().max(300), z.number().finite()])).refine((value) => Object.keys(value).length <= 8, 'Demasiados campos.'),
-]);
+// Evaluación de Excel: una opción (a–d) por pregunta.
 export const excelSubmitBody = z.object({
   attemptId: uuid,
-  steps: z.array(z.object({ questionId: z.string().regex(/^[a-z]+\.[a-z]+$/, 'Paso inválido.').max(60), value: stepValue }).strict()).max(20),
+  answers: z.array(z.object({ questionId: z.string().regex(/^[a-z]+$/, 'Pregunta inválida.').max(40), optionId: z.enum(['a', 'b', 'c', 'd']) }).strict()).max(30),
 }).strict();
 export type ExcelSubmitBody = z.infer<typeof excelSubmitBody>;
 
