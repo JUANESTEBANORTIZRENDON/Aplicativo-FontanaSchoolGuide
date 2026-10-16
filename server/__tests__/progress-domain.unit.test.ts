@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Prisma } from '@prisma/client';
 import { computeModuleViews, type Availability, type ModuleInput } from '../domain/progress.js';
 
 const now = new Date('2026-10-16T12:00:00Z');
@@ -13,6 +14,16 @@ const view = (availabilities: Record<string, Partial<Availability>>) => computeM
 }, now)[0]!;
 
 describe('módulo con una actividad sin intentos', () => {
+  it('muestra el avance de los bloques de cobranzas sin cambiar el cálculo de los demás módulos', () => {
+    const induction = { ...module, id: 'induction', slug: 'induccion-cobranzas', order: 2 };
+    const views = computeModuleViews([module, induction], {
+      moduleProgress: new Map([module.id, induction.id].map((id) => [id, { status: 'IN_PROGRESS' as const, lastActivityAt: null, percent: new Prisma.Decimal(40) }])),
+      activityProgress: new Map(), sealedModuleIds: new Set(), overrides: [], availability: new Map(),
+    }, now);
+    expect(views[0]!.progressPercent).toBe('0.00');
+    expect(views[1]).toMatchObject({ progressPercent: '40.00', status: 'IN_PROGRESS', enabled: true });
+  });
+
   it('sigue abierto mientras queden otras actividades pendientes', () => {
     expect(view({ a: { passed: true }, b: { exhausted: true, remaining: 0, canStart: false }, c: {} })).toMatchObject({ status: 'IN_PROGRESS', enabled: true });
   });

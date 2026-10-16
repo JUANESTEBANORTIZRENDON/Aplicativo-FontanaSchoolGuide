@@ -1,7 +1,8 @@
 import bcrypt from 'bcryptjs';
 import type { PrismaClient } from '@prisma/client';
 import { setPrerequisites } from '../server/services/catalog.service.js';
-import { initializeForUser } from '../server/services/progress.service.js';
+import { completeModule, initializeForUser } from '../server/services/progress.service.js';
+import { COLLECTIONS_BLOCKS, COLLECTIONS_VERSION } from '../server/domain/collections.js';
 import { OFFICE_MODULE_SLUG, SECTION_ORDER, SECTION_TITLE } from '../server/domain/office.js';
 import { DICTATIONS, EXCEL_ANSWER_KEY, EXCEL_SCENARIO_DATA, SPELLING_RULES, TYPING_TEXTS } from './seed-office-content.js';
 
@@ -35,6 +36,20 @@ async function seedInduction(prisma: PrismaClient, moduleId: string, route: stri
 
 export const TEST_ADVISOR = { documento: '1000000001', nombre: 'Asesor Prueba Fontana', password: 'FontanaTest2026!' };
 
+// Solo fixtures demo/pruebas: representa la práctica de inducción ya completada.
+export async function seedCompletedInduction(prisma: PrismaClient, userId: string, now = new Date()): Promise<void> {
+  const module = await prisma.trainingModule.findUniqueOrThrow({ where: { slug: 'induccion-cobranzas' }, include: { activities: { where: { status: 'ACTIVE', isRequired: true } } } });
+  await prisma.$transaction(async (tx) => {
+    await tx.usuario.update({ where: { id: userId }, data: { tieneExperienciaCobranzasDigitales: false } });
+    for (const block of COLLECTIONS_BLOCKS) {
+      const data = { userId, moduleId: module.id, blockKey: block.key, contentVersion: COLLECTIONS_VERSION };
+      await tx.collectionsBlockProgress.upsert({ where: { userId_moduleId_blockKey_contentVersion: data }, create: { ...data, attempts: 1, answers: Object.fromEntries(block.questions.map((q) => [q.key, q.options.find((o) => o.correct)!.id])), completedAt: now }, update: {} });
+    }
+    for (const activity of module.activities) await tx.userActivityProgress.upsert({ where: { userId_activityId: { userId, activityId: activity.id } }, create: { userId, activityId: activity.id, status: 'PASSED', completedAt: now }, update: { status: 'PASSED', completedAt: now } });
+    await completeModule(tx, userId, module.id, undefined, now);
+  });
+}
+
 export async function seedCatalog(prisma: PrismaClient): Promise<Map<string, string>> {
   const ids = new Map<string, string>();
   for (const item of CATALOG) {
@@ -44,7 +59,7 @@ export async function seedCatalog(prisma: PrismaClient): Promise<Map<string, str
       update: { name: item.name, route: item.route },
     });
     ids.set(item.slug, module.id);
-    // La inducción tiene introducción y examen (sin contenido todavía); el módulo 1 tiene sus actividades reales
+    // La inducción conserva su introducción y examen de catálogo; los bloques guiados aportan su evidencia.
     // (seedOfficeModule); los demás, una actividad PLACEHOLDER activa y obligatoria, sin evaluación.
     if (item.slug === INDUCTION_MODULE_SLUG) await seedInduction(prisma, module.id, item.route);
     else if (item.slug !== 'certificado' && item.slug !== OFFICE_MODULE_SLUG) {

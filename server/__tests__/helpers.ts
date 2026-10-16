@@ -58,9 +58,10 @@ export async function activityIds() {
   const m1 = bySlug('ofimatica-mecanografia');
   const section = (order: number) => m1.activities.find((activity) => activity.order === order)!.id;
   return {
-    modules: { m1, m2: bySlug('induccion-cobranzas'), m3: bySlug('tipificacion-llamadas'), cert: bySlug('certificado') },
+    modules: { m1, induction: bySlug('induccion-cobranzas'), m2: bySlug('induccion-cobranzas'), m3: bySlug('tipificacion-llamadas'), cert: bySlug('certificado') },
     office: { welcome: section(10), typing: section(20), excel: section(30), dictation: section(40), result: section(50) },
     a1: section(20),
+    induction: bySlug('induccion-cobranzas').activities.find((activity) => activity.order === 1)!.id,
     a2: bySlug('induccion-cobranzas').activities.find((activity) => activity.type === 'QUIZ')!.id,
     a3: bySlug('tipificacion-llamadas').activities.find((activity) => activity.order === 1)!.id,
   };
@@ -82,6 +83,7 @@ export async function cleanupSuite(suite: string): Promise<void> {
   const users = await prisma.usuario.findMany({ where: { numeroDocumento: { startsWith: `TEST-${suite}-` } }, select: { id: true } });
   const ids = users.map((user) => user.id);
   if (ids.length === 0) return;
+  await prisma.collectionsBlockProgress.deleteMany({ where: { userId: { in: ids } } });
   const attempts = (await prisma.attempt.findMany({ where: { userId: { in: ids } }, select: { id: true } })).map((row) => row.id);
   const overrides = (await prisma.userActivityOverride.findMany({ where: { OR: [{ userId: { in: ids } }, { createdById: { in: ids } }] }, select: { id: true } })).map((row) => row.id);
   const certificates = (await prisma.certificate.findMany({ where: { userId: { in: ids } }, select: { id: true } })).map((row) => row.id);

@@ -42,7 +42,7 @@ export type TrainingSnapshot = {
 // Datos crudos del estado de formación de un usuario, con las fechas ya convertidas.
 type RawState = {
   modules: CatalogModule[];
-  moduleProgress: { moduleId: string; status: ProgressStatus; lastActivityAt: Date | null }[];
+  moduleProgress: { moduleId: string; status: ProgressStatus; lastActivityAt: Date | null; percent: Prisma.Decimal }[];
   activityProgress: { activityId: string; status: ProgressStatus }[];
   seals: { moduleId: string }[];
   overrides: OverrideLite[];
@@ -53,9 +53,13 @@ type RawState = {
 
 const toDate = (value: string | null | undefined): Date | null => (value ? new Date(value) : null);
 
-// Una sola llamada a la función de la base de datos (induccion.fn_estado_formacion) en lugar de ocho consultas.
+// La función concentra el catálogo, intentos y permisos. El progreso se lee en paralelo para incluir
+// el porcentaje de los bloques de cobranzas, que versiones anteriores de la función no devuelven.
 async function loadRawViaFunction(db: Db, userId: string): Promise<RawState> {
-  const rows = await db.$queryRaw<{ state: Record<string, any[]> }[]>`SELECT induccion.fn_estado_formacion(${userId}::uuid) AS state`;
+  const [rows, moduleProgress] = await Promise.all([
+    db.$queryRaw<{ state: Record<string, any[]> }[]>`SELECT induccion.fn_estado_formacion(${userId}::uuid) AS state`,
+    moduleProgressForUser(db, userId),
+  ]);
   const state = rows[0]!.state;
   const modules = state.modules.map((module) => ({
     ...module, createdAt: toDate(module.createdAt), updatedAt: toDate(module.updatedAt),
@@ -63,7 +67,7 @@ async function loadRawViaFunction(db: Db, userId: string): Promise<RawState> {
   })) as CatalogModule[];
   return {
     modules,
-    moduleProgress: state.moduleProgress.map((row) => ({ ...row, lastActivityAt: toDate(row.lastActivityAt) })) as RawState['moduleProgress'],
+    moduleProgress,
     activityProgress: state.activityProgress as RawState['activityProgress'],
     seals: state.seals as RawState['seals'],
     overrides: state.overrides.map((row) => ({ ...row, expiresAt: toDate(row.expiresAt), revokedAt: toDate(row.revokedAt), consumedAt: toDate(row.consumedAt), createdAt: toDate(row.createdAt)! })) as OverrideLite[],
@@ -120,7 +124,7 @@ export async function loadSnapshot(db: Db, userId: string, now = new Date(), opt
     ));
   }
   const views = computeModuleViews(modules.map(toModuleInput), {
-    moduleProgress: new Map(moduleProgress.map((row) => [row.moduleId, { status: row.status, lastActivityAt: row.lastActivityAt }])),
+    moduleProgress: new Map(moduleProgress.map((row) => [row.moduleId, { status: row.status, lastActivityAt: row.lastActivityAt, percent: row.percent }])),
     activityProgress: new Map(activityProgress.map((row) => [row.activityId, { status: row.status }])),
     sealedModuleIds: new Set(seals.map((seal) => seal.moduleId)),
     overrides,
