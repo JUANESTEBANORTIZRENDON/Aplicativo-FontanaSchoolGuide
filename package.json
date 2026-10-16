@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "concurrently -k -n frontend,server \"vite --host 127.0.0.1 --open\" \"tsx watch server/server.ts\"",
+    "dev:local": "concurrently -k -n frontend,server \"vite --host 127.0.0.1\" \"tsx watch server/server.ts\"",
     "dev:frontend": "vite --host 127.0.0.1",
     "dev:server": "tsx watch server/server.ts",
     "check": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.test.json",
