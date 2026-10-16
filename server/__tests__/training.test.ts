@@ -14,23 +14,23 @@ describe('módulos y acceso', () => {
   beforeAll(async () => { ids = await activityIds(); });
   afterAll(() => cleanupSuite(SUITE));
 
-  it('devuelve los cuatro módulos en orden con botones y razones de bloqueo', async () => {
+  it('devuelve los cinco módulos en orden con botones y razones de bloqueo', async () => {
     const user = await createTestUser(SUITE);
     const { agent } = await loginAgent(user.numeroDocumento, 'asesor');
     const response = await agent.get('/api/advisor/modules');
     expect(response.status).toBe(200);
     const data = response.body.data as Array<Record<string, unknown>>;
-    expect(data.map((row) => row.slug)).toEqual(['ofimatica-mecanografia', 'simulador-cobranzas', 'tipificacion-llamadas', 'certificado']);
+    expect(data.map((row) => row.slug)).toEqual(['ofimatica-mecanografia', 'induccion-cobranzas', 'simulador-cobranzas', 'tipificacion-llamadas', 'certificado']);
     expect(data[0]).toMatchObject({ status: 'AVAILABLE', actionLabel: 'Continuar', enabled: true, blockedReason: null, progressPercent: '0.00', route: '/induccion/modulos/ofimatica-mecanografia' });
     expect(data[1]).toMatchObject({ status: 'BLOCKED', enabled: false, blockedReason: 'Aprueba Ofimática para tus cobranzas para continuar' });
-    expect(data[3]).toMatchObject({ status: 'BLOCKED', enabled: false });
-    expect(data[3]!.missingSeals).toHaveLength(3);
+    expect(data[4]).toMatchObject({ status: 'BLOCKED', enabled: false });
+    expect(data[4]!.missingSeals).toHaveLength(4);
   });
 
   it('bloquea el acceso directo por URL a un módulo bloqueado (403)', async () => {
     const user = await createTestUser(SUITE);
     const { agent } = await loginAgent(user.numeroDocumento, 'asesor');
-    const blocked = await agent.get('/api/advisor/modules/simulador-cobranzas');
+    const blocked = await agent.get('/api/advisor/modules/induccion-cobranzas');
     expect(blocked.status).toBe(403);
     expect(blocked.body.details.blockedReason).toBe('Aprueba Ofimática para tus cobranzas para continuar');
     const open = await agent.get('/api/advisor/modules/ofimatica-mecanografia');
@@ -52,7 +52,7 @@ describe('módulos y acceso', () => {
       expect(view).toMatchObject({ enabled: false, actionLabel: 'No disponible', blockedReason: 'Módulo no disponible temporalmente' });
       expect((await advisor.get('/api/advisor/modules/ofimatica-mecanografia')).status).toBe(403);
       await expect(attemptService.startAttempt(user.id, ids.a1)).rejects.toMatchObject({ code: 'MODULE_BLOCKED' });
-      expect(await prisma.userModuleProgress.count({ where: { userId: user.id } })).toBe(4);
+      expect(await prisma.userModuleProgress.count({ where: { userId: user.id } })).toBe(5);
     } finally {
       await adminAgent.patch(`/api/admin/modules/${ids.modules.m1.id}/status`).set(ORIGIN).send({ status: 'ACTIVE', reason: 'Fin del mantenimiento de prueba' });
     }

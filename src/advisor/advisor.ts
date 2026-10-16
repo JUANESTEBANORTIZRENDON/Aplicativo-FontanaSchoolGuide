@@ -1,8 +1,7 @@
 import './advisor.css';
 import { api, ApiError, escapar, formatDate } from '../http';
 
-// Área del asesor: solo módulos, estados, progreso y botones. El contenido de capacitación
-// se desarrollará después; cada ruta muestra "Contenido en preparación".
+// Área del asesor: ruta de formación, progreso y acceso a los módulos de contenido.
 
 export type ModuleView = {
   moduleId: string;
@@ -76,6 +75,11 @@ export async function mountLearningPath(): Promise<void> {
 // Rutas /induccion/modulos/:slug y /induccion/certificado: el servidor valida el acceso.
 export async function renderModulePage(container: HTMLElement, backHref = '/induccion'): Promise<void> {
   const slug = location.pathname === '/induccion/certificado' ? 'certificado' : decodeURIComponent(location.pathname.split('/')[3] ?? '');
+  if (slug === 'induccion-cobranzas') {
+    const { mountCollections } = await import('../collections/collections');
+    await mountCollections(container, backHref);
+    return;
+  }
   container.innerHTML = '<section class="auth-card narrow module-page"><p>Cargando módulo…</p></section>';
   const page = container.querySelector<HTMLElement>('.module-page')!;
   try {

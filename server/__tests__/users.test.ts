@@ -66,7 +66,7 @@ describe('gestión de usuarios', () => {
     expect(on.body.data.estado).toBe('activo');
     const stored = await prisma.usuario.findUniqueOrThrow({ where: { id: user.id } });
     expect(stored.versionSesion).toBe(1);
-    expect(await prisma.userModuleProgress.count({ where: { userId: user.id } })).toBe(4);
+    expect(await prisma.userModuleProgress.count({ where: { userId: user.id } })).toBe(5);
     expect(await prisma.adminAuditLog.count({ where: { entityId: user.id, action: 'USER_STATUS_CHANGED' } })).toBe(2);
   });
 

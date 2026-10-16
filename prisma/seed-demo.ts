@@ -65,7 +65,7 @@ export const SCENARIOS: DemoRow[] = [
 export async function runDemoSeed(log: (line: string) => void = console.log): Promise<DemoRow[]> {
   const { prisma } = await import('../server/config/prisma.js');
   const bcrypt = (await import('bcryptjs')).default;
-  const { seedCatalog } = await import('./seed-base.js');
+  const { seedCatalog, seedCompletedInduction } = await import('./seed-base.js');
   const userService = await import('../server/services/user.service.js');
   const authService = await import('../server/services/auth.service.js');
   const attemptService = await import('../server/services/attempt.service.js');
@@ -247,6 +247,7 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
     await excel(userId, new Date(start.getTime() + 12 * MIN));
     await view(userId, 'ortografia', SPELLING_LESSON_KEYS, new Date(start.getTime() + 22 * MIN));
     await dictation(userId, new Date(start.getTime() + 25 * MIN), 'perfect');
+    await seedCompletedInduction(prisma, userId, new Date(start.getTime() + 30 * MIN));
   }
 
   // Crea el asesor con el servicio real. Si ya existe, el escenario se considera hecho (idempotencia).
@@ -566,6 +567,7 @@ export async function cleanDemo(confirm: boolean, log: (line: string) => void = 
     await tx.excelAttemptResult.deleteMany({ where: { attemptId: { in: attemptIds } } });
     await tx.dictationAttemptResult.deleteMany({ where: { attemptId: { in: attemptIds } } });
     await tx.activitySectionView.deleteMany({ where: { userId: { in: userIds } } });
+    await tx.collectionsBlockProgress.deleteMany({ where: { userId: { in: userIds } } });
     await tx.simulatorResult.deleteMany({ where: { attemptId: { in: attemptIds } } });
     await tx.typificationResult.deleteMany({ where: { attemptId: { in: attemptIds } } });
     await tx.attemptAnswer.deleteMany({ where: { attemptId: { in: attemptIds } } });

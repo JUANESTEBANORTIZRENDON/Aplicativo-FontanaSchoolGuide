@@ -65,7 +65,7 @@ export async function loadSnapshot(db: Db, userId: string, now = new Date(), opt
     ));
   }
   const views = computeModuleViews(modules.map(toModuleInput), {
-    moduleProgress: new Map(moduleProgress.map((row) => [row.moduleId, { status: row.status, lastActivityAt: row.lastActivityAt }])),
+    moduleProgress: new Map(moduleProgress.map((row) => [row.moduleId, { status: row.status, lastActivityAt: row.lastActivityAt, percent: row.percent }])),
     activityProgress: new Map(activityProgress.map((row) => [row.activityId, { status: row.status }])),
     sealedModuleIds: new Set(seals.map((seal) => seal.moduleId)),
     overrides,

@@ -33,7 +33,7 @@ describe('métricas', () => {
     expect(data.activeAdvisors).toBe(active);
     expect(data.overallProgress.sinDatos).toBe(false);
     expect(Number(data.overallProgress.value)).toBeGreaterThan(0);
-    expect(data.approvalByModule).toHaveLength(4);
+    expect(data.approvalByModule).toHaveLength(5);
     expect(data.approvalByModule[0].participants).toBeGreaterThan(0);
     expect(data.distribution.length).toBeGreaterThan(0);
     expect(Number(data.attempts.averagePerAdvisor.value)).toBeGreaterThan(1);

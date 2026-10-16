@@ -17,7 +17,8 @@ async function advisor(documento: string) {
   const session = await loginAgent(documento, 'asesor', DEMO_PASSWORD);
   expect(session.response.status, `login ${documento}`).toBe(200);
   const modules = (await session.agent.get('/api/advisor/modules')).body.data as ModuleRow[];
-  return { ...session, modules };
+  // Estos escenarios verifican los cuatro componentes legados; el módulo nuevo tiene su propia suite.
+  return { ...session, modules: modules.filter((module) => module.slug !== 'induccion-cobranzas') };
 }
 
 async function userId(documento: string): Promise<string> {
@@ -44,7 +45,7 @@ describe('escenarios demo', () => {
     const session = await loginAgent('1000000101', 'asesor', DEMO_PASSWORD);
     expect(session.response.body.usuario.ruta).toBe('/llena-tus-datos');
     const modules = (await session.agent.get('/api/advisor/modules')).body.data as ModuleRow[];
-    expect(modules.map((row) => row.status)).toEqual(['AVAILABLE', 'BLOCKED', 'BLOCKED', 'BLOCKED']);
+    expect(modules.map((row) => row.status)).toEqual(['AVAILABLE', 'BLOCKED', 'BLOCKED', 'BLOCKED', 'BLOCKED']);
   });
 
   it('1000000102 · en curso: M1 IN_PROGRESS con "Continuar"', async () => {
@@ -108,7 +109,7 @@ describe('escenarios demo', () => {
     expect(modules[3]).toMatchObject({ actionLabel: 'Ver certificado', enabled: true });
     const file = (await admin.get(`/api/admin/advisors/${await userId('1000000109')}/progress`)).body.data;
     expect(file.certificates).toEqual([expect.objectContaining({ code: 'FSG-DEMO-0001', status: 'ACTIVE' })]);
-    expect(file.seals.filter((seal: { status: string }) => seal.status === 'ACTIVE')).toHaveLength(3);
+    expect(file.seals.filter((seal: { status: string }) => seal.status === 'ACTIVE')).toHaveLength(4);
   });
 
   it('1000000110 · certificado reemitido: dos versiones enlazadas', async () => {
@@ -198,7 +199,7 @@ describe('escenarios demo', () => {
     const state = (await session.agent.get('/api/training/office/module')).body.data;
     expect(state).toMatchObject({ currentSection: 'resultado' });
     expect(state.module.hasSeal).toBe(true);
-    expect(state.nextModule).toMatchObject({ slug: 'simulador-cobranzas', enabled: true });
+    expect(state.nextModule).toMatchObject({ slug: 'induccion-cobranzas', enabled: true });
     const result = (await session.agent.get('/api/training/office/result')).body.data;
     expect(result.sealIssued).toBe(true);
     expect(result.reinforce).toEqual([]);

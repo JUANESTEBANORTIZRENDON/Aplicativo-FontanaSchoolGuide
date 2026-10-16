@@ -62,7 +62,7 @@ export async function getModuleState(userId: string, now = new Date()) {
     })
     : null;
   const seal = view.hasSeal ? await prisma.seal.findFirst({ where: { userId, moduleId: activities.moduleId, status: 'ACTIVE' }, orderBy: { issuedAt: 'desc' } }) : null;
-  const next = snapshot.views.find((item) => item.slug === 'simulador-cobranzas');
+  const next = snapshot.views.find((item) => item.slug === 'induccion-cobranzas');
   const dictation = await describeNext(userId).catch(() => null);
   const excel = await prisma.excelActivity.count({ where: { status: 'ACTIVE' } });
 
@@ -173,7 +173,7 @@ export async function getResult(userId: string, now = new Date()) {
     strengths,
     reinforce,
     nextStep: state.module.hasSeal
-      ? { text: 'Terminaste Ofimática para tus cobranzas. Sigue con el Simulador de cobranzas.', module: state.nextModule }
+      ? { text: 'Terminaste Ofimática para tus cobranzas. Sigue con la Inducción a las cobranzas.', module: state.nextModule }
       : { text: `Continúa con ${SECTION_TITLE[state.currentSection]}.`, section: state.currentSection },
   };
 }

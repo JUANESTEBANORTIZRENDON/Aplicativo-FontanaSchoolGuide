@@ -48,7 +48,7 @@ Al terminar las cinco etapas de `/induccion`, la confirmación de lectura habili
 
 ### Reglas de la ruta de formación
 
-- Catálogo inicial: 1 Ofimática para tus cobranzas → 2 Simulador de cobranzas → 3 Tipificación de llamadas → 4 Certificado (requiere los tres sellos).
+- Catálogo: 1 Ofimática para tus cobranzas → 2 Inducción a las cobranzas → 3 Simulador de cobranzas → 4 Tipificación de llamadas → 5 Certificado.
 - `computeModuleViews` (dominio) calcula el estado efectivo de cada módulo combinando el estado del catálogo, prerrequisitos, sellos, progreso, intentos y excepciones vigentes. La usan el área del asesor, el panel y la sincronización que alimenta las métricas.
 - Un módulo `INACTIVE` se muestra "No disponible", con el botón deshabilitado. Un módulo aprobado muestra "Completado"; el módulo 1 tiene pantalla de resultado y sigue abierto para repasarlo (los demás se habilitarán cuando tengan la suya).
 - Intentos: numeración consecutiva con bloqueo de fila, límite `maxAttempts` más excepciones vigentes y espera `waitMinutes` tras un fallo. Una configuración evaluable nueva crea otra versión; nunca se edita una versión existente.
@@ -103,6 +103,30 @@ npm.cmd test               # suite completa con supertest (requiere DATABASE_URL
 Los ejercicios de dictado quedan en **borrador** hasta subir el audio autorizado desde el panel. En desarrollo, `DICTATION_DEV_TTS=true` los activa con la voz del navegador (la interfaz lo marca como audio de prueba). Asesores demo del módulo: `1000000102` (en curso), `1000000103` (aprobado), `1000000104` (sin intentos), `1000000146` (mecanografía aprobada), `1000000147` (práctica pendiente), `1000000148` (dictado con error crítico), `1000000149` (módulo completo), `1000000150` (intento vencido).
 
 Para probarlo: inicia sesión con un asesor demo → "Tu ruta de formación" → **Ofimática para tus cobranzas**.
+
+## Módulo 02 · Inducción a las cobranzas
+
+Ruta: `/induccion/modulos/induccion-cobranzas`. Dirigido a asesores activos con perfil completo y experiencia previa declarada como **no**. Conserva los prerrequisitos y las excepciones individuales del catálogo.
+
+Incluye cinco bloques: conceptos básicos; preparación; contacto y escucha; alternativas autorizadas; cierre y seguimiento. Conceptos básicos es de lectura; los otros cuatro bloques presentan objetivo, explicación, caso ficticio, ejercicio y puntos que requieren validación interna. Al enviar una actividad se muestra la respuesta esperada y la retroalimentación de cada opción.
+
+La práctica muestra una pregunta por pantalla, con ejemplo resuelto, pista opcional y corrección al comprobar cada respuesta. Los aciertos se conservan y se retoman únicamente las preguntas pendientes, incluso al volver a iniciar sesión. Los bloques usan tarjetas de conceptos, ficha del caso, conversación ficticia, ficha de alternativas y construcción de una nota de gestión.
+
+Conceptos básicos comienza con cinco tarjetas: conocimiento del producto; manejo de objeciones; protocolo de la llamada (saludo y presentación); conocimiento de la marca y su cartera; habilidad de negociar. Cada tarjeta muestra una explicación breve, un icono, un ejemplo ficticio y un recordatorio, con el logo y los colores de Fontana. Solo se renderiza la tarjeta actual; se avanza con las flechas de la pantalla o del teclado, sin arrastre, gestos táctiles ni reproducción automática. Los puntos inferiores solo indican la posición. Al resolver los cinco retos, el botón dentro del slide final permite continuar a Preparación de la gestión y registra el bloque como completado. Los detalles reales de producto, cartera, guion y autorizaciones requieren validación interna.
+
+Desde Preparación de la gestión, el servidor exige resolver todas las preguntas antes de abrir el siguiente bloque. Los reintentos son ilimitados y no consumen intentos del examen legado. Se guardan respuestas, número de envíos y primera fecha de finalización en `progreso_bloques_cobranzas`, por usuario, módulo, bloque y versión. Un envío posterior incorrecto no reemplaza un acierto ya guardado.
+
+Al completar los cinco bloques, se marca la actividad de práctica del catálogo como aprobada y se utiliza el mecanismo existente de sello y desbloqueo. Los registros y excepciones anteriores se conservan. El simulador de cobranzas sigue siendo un módulo separado.
+
+El endpoint autenticado `POST /api/training/collections/blocks/conceptos/complete` con `{}` registra la lectura de Conceptos básicos. Es idempotente respecto del avance, conserva las respuestas históricas y no crea respuestas ni intentos de evaluación. El endpoint de reinicio fue retirado.
+
+Después de la quinta tarjeta, la flecha siguiente muestra el reto rápido dentro del mismo carrusel, sin ventanas emergentes. Presenta cinco situaciones ficticias, una por concepto, con dos opciones. Al acertar, avanza automáticamente a la siguiente pregunta o muestra la finalización después de la quinta. Una respuesta incorrecta muestra una explicación breve y mantiene la misma pregunta para reintentar, sin límite de intentos. La flecha anterior permite volver a las tarjetas. Las respuestas y la pregunta actual se conservan mientras el módulo está abierto, aunque se cambie de tarjeta o bloque; no se guardan como evaluación en la base de datos. «Continuar al siguiente bloque» solo aparece dentro del slide de finalización, tras responder correctamente las cinco preguntas. Los errores de guardado también se muestran en ese slide y permiten volver a intentar continuar.
+
+API: `GET /api/training/collections/module`, `POST /api/training/collections/blocks/:key/questions/:question` con `{ "answer": "opcion" }` y envío de bloque completo compatible con `POST /api/training/collections/blocks/:key` y `{ "answers": { "pregunta": "opcion" } }`. La API valida sesión, rol, perfil, experiencia, disponibilidad del catálogo, origen y secuencia. La corrección se calcula en el servidor; los bloques cerrados no exponen contenido ni respuestas, y cada pregunta solo muestra su corrección tras un envío.
+
+Validación interna pendiente antes de aplicar en una gestión real: guion y verificación de identidad; fuentes de saldo y confirmación del pago; canales, horarios y frecuencia de contacto; alternativas y facultades de aprobación; consulta al coordinador; tipificaciones y seguimiento. Los montos, fechas y alternativas de los ejercicios son ficticios y no constituyen políticas de Fontana.
+
+El módulo usa el fondo crema de Fontana, encabezado y escenario vino, detalles dorados y texto azul oscuro. El recorrido lateral distingue el bloque activo y los bloqueados; el reto incluye un indicador de aciertos. Las transiciones respetan la preferencia de movimiento reducido. En pantallas pequeñas las flechas se colocan debajo de la tarjeta para conservar espacio de lectura. El tema del encabezado y del fondo se limita a esta pantalla.
 
 ## Desarrollo local
 

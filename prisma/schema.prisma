@@ -64,6 +64,7 @@ model Usuario {
   auditoria           AdminAuditLog[]
   seccionesVistas     ActivitySectionView[]
   configsOfimatica    OfficeModuleConfig[]
+  bloquesCobranzas    CollectionsBlockProgress[]
   textosMecanografia  TypingText[]
   actividadesExcel    ExcelActivity[]
   ejerciciosDictado   DictationExercise[]
@@ -224,8 +225,27 @@ model TrainingModule {
   dependents    ModulePrerequisite[] @relation("ModuloRequisito")
   progress      UserModuleProgress[]
   seals         Seal[]
+  bloquesCobranzas CollectionsBlockProgress[]
 
   @@map("modulos_formacion")
+  @@schema("induccion")
+}
+
+model CollectionsBlockProgress {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  moduleId       String   @map("module_id") @db.Uuid
+  blockKey       String   @map("block_key") @db.VarChar(30)
+  contentVersion Int      @map("content_version")
+  attempts       Int      @default(0)
+  answers        Json
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user           Usuario @relation(fields: [userId], references: [id], onDelete: Restrict)
+  module         TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, moduleId, blockKey, contentVersion], map: "uq_cobranzas_bloque_usuario_version")
+  @@map("progreso_bloques_cobranzas")
   @@schema("induccion")
 }
 
