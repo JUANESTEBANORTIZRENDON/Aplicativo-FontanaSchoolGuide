@@ -235,7 +235,10 @@ export function lessonCard(lesson: Lesson): string {
 async function renderResult(ctx: OfficeContext): Promise<void> {
   const result = await officeApi.result();
   const state = await ctx.refresh();
-  const sectionLine = result.sections.map((section) => `<li data-status="${section.status}"><span>${escapar(section.title)}</span><strong>${section.status === 'COMPLETED' ? 'Aprobado' : section.status === 'NO_ATTEMPTS' ? 'Sin intentos' : 'Pendiente'}</strong></li>`).join('');
+  const sectionLine = result.sections.map((section) => `<li data-status="${section.status}"${section.alert ? ' data-alert="true"' : ''}><span>${escapar(section.title)}</span><strong>${section.status === 'COMPLETED' ? (section.alert ? 'Presentado · con alertas' : 'Aprobado') : section.status === 'NO_ATTEMPTS' ? 'Sin intentos' : 'Pendiente'}</strong></li>`).join('');
+  const PART_TITLE: Record<string, string> = { mecanografia: 'Mecanografía', excel: 'Excel', ortografia: 'Ortografía' };
+  const score = result.moduleScore;
+  const scoreBlock = score ? `<div class="office-module-score"><div><strong>${score.score.toFixed(1)}</strong><span>nota del módulo (de 100)</span></div><ul>${score.parts.map((part) => `<li>${escapar(PART_TITLE[part.key] ?? part.key)}: ${part.score.toFixed(0)} puntos <small>(pesa ${part.weight} %)</small></li>`).join('')}</ul></div>` : '';
   const next = result.nextStep.module;
   ctx.view.innerHTML = `
     <section class="office-card" aria-labelledby="result-title">
@@ -245,6 +248,7 @@ async function renderResult(ctx: OfficeContext): Promise<void> {
         ? `<div class="office-seal" role="img" aria-label="Sello del módulo obtenido"><span>✓</span><div><strong>¡Módulo aprobado!</strong><small>Obtuviste el sello el ${escapar(new Intl.DateTimeFormat('es-CO', { dateStyle: 'long', timeZone: 'America/Bogota' }).format(new Date(result.sealIssuedAt ?? Date.now())))}.</small></div></div>`
         : `<p class="office-lead">Aprueba mecanografía, Excel y ortografía para obtener el sello. Progreso del módulo: ${escapar(result.progressPercent)} %.</p>`}
       <ul class="office-summary">${sectionLine}</ul>
+      ${scoreBlock}
       <div class="office-columns">
         <div><h2>Lo que haces bien</h2>${result.strengths.length ? `<ul>${result.strengths.map((item) => `<li>${escapar(item)}</li>`).join('')}</ul>` : '<p>Aún no hay resultados para destacar.</p>'}</div>
         <div><h2>Lo que debes reforzar</h2>${result.reinforce.length ? `<ul>${result.reinforce.map((item) => `<li>${escapar(item)}</li>`).join('')}</ul>` : '<p>No tienes refuerzos pendientes. ¡Muy bien!</p>'}</div>
@@ -252,10 +256,40 @@ async function renderResult(ctx: OfficeContext): Promise<void> {
       <p class="office-note">${escapar(result.nextStep.text)}</p>
       <div class="office-actions">
         ${result.sealIssued && next
-          ? (next.enabled ? `<a class="primary" href="${escapar(next.route)}">Ir a ${escapar(next.name)} →</a>` : `<p class="office-error">${escapar(next.blockedReason ?? 'Módulo no disponible.')}</p>`)
+          ? (next.enabled ? `<a class="primary" id="result-next" href="${escapar(next.route)}">Ir a ${escapar(next.name)} →</a>` : `<p class="office-error">${escapar(next.blockedReason ?? 'Módulo no disponible.')}</p>`)
           : `<button class="primary" id="result-continue" type="button">Continuar con ${escapar(TITLES[state.currentSection])} →</button>`}
         <a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a>
       </div>
     </section>`;
   ctx.view.querySelector<HTMLButtonElement>('#result-continue')?.addEventListener('click', () => ctx.go(state.currentSection));
+  const nextLink = ctx.view.querySelector<HTMLAnchorElement>('#result-next');
+  nextLink?.addEventListener('click', (event) => {
+    event.preventDefault();
+    playSealAnimation('Ofimática para tus cobranzas', () => location.assign(nextLink.href));
+  });
+}
+
+// Animación de sellado al pasar al siguiente módulo: el sello cae sobre la tarjeta y luego se navega.
+function playSealAnimation(moduleName: string, done: () => void): void {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const layer = document.createElement('div');
+  layer.className = 'office-seal-stage';
+  layer.setAttribute('role', 'status');
+  layer.innerHTML = `
+    <div class="office-seal-paper">
+      <p class="eyebrow">MÓDULO COMPLETADO</p>
+      <h2>${escapar(moduleName)}</h2>
+      <div class="office-seal-stamp" aria-hidden="true">
+        <svg viewBox="0 0 200 200"><defs><path id="seal-arc" d="M100,100 m-63,0 a63,63 0 1,1 126,0 a63,63 0 1,1 -126,0"/></defs>
+          <circle cx="100" cy="100" r="92" fill="none" stroke="currentColor" stroke-width="6"/>
+          <circle cx="100" cy="100" r="80" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 5"/>
+          <text font-size="15" font-weight="800" letter-spacing="3" fill="currentColor"><textPath href="#seal-arc" startOffset="2%">FONTANA · AULA DE FORMACIÓN · SELLO ·</textPath></text>
+          <text x="100" y="95" text-anchor="middle" font-size="34" font-weight="900" fill="currentColor">✓</text>
+          <text x="100" y="125" text-anchor="middle" font-size="18" font-weight="900" letter-spacing="2" fill="currentColor">APROBADO</text>
+        </svg>
+      </div>
+      <p class="office-seal-caption">¡Sello obtenido! Pasando al siguiente módulo…</p>
+    </div>`;
+  document.body.append(layer);
+  window.setTimeout(done, reduced ? 900 : 2600);
 }

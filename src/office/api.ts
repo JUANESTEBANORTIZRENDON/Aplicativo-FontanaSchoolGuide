@@ -111,7 +111,8 @@ export type DictationResult = {
 
 export type ResultView = {
   sealIssued: boolean; sealIssuedAt: string | null; moduleStatus: string; progressPercent: string;
-  sections: { key: string; title: string; status: string }[];
+  sections: { key: string; title: string; status: string; alert?: boolean }[];
+  moduleScore: { score: number; parts: { key: string; score: number; weight: number }[] } | null;
   strengths: string[]; reinforce: string[];
   nextStep: { text: string; module?: ModuleState['nextModule']; section?: SectionKey };
 };

@@ -134,11 +134,25 @@ function pluck<T>(value: unknown): T[] {
 type StepResult = { questionId: string; lesson: string; correct: boolean; awardedScore: number; weight: number; hint: string };
 type DetectedError = { type: string; expected: string; written: string; severity: string; weight: number; explanation: string; category: string | null; ruleKey: string | null };
 
+// Nota del módulo: la ortografía se tiene en cuenta pero pesa poco (20 %), para que un dictado flojo baje un poco
+// la nota sin frenar el avance. Solo se calcula cuando las tres partes tienen resultado.
+export const MODULE_WEIGHTS = { mecanografia: 40, excel: 40, ortografia: 20 } as const;
+function moduleScore(typing: { toString(): string } | null, excel: { toString(): string } | null, dictation: { toString(): string } | null) {
+  if (typing === null || excel === null || dictation === null) return null;
+  const parts = [
+    { key: 'mecanografia', score: Number(typing), weight: MODULE_WEIGHTS.mecanografia },
+    { key: 'excel', score: Number(excel), weight: MODULE_WEIGHTS.excel },
+    { key: 'ortografia', score: Number(dictation), weight: MODULE_WEIGHTS.ortografia },
+  ];
+  const score = parts.reduce((sum, part) => sum + part.score * part.weight, 0) / 100;
+  return { score: Math.round(score * 10) / 10, parts };
+}
+
 // Resultado y sello: qué hizo bien, qué debe reforzar y qué sigue.
 export async function getResult(userId: string, now = new Date(), preloaded?: TrainingSnapshot) {
   const state = await getModuleState(userId, now, preloaded);
   const [typing, excel, dictation] = await Promise.all([
-    prisma.typingAttemptResult.findFirst({ where: { attempt: { userId }, completedAt: { not: null } }, orderBy: { completedAt: 'desc' } }),
+    prisma.typingAttemptResult.findFirst({ where: { attempt: { userId }, completedAt: { not: null } }, orderBy: { completedAt: 'desc' }, include: { attempt: { select: { score: true } } } }),
     prisma.excelAttemptResult.findFirst({ where: { attempt: { userId }, completedAt: { not: null } }, orderBy: { completedAt: 'desc' } }),
     prisma.dictationAttemptResult.findFirst({ where: { attempt: { userId }, completedAt: { not: null } }, orderBy: { completedAt: 'desc' } }),
   ]);
@@ -176,7 +190,12 @@ export async function getResult(userId: string, now = new Date(), preloaded?: Tr
     sealIssuedAt: state.seal?.issuedAt ?? null,
     moduleStatus: state.module.status,
     progressPercent: state.module.progressPercent,
-    sections: state.sections.filter((section) => section.graded).map((section) => ({ key: section.key, title: section.title, status: section.status })),
+    sections: state.sections.filter((section) => section.graded).map((section) => ({ key: section.key, title: section.title, status: section.status, alert: section.alert })),
+    moduleScore: moduleScore(
+      typing?.attempt.score ?? null,
+      excel?.score ?? null,
+      dictation?.score ?? null,
+    ),
     strengths,
     reinforce,
     nextStep: state.module.hasSeal

@@ -103,7 +103,7 @@ async function loadRaw(db: Db, userId: string): Promise<RawState> {
 // Carga todo lo necesario para calcular el estado efectivo de un usuario.
 // Con sync, el estado guardado se alinea con el efectivo (excepciones vencidas o revocadas, desbloqueos)
 // para que las métricas en SQL lo reflejen. Un módulo aprobado o inactivo conserva su estado guardado.
-export async function loadSnapshot(db: Db, userId: string, now = new Date(), options: { sync?: boolean } = {}): Promise<TrainingSnapshot> {
+export async function loadSnapshot(db: Db, userId: string, now = new Date(), options: { sync?: boolean; healed?: boolean } = {}): Promise<TrainingSnapshot> {
   let state = await loadRaw(db, userId);
   if (state.moduleProgress.length < state.modules.length) {
     await initializeForUser(db, userId, state.modules);
@@ -126,6 +126,17 @@ export async function loadSnapshot(db: Db, userId: string, now = new Date(), opt
     overrides,
     availability,
   }, now);
+  if (options.sync && !options.healed) {
+    // Módulo completo sin sello: pasa cuando se archiva una actividad obligatoria después de que el asesor
+    // aprobó las demás (el sello solo se emitía al enviar un intento). Se emite ahora y se recalcula una vez.
+    const unsealed = views.filter((view) => view.catalogStatus === 'ACTIVE' && !view.hasSeal && view.slug !== CERTIFICATE_MODULE_SLUG && view.progressPercent === '100.00');
+    if (unsealed.length) {
+      const issue = async (tx: Db) => { for (const view of unsealed) await completeModule(tx, userId, view.moduleId, undefined, now); };
+      if ('$transaction' in db) await (db as typeof prisma).$transaction((tx) => issue(tx));
+      else await issue(db);
+      return loadSnapshot(db, userId, now, { ...options, healed: true });
+    }
+  }
   if (options.sync) {
     const stored = new Map(moduleProgress.map((row) => [row.moduleId, row.status]));
     for (const view of views) {
