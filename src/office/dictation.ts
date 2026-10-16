@@ -22,13 +22,17 @@ export async function renderDictation(ctx: OfficeContext): Promise<void> {
       <section class="office-card">
         <p class="eyebrow">ORTOGRAFÍA APLICADA</p><h1>Dictado aprobado</h1>
         <p class="office-lead">Superaste los ${cfg.minScore} puntos sin errores críticos.</p>
-        <div class="office-actions"><button class="primary" id="dictation-next" type="button">Ver mi resultado y sello →</button></div>
+        <div class="office-actions"><button class="primary" id="dictation-next" type="button">Ver mi resultado y sello →</button>${REVIEW_BUTTON}</div>
       </section>`;
     ctx.view.querySelector('#dictation-next')!.addEventListener('click', () => ctx.go('resultado'));
+    bindReview(ctx);
     return;
   }
   if (section.status === 'NO_ATTEMPTS') {
-    ctx.view.innerHTML = `<section class="office-card"><p class="eyebrow">ORTOGRAFÍA APLICADA</p><h1>Sin intentos disponibles</h1><p class="office-error">Agotaste los intentos del dictado. Solicita una reactivación al administrador.</p><a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a></section>`;
+    ctx.view.innerHTML = `<section class="office-card"><p class="eyebrow">ORTOGRAFÍA APLICADA</p><h1>Sin intentos disponibles</h1><p class="office-error">Agotaste los intentos del dictado. Solicita una reactivación al administrador.</p>
+      <p class="office-lead">Mientras tanto puedes repasar las lecciones.</p>
+      <div class="office-actions">${REVIEW_BUTTON}<a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a></div></section>`;
+    bindReview(ctx);
     return;
   }
   const { lessons } = await officeApi.content<{ lessons: Lesson[] }>('ortografia');
@@ -41,23 +45,43 @@ export async function renderDictation(ctx: OfficeContext): Promise<void> {
   renderLessons(ctx, lessons, viewed);
 }
 
-function renderLessons(ctx: OfficeContext, lessons: Lesson[], viewed: Set<string>): void {
-  let index = Math.max(0, lessons.findIndex((lesson) => !viewed.has(lesson.key)));
+// Repaso: las lecciones se pueden volver a leer en cualquier momento (aprobado, sin intentos o antes del dictado).
+const REVIEW_BUTTON = '<button class="office-secondary" id="orto-review" type="button">Repasar las lecciones</button>';
+
+function bindReview(ctx: OfficeContext): void {
+  const button = ctx.view.querySelector<HTMLButtonElement>('#orto-review');
+  button?.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      const { lessons } = await officeApi.content<{ lessons: Lesson[] }>('ortografia');
+      renderLessons(ctx, lessons, new Set(), true);
+    } catch (error) {
+      button.disabled = false;
+      showError(ctx.view, error);
+    }
+  });
+}
+
+function renderLessons(ctx: OfficeContext, lessons: Lesson[], viewed: Set<string>, review = false): void {
+  let index = review ? 0 : Math.max(0, lessons.findIndex((lesson) => !viewed.has(lesson.key)));
   const draw = () => {
     const lesson = lessons[index]!;
     void officeApi.view(lesson.key).then(() => viewed.add(lesson.key)).catch(() => undefined);
     ctx.view.innerHTML = `
       <section class="office-card" aria-labelledby="orto-title">
-        <p class="eyebrow">ORTOGRAFÍA APLICADA · LECCIÓN ${index + 1} DE ${lessons.length}</p>
+        <p class="eyebrow">ORTOGRAFÍA APLICADA · ${review ? 'REPASO · ' : ''}LECCIÓN ${index + 1} DE ${lessons.length}</p>
         <h1 id="orto-title">${escapar(lesson.title)}</h1>
         ${lessonCard(lesson)}
         <div class="office-actions">
           <button class="office-secondary" id="lesson-prev" type="button" ${index === 0 ? 'disabled' : ''}>← Anterior</button>
           ${index < lessons.length - 1
             ? '<button class="primary" id="lesson-next" type="button">Siguiente lección →</button>'
-            : '<button class="primary" id="lesson-exercise" type="button">Ir al dictado →</button>'}
+            : review
+              ? '<button class="primary" id="lesson-done" type="button">Terminar repaso</button>'
+              : '<button class="primary" id="lesson-exercise" type="button">Ir al dictado →</button>'}
         </div>
       </section>`;
+    ctx.view.querySelector('#lesson-done')?.addEventListener('click', () => void renderDictation(ctx).catch((error) => showError(ctx.view, error)));
     ctx.view.querySelector('#lesson-prev')!.addEventListener('click', () => { index -= 1; draw(); });
     ctx.view.querySelector('#lesson-next')?.addEventListener('click', () => { index += 1; draw(); });
     ctx.view.querySelector('#lesson-exercise')?.addEventListener('click', () => renderExercise(ctx));
@@ -74,8 +98,9 @@ function renderExercise(ctx: OfficeContext): void {
       <section class="office-card">
         <p class="eyebrow">ORTOGRAFÍA APLICADA · DICTADO</p><h1>El dictado estará disponible pronto</h1>
         <p class="office-lead">Todavía no hay un ejercicio con audio autorizado. Vuelve más tarde; tu avance queda guardado.</p>
-        <a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a>
+        <div class="office-actions">${REVIEW_BUTTON}<a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a></div>
       </section>`;
+    bindReview(ctx);
     return;
   }
   ctx.view.innerHTML = `
@@ -88,8 +113,9 @@ function renderExercise(ctx: OfficeContext): void {
         <li><strong>Intentos:</strong> te quedan ${section.attemptsRemaining ?? cfg.maxAttempts} de ${section.maxAttempts ?? cfg.maxAttempts}.</li>
         ${exercise.devTts ? '<li><strong>Audio de prueba:</strong> este ejercicio se reproduce con la voz del navegador porque todavía no tiene audio autorizado.</li>' : ''}
       </ul>
-      <div class="office-actions"><button class="primary" id="dictation-begin" type="button">Iniciar dictado</button></div>
+      <div class="office-actions"><button class="primary" id="dictation-begin" type="button">Iniciar dictado</button>${REVIEW_BUTTON}</div>
     </section>`;
+  bindReview(ctx);
   const begin = ctx.view.querySelector<HTMLButtonElement>('#dictation-begin')!;
   begin.addEventListener('click', async () => {
     begin.disabled = true;

@@ -18,13 +18,17 @@ export async function renderExcel(ctx: OfficeContext): Promise<void> {
       <section class="office-card">
         <p class="eyebrow">EXCEL PARA COBRANZAS</p><h1>Práctica de Excel aprobada</h1>
         <p class="office-lead">Ya superaste los ${cfg.minScore} puntos de la práctica.</p>
-        <div class="office-actions"><button class="primary" id="excel-next" type="button">Continuar con Ortografía →</button></div>
+        <div class="office-actions"><button class="primary" id="excel-next" type="button">Continuar con Ortografía →</button>${REVIEW_BUTTON}</div>
       </section>`;
     ctx.view.querySelector('#excel-next')!.addEventListener('click', () => ctx.go('ortografia'));
+    bindReview(ctx);
     return;
   }
   if (section.status === 'NO_ATTEMPTS') {
-    ctx.view.innerHTML = `<section class="office-card"><p class="eyebrow">EXCEL PARA COBRANZAS</p><h1>Sin intentos disponibles</h1><p class="office-error">Agotaste los intentos de la práctica. Solicita una reactivación al administrador.</p><a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a></section>`;
+    ctx.view.innerHTML = `<section class="office-card"><p class="eyebrow">EXCEL PARA COBRANZAS</p><h1>Sin intentos disponibles</h1><p class="office-error">Agotaste los intentos de la práctica. Solicita una reactivación al administrador.</p>
+      <p class="office-lead">Mientras tanto puedes repasar las lecciones.</p>
+      <div class="office-actions">${REVIEW_BUTTON}<a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a></div></section>`;
+    bindReview(ctx);
     return;
   }
   const activity = await officeApi.excelActivity();
@@ -38,11 +42,30 @@ export async function renderExcel(ctx: OfficeContext): Promise<void> {
   renderLessons(ctx, activity.id, activity.lessons);
 }
 
-function renderLessons(ctx: OfficeContext, activityId: string, lessons: Lesson[]): void {
+// Repaso: con la práctica aprobada o sin intentos, las lecciones se pueden volver a leer.
+const REVIEW_BUTTON = '<button class="office-secondary" id="excel-review" type="button">Repasar las lecciones</button>';
+
+function bindReview(ctx: OfficeContext): void {
+  const button = ctx.view.querySelector<HTMLButtonElement>('#excel-review');
+  button?.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      const { lessons } = await officeApi.content<{ lessons: Lesson[] }>('excel');
+      renderLessons(ctx, null, lessons);
+    } catch (error) {
+      button.disabled = false;
+      showError(ctx.view, error);
+    }
+  });
+}
+
+// activityId null = modo repaso: se recorren las lecciones desde la primera y al final se vuelve al resumen.
+function renderLessons(ctx: OfficeContext, activityId: string | null, lessons: Lesson[]): void {
   const section = ctx.state.sections.find((item) => item.key === 'excel')!;
   const cfg = ctx.state.config.excel;
+  const review = activityId === null;
   const viewed = new Set(section.lessonsViewed);
-  let index = Math.min(lessons.findIndex((lesson) => !viewed.has(lesson.key)), lessons.length - 1);
+  let index = review ? 0 : Math.min(lessons.findIndex((lesson) => !viewed.has(lesson.key)), lessons.length - 1);
   if (index < 0) index = 0;
 
   const draw = () => {
@@ -50,7 +73,7 @@ function renderLessons(ctx: OfficeContext, activityId: string, lessons: Lesson[]
     void officeApi.view(lesson.key).then(() => viewed.add(lesson.key)).catch(() => undefined);
     ctx.view.innerHTML = `
       <section class="office-card" aria-labelledby="excel-title">
-        <p class="eyebrow">EXCEL PARA COBRANZAS · LECCIÓN ${index + 1} DE ${lessons.length}</p>
+        <p class="eyebrow">EXCEL PARA COBRANZAS · ${review ? 'REPASO · ' : ''}LECCIÓN ${index + 1} DE ${lessons.length}</p>
         <h1 id="excel-title">${escapar(lesson.title)}</h1>
         ${lessonCard(lesson)}
         <p class="office-note">La práctica final vale 100 puntos y se aprueba con ${cfg.minScore}. Usa datos ficticios.</p>
@@ -58,17 +81,20 @@ function renderLessons(ctx: OfficeContext, activityId: string, lessons: Lesson[]
           <button class="office-secondary" id="lesson-prev" type="button" ${index === 0 ? 'disabled' : ''}>← Anterior</button>
           ${index < lessons.length - 1
             ? '<button class="primary" id="lesson-next" type="button">Siguiente lección →</button>'
-            : '<button class="primary" id="lesson-practice" type="button">Ir a la práctica →</button>'}
+            : review
+              ? '<button class="primary" id="lesson-done" type="button">Terminar repaso</button>'
+              : '<button class="primary" id="lesson-practice" type="button">Ir a la práctica →</button>'}
         </div>
       </section>`;
     ctx.view.querySelector('#lesson-prev')!.addEventListener('click', () => { index -= 1; draw(); });
     ctx.view.querySelector('#lesson-next')?.addEventListener('click', () => { index += 1; draw(); });
+    ctx.view.querySelector('#lesson-done')?.addEventListener('click', () => void renderExcel(ctx).catch((error) => showError(ctx.view, error)));
     const start = ctx.view.querySelector<HTMLButtonElement>('#lesson-practice');
     start?.addEventListener('click', async () => {
       start.disabled = true;
       start.textContent = 'Preparando la práctica…';
       try {
-        renderPractice(ctx, activityId, await officeApi.excelStart(activityId));
+        renderPractice(ctx, activityId!, await officeApi.excelStart(activityId!));
       } catch (error) {
         start.disabled = false;
         start.textContent = 'Ir a la práctica →';

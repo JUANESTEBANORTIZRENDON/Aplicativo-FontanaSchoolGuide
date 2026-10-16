@@ -137,3 +137,8 @@ button.office-secondary:disabled { opacity: .5; cursor: not-allowed; }
   .office-steps ol { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .office-screen * { scroll-behavior: auto !important; } }
+
+/* Repaso de una sección ya terminada */
+.office-review { margin-top: 18px; padding: 14px 18px; border: 1px solid #e5e8ef; border-radius: 14px; background: #fff; }
+.office-review summary { color: #8b1538; font-weight: 700; cursor: pointer; }
+.office-review[open] summary { margin-bottom: 8px; }

@@ -20,6 +20,17 @@ function textareaHtml(id: string, label: string): string {
     <textarea id="${id}" class="office-typing-input" rows="7" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" disabled></textarea>`;
 }
 
+// Repaso de la prueba: qué mide y cómo se aprueba, para volver a leerlo cuando ya terminó.
+function reviewHtml(cfg: OfficeContext['state']['config']['typing']): string {
+  return `<details class="office-review"><summary>Repasar en qué consiste la prueba</summary>
+    <ul class="office-goals">
+      <li><strong>Duración:</strong> ${cfg.durationSeconds} segundos copiando un texto de atención al cliente.</li>
+      <li><strong>Meta:</strong> ${cfg.minCorrectCpm} caracteres correctos por minuto (${Math.round(cfg.minCorrectCpm / 5)} palabras por minuto).</li>
+      <li><strong>Precisión mínima:</strong> ${cfg.minAccuracy} %. Cada espacio, tilde y signo cuenta.</li>
+      <li><strong>Reglas:</strong> no se puede pegar ni copiar, y salir durante la prueba cuenta como intento fallido.</li>
+    </ul></details>`;
+}
+
 export function renderTyping(ctx: OfficeContext): void {
   const { state } = ctx;
   const section = state.sections.find((item) => item.key === 'mecanografia')!;
@@ -29,6 +40,7 @@ export function renderTyping(ctx: OfficeContext): void {
       <section class="office-card">
         <p class="eyebrow">MECANOGRAFÍA</p><h1>Mecanografía aprobada</h1>
         <p class="office-lead">Ya cumpliste la meta de ${cfg.minCorrectCpm} caracteres correctos por minuto con ${cfg.minAccuracy} % de precisión.</p>
+        ${reviewHtml(cfg)}
         <div class="office-actions"><button class="primary" id="typing-next" type="button">Continuar con Excel →</button></div>
       </section>`;
     ctx.view.querySelector('#typing-next')!.addEventListener('click', () => ctx.go('excel'));
@@ -39,6 +51,7 @@ export function renderTyping(ctx: OfficeContext): void {
       <section class="office-card">
         <p class="eyebrow">MECANOGRAFÍA</p><h1>Sin intentos disponibles</h1>
         <p class="office-error">Agotaste los intentos de la prueba. Solicita una reactivación al administrador para continuar.</p>
+        ${reviewHtml(cfg)}
         <a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a>
       </section>`;
     return;
