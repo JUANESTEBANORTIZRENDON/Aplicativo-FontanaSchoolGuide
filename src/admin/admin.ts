@@ -215,6 +215,8 @@ const pill = (kind: string, label: string) => `<span class="status status-${kind
 // Resume una actividad en una sola etiqueta que el administrador entienda de un vistazo.
 function activityPill(activity: AdvisorActivity, moduleStatus: string, progress: string | undefined): string {
   if (activity.status !== 'ACTIVE') return pill('draft', 'Inactiva');
+  // Las actividades sin evaluación (lecciones) no llevan nota: solo se marcan como realizadas.
+  if (!activity.hasEvaluation) return progress === 'PASSED' ? pill('passed', 'Realizado') : pill('not_started', 'Pendiente');
   if (activity.passed || progress === 'PASSED') return pill('passed', 'Aprobada');
   if (activity.exhausted) return pill('failed', 'Sin intentos');
   if (moduleStatus === 'BLOCKED') return pill('blocked', 'Bloqueada');
@@ -234,7 +236,7 @@ function moduleVerdict(view: AdvisorFile['modules'][number]): string {
 }
 
 function activityRow(activity: AdvisorActivity, moduleStatus: string, progress: string | undefined, isCurrent: boolean): string {
-  const attempts = !activity.hasEvaluation ? '<span class="muted">Sin evaluación</span>' : `
+  const attempts = !activity.hasEvaluation ? '' : `
     <span class="attempts"><strong>${activity.attemptsUsed}</strong> de <strong>${activity.attemptsMax ?? '—'}</strong> intentos${activity.customLimit ? ' <em class="tag">ajustado</em>' : ''}</span>
     <span class="muted">Le quedan ${activity.attemptsRemaining ?? 0}</span>`;
   const wait = activity.waitUntil ? `<span class="wait">Podrá reintentar desde ${escapar(formatDate(activity.waitUntil))}</span>` : '';

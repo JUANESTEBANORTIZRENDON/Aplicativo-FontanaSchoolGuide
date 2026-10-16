@@ -8,24 +8,37 @@ import {
 import { getStorage } from '../integrations/storage.js';
 import { activeConfig, officeActivities, recordView, viewsOf } from '../repositories/office.repository.js';
 import { signedUrl } from './media.service.js';
-import { loadSnapshot } from './progress.service.js';
+import { loadSnapshot, type TrainingSnapshot } from './progress.service.js';
 import { describeNext } from './office-dictation.service.js';
 import { practicePending } from './office-typing.service.js';
 
 export type SectionStatus = 'COMPLETED' | 'PENDING' | 'NO_ATTEMPTS';
 
 // Estado completo del módulo para el asesor: secciones, progreso, umbrales y dónde continuar.
-export async function getModuleState(userId: string, now = new Date()) {
-  const activities = await officeActivities();
+export async function getModuleState(userId: string, now = new Date(), preloaded?: TrainingSnapshot) {
+  const [activities, snapshot, config] = await Promise.all([officeActivities(), preloaded ?? loadSnapshot(prisma, userId, now, { sync: true }), activeConfig()]);
   if (!activities) throw new NotFoundError('El módulo no existe.', 'MODULE_NOT_FOUND');
-  const [snapshot, config] = await Promise.all([loadSnapshot(prisma, userId, now, { sync: true }), activeConfig()]);
   const view = snapshot.views.find((item) => item.slug === OFFICE_MODULE_SLUG);
   if (!view) throw new NotFoundError('El módulo no existe.', 'MODULE_NOT_FOUND');
 
   const ids = Object.values(activities.bySection).flatMap((activity) => (activity ? [activity.id] : []));
-  const viewed = await viewsOf(prisma, userId, ids);
+  const typingActivity = activities.bySection.mecanografia;
+  // Consultas independientes entre sí: se lanzan juntas para no sumar la latencia de cada una.
+  const [viewed, progressRows, openTyping, seal, dictation, excel, practiceRequired] = await Promise.all([
+    viewsOf(prisma, userId, ids),
+    prisma.userActivityProgress.findMany({ where: { userId, activityId: { in: ids } } }),
+    typingActivity
+      ? prisma.typingAttemptResult.findFirst({
+        where: { attempt: { userId, status: 'IN_PROGRESS', evaluation: { activityId: typingActivity.id } } },
+        select: { attemptId: true, expiresAt: true, startedOfficialAt: true },
+      })
+      : null,
+    view.hasSeal ? prisma.seal.findFirst({ where: { userId, moduleId: activities.moduleId, status: 'ACTIVE' }, orderBy: { issuedAt: 'desc' } }) : null,
+    describeNext(userId).catch(() => null),
+    prisma.excelActivity.count({ where: { status: 'ACTIVE' } }),
+    typingActivity ? practicePending(userId, typingActivity.id) : false,
+  ]);
   const viewedKeys = (section: OfficeSection) => viewed.filter((row) => row.activityId === activities.bySection[section]?.id).map((row) => row.sectionKey);
-  const progressRows = await prisma.userActivityProgress.findMany({ where: { userId, activityId: { in: ids } } });
   const progressOf = (id: string | undefined) => progressRows.find((row) => row.activityId === id);
 
   const sections = OFFICE_SECTIONS.map((key) => {
@@ -54,17 +67,7 @@ export async function getModuleState(userId: string, now = new Date()) {
   const order: OfficeSection[] = ['bienvenida', 'mecanografia', 'excel', 'ortografia'];
   const currentSection: OfficeSection = order.find((key) => sections.find((section) => section.key === key)?.status !== 'COMPLETED') ?? 'resultado';
 
-  const typingActivity = activities.bySection.mecanografia;
-  const openTyping = typingActivity
-    ? await prisma.typingAttemptResult.findFirst({
-      where: { attempt: { userId, status: 'IN_PROGRESS', evaluation: { activityId: typingActivity.id } } },
-      select: { attemptId: true, expiresAt: true, startedOfficialAt: true },
-    })
-    : null;
-  const seal = view.hasSeal ? await prisma.seal.findFirst({ where: { userId, moduleId: activities.moduleId, status: 'ACTIVE' }, orderBy: { issuedAt: 'desc' } }) : null;
   const next = snapshot.views.find((item) => item.slug === 'simulador-cobranzas');
-  const dictation = await describeNext(userId).catch(() => null);
-  const excel = await prisma.excelActivity.count({ where: { status: 'ACTIVE' } });
 
   return {
     module: { slug: view.slug, name: view.name, status: view.status, progressPercent: view.progressPercent, hasSeal: view.hasSeal, route: view.route },
@@ -80,7 +83,7 @@ export async function getModuleState(userId: string, now = new Date()) {
       dictation: { minScore: config.dictationMinScore, maxAttempts: config.dictationMaxAttempts, maxPlays: config.dictationMaxPlays },
     },
     typing: {
-      practiceRequired: typingActivity ? await practicePending(userId, typingActivity.id) : false,
+      practiceRequired,
       openAttempt: openTyping ? { attemptId: openTyping.attemptId, expiresAt: openTyping.expiresAt.toISOString(), started: Boolean(openTyping.startedOfficialAt) } : null,
     },
     excelAvailable: excel > 0,
@@ -128,8 +131,8 @@ type StepResult = { questionId: string; lesson: string; correct: boolean; awarde
 type DetectedError = { type: string; expected: string; written: string; severity: string; weight: number; explanation: string; category: string | null; ruleKey: string | null };
 
 // Resultado y sello: qué hizo bien, qué debe reforzar y qué sigue.
-export async function getResult(userId: string, now = new Date()) {
-  const state = await getModuleState(userId, now);
+export async function getResult(userId: string, now = new Date(), preloaded?: TrainingSnapshot) {
+  const state = await getModuleState(userId, now, preloaded);
   const [typing, excel, dictation] = await Promise.all([
     prisma.typingAttemptResult.findFirst({ where: { attempt: { userId }, completedAt: { not: null } }, orderBy: { completedAt: 'desc' } }),
     prisma.excelAttemptResult.findFirst({ where: { attempt: { userId }, completedAt: { not: null } }, orderBy: { completedAt: 'desc' } }),

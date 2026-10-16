@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, type Evaluation, type ProgressStatus } from '@prisma/client';
 import { env } from '../config/env.js';
 import { prisma, type Db } from '../config/prisma.js';
 import { CERTIFICATE_MODULE_SLUG } from '../domain/enums.js';
@@ -39,18 +39,47 @@ export type TrainingSnapshot = {
   attemptLimits: Map<string, number>;
 };
 
-// Carga todo lo necesario para calcular el estado efectivo de un usuario.
-// Con sync, el estado guardado se alinea con el efectivo (excepciones vencidas o revocadas, desbloqueos)
-// para que las métricas en SQL lo reflejen. Un módulo aprobado o inactivo conserva su estado guardado.
-export async function loadSnapshot(db: Db, userId: string, now = new Date(), options: { sync?: boolean } = {}): Promise<TrainingSnapshot> {
+// Datos crudos del estado de formación de un usuario, con las fechas ya convertidas.
+type RawState = {
+  modules: CatalogModule[];
+  moduleProgress: { moduleId: string; status: ProgressStatus; lastActivityAt: Date | null }[];
+  activityProgress: { activityId: string; status: ProgressStatus }[];
+  seals: { moduleId: string }[];
+  overrides: OverrideLite[];
+  evaluations: Map<string, Evaluation>;
+  attempts: Awaited<ReturnType<typeof attemptsForUser>>;
+  attemptLimits: Map<string, number>;
+};
+
+const toDate = (value: string | null | undefined): Date | null => (value ? new Date(value) : null);
+
+// Una sola llamada a la función de la base de datos (induccion.fn_estado_formacion) en lugar de ocho consultas.
+async function loadRawViaFunction(db: Db, userId: string): Promise<RawState> {
+  const rows = await db.$queryRaw<{ state: Record<string, any[]> }[]>`SELECT induccion.fn_estado_formacion(${userId}::uuid) AS state`;
+  const state = rows[0]!.state;
+  const modules = state.modules.map((module) => ({
+    ...module, createdAt: toDate(module.createdAt), updatedAt: toDate(module.updatedAt),
+    activities: module.activities.map((activity: Record<string, any>) => ({ ...activity, createdAt: toDate(activity.createdAt), updatedAt: toDate(activity.updatedAt) })),
+  })) as CatalogModule[];
+  return {
+    modules,
+    moduleProgress: state.moduleProgress.map((row) => ({ ...row, lastActivityAt: toDate(row.lastActivityAt) })) as RawState['moduleProgress'],
+    activityProgress: state.activityProgress as RawState['activityProgress'],
+    seals: state.seals as RawState['seals'],
+    overrides: state.overrides.map((row) => ({ ...row, expiresAt: toDate(row.expiresAt), revokedAt: toDate(row.revokedAt), consumedAt: toDate(row.consumedAt), createdAt: toDate(row.createdAt)! })) as OverrideLite[],
+    evaluations: new Map(state.evaluations.map((row) => [row.activityId, { ...row, minimumScore: new Prisma.Decimal(row.minimumScore), createdAt: toDate(row.createdAt)! } as Evaluation])),
+    attempts: state.attempts.map((row) => ({ ...row, submittedAt: toDate(row.submittedAt), startedAt: toDate(row.startedAt)!, evaluation: { activityId: row.activityId } })) as RawState['attempts'],
+    attemptLimits: new Map(state.attemptLimits.map((row) => [row.activityId, row.maxAttempts])),
+  };
+}
+
+// Camino de respaldo: las consultas por separado. Solo se usa fuera de una transacción (dentro, un error
+// aborta la transacción entera) y si la función de la base de datos no está disponible.
+async function loadRawViaQueries(db: Db, userId: string): Promise<RawState> {
   const modules = await listVisibleModules(db);
-  const moduleProgress = await moduleProgressForUser(db, userId);
-  if (moduleProgress.length < modules.length) {
-    await initializeForUser(db, userId, modules);
-    moduleProgress.splice(0, moduleProgress.length, ...await moduleProgressForUser(db, userId));
-  }
   const activityIds = modules.flatMap((module) => module.activities.map((activity) => activity.id));
-  const [activityProgress, seals, overrides, evaluations, attemptLimits] = await Promise.all([
+  const [moduleProgress, activityProgress, seals, overrides, evaluations, attemptLimits] = await Promise.all([
+    moduleProgressForUser(db, userId),
     activityProgressForUser(db, userId),
     activeSealsForUser(db, userId),
     overridesForUser(db, userId),
@@ -58,6 +87,29 @@ export async function loadSnapshot(db: Db, userId: string, now = new Date(), opt
     attemptLimitsForUser(db, userId),
   ]);
   const attempts = await attemptsForUser(db, userId, [...evaluations.keys()]);
+  return { modules, moduleProgress, activityProgress, seals, overrides, evaluations, attempts, attemptLimits };
+}
+
+async function loadRaw(db: Db, userId: string): Promise<RawState> {
+  try {
+    return await loadRawViaFunction(db, userId);
+  } catch (error) {
+    if (!('$transaction' in db)) throw error;
+    console.warn('fn_estado_formacion no disponible; se usan consultas por separado.', (error as Error).message);
+    return loadRawViaQueries(db, userId);
+  }
+}
+
+// Carga todo lo necesario para calcular el estado efectivo de un usuario.
+// Con sync, el estado guardado se alinea con el efectivo (excepciones vencidas o revocadas, desbloqueos)
+// para que las métricas en SQL lo reflejen. Un módulo aprobado o inactivo conserva su estado guardado.
+export async function loadSnapshot(db: Db, userId: string, now = new Date(), options: { sync?: boolean } = {}): Promise<TrainingSnapshot> {
+  let state = await loadRaw(db, userId);
+  if (state.moduleProgress.length < state.modules.length) {
+    await initializeForUser(db, userId, state.modules);
+    state = await loadRaw(db, userId);
+  }
+  const { modules, moduleProgress, activityProgress, seals, overrides, evaluations, attempts, attemptLimits } = state;
   const availability = new Map<string, Availability>();
   for (const [activityId, evaluation] of evaluations) {
     availability.set(activityId, computeAvailability(
@@ -91,8 +143,9 @@ export async function computeModuleState(userId: string, db: Db = prisma, option
 
 // Acceso directo por URL: el servidor decide, no el botón del frontend.
 // allowCompleted: el asesor puede repasar un módulo aprobado que tiene pantalla de resultados.
-export async function getAccessibleModule(userId: string, slug: string, options: { allowCompleted?: boolean } = {}) {
+export async function getAccessibleModule(userId: string, slug: string, options: { allowCompleted?: boolean; onSnapshot?: (snapshot: TrainingSnapshot) => void } = {}) {
   const snapshot = await loadSnapshot(prisma, userId, new Date(), { sync: true });
+  options.onSnapshot?.(snapshot);
   const view = snapshot.views.find((module) => module.slug === slug);
   if (!view) throw new NotFoundError('El módulo no existe.', 'MODULE_NOT_FOUND');
   if (!view.enabled && !(options.allowCompleted && view.status === 'PASSED')) {
