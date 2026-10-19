@@ -1,0 +1,338 @@
+/* Presentación exclusiva del módulo. Ninguna regla actúa fuera de su raíz. */
+body.auth-screen:has(.collections-course) { background: radial-gradient(ellipse at 100% 0, #f0e4d3 0, transparent 55%), #f4f6fa; }
+body:has(.collections-course) .auth-main { max-width: 1420px; padding: 32px 28px 80px; }
+.collections-course {
+  --fc-wine: #831336; --fc-gold: #d4af37; --fc-ink: #233247; --fc-muted: #475569;
+  --fc-line: #d8e0eb; --fc-body: 17px; --fc-small: 14px;
+  color-scheme: light; color: var(--fc-ink); font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: var(--fc-body); line-height: 1.65; text-align: left;
+}
+.collections-course *, .collections-course *::before, .collections-course *::after { box-sizing: border-box; }
+.collections-course :is(h1,h2,h3,h4,h5,h6,p,li,dt,dd,label,legend,summary,blockquote,button,a,small) { overflow-wrap: anywhere; word-break: normal; }
+.collections-course :is(button,a,input,select,textarea,summary) { -webkit-tap-highlight-color: transparent; }
+.collections-course :is(button,input,select,textarea) { font-family: inherit; }
+.collections-course :is(fieldset,form) { min-inline-size: 0; max-width: 100%; }
+.collections-course [hidden] { display: none !important; }
+.collections-course .collections-card :is(p,li,dd,label,legend,blockquote) { font-size: var(--fc-body); line-height: 1.7; }
+.collections-course .collections-card :is(h2,h3,h4,h5,h6) { font-family: 'Manrope', 'Segoe UI', Arial, sans-serif; line-height: 1.35; font-weight: 750; letter-spacing: -.025em; }
+.collections-course .collections-card h3 { font-size: clamp(23px, 2.2vw, 29px); }
+.collections-course .collections-card h4 { font-size: clamp(21px, 2vw, 26px); }
+.collections-course .collections-card h5 { font-size: 20px; }
+.collections-course .collections-card h6 { font-size: 18px; }
+.collections-course .collections-card :is(small,dt) { font-size: var(--fc-small); line-height: 1.6; }
+.collections-course .collections-kicker { color: #745316 !important; font-size: var(--fc-small); font-weight: 750; letter-spacing: .06em; line-height: 1.6; }
+
+/* Encabezado, progreso y recorrido. */
+.collections-course .collections-heading { padding: clamp(24px, 3vw, 40px); margin-bottom: 20px; border: 1px solid var(--fc-line); border-left: 5px solid var(--fc-gold); border-radius: 22px; background: radial-gradient(ellipse at 100% 0, #f3e5e9, transparent 65%), #fff; box-shadow: 0 12px 36px #24344808; }
+.collections-course .collections-heading h1 { margin: 12px 0; font: 800 clamp(30px, 3.4vw, 44px)/1.18 'Manrope', 'Segoe UI', Arial, sans-serif; color: #70112c; letter-spacing: -.035em; }
+.collections-course .collections-heading p { max-width: 65ch; font-size: var(--fc-body); color: var(--fc-muted); }
+.collections-course .collections-heading .collections-kicker { font-size: var(--fc-small); }
+.collections-course .collections-back { border-color: #9c8090; border-radius: 12px; background: #fff; color: #70112c; font-size: 16px; padding: 12px 18px; }
+.collections-course .collections-progress { padding: 20px 24px; background: #fff; border-color: var(--fc-line); box-shadow: none; }
+.collections-course .collections-progress > div { font-size: 16px; line-height: 1.6; }
+.collections-course .collections-progress > div > span { flex-shrink: 0; font-size: 16px; background: #f8e9ee; color: #70112c; }
+.collections-course :is(.collections-progress,.collections-dossier-progress) progress { height: 10px; background: #e2e8f0; }
+.collections-course :is(.collections-progress,.collections-dossier-progress) progress::-webkit-progress-bar { background: #e2e8f0; }
+.collections-course :is(.collections-progress,.collections-dossier-progress) progress::-webkit-progress-value { background: #831336; }
+.collections-course :is(.collections-progress,.collections-dossier-progress) progress::-moz-progress-bar { background: #831336; }
+.collections-course .collections-layout { grid-template-columns: 260px minmax(0,1fr); gap: 24px; }
+.collections-course .collections-layout > * { min-width: 0; }
+.collections-course .collections-nav { top: 20px; padding: 16px; background: #fff; border: 1px solid var(--fc-line); border-radius: 18px; }
+.collections-course .collections-nav-label { flex-wrap: wrap; gap: 4px 12px; margin-bottom: 16px; font-size: 16px; }
+.collections-course .collections-nav-label small { font-size: var(--fc-small); color: var(--fc-muted); }
+.collections-course .collections-nav button { grid-template-columns: 32px minmax(0,1fr) 14px; padding: 16px 12px; background: #fff; border-color: var(--fc-line); border-radius: 12px; font-size: 15px; line-height: 1.5; box-shadow: none; }
+.collections-course .collections-nav-copy small { color: var(--fc-muted); font-size: var(--fc-small); font-weight: 500; line-height: 1.5; }
+.collections-course .collections-nav button[aria-current] { color: #fff; background: #831336; border-color: #70112c; box-shadow: 0 6px 16px #8313361a; }
+.collections-course .collections-nav button[aria-current] small { color: #fff3f7; }
+.collections-course .collections-step { width: 32px; height: 32px; background: #f8f1df; color: #704d12; border-color: #b89a58; font-size: 14px; font-weight: 750; }
+.collections-course .collections-nav button[aria-current] .collections-step { color: #fff; border-color: #f2d58e; background: #6a0f2b; }
+.collections-course .collections-nav button:disabled { opacity: 1; color: #526071; background: #edf1f6; border: 1px dashed #8d99aa; box-shadow: none; }
+.collections-course .collections-nav button:disabled small { color: #526071; }
+.collections-course .collections-nav button:disabled .collections-step { background: #e2e8f0; color: #475569; border-color: #8d99aa; }
+.collections-course .collections-nav button:disabled .collections-nav-mark { color: #475569; }
+.collections-course .collections-card { padding: clamp(22px, 2.4vw, 34px); border-color: var(--fc-line); border-radius: 22px; background: #fff; box-shadow: 0 14px 40px #23324708; }
+.collections-course .collections-card > h2 { margin: 16px 0 24px; font-size: clamp(27px, 2.6vw, 34px); color: #233247; }
+.collections-course .collections-block-toolbar .collections-kicker { padding: 7px 12px; border: 1px solid #d8c58f; border-radius: 8px; background: #fcf6e7; font-size: var(--fc-small); letter-spacing: .05em; }
+.collections-course .collections-card .fontana-concepts-intro { margin: 0 0 20px; font-size: var(--fc-body); color: var(--fc-muted); }
+.collections-course .collections-process { gap: 12px; margin: 0 0 24px; padding: 16px 8px; border-block: 1px solid var(--fc-line); }
+.collections-course .collections-process li { font-size: 14px; color: #526071; line-height: 1.5; }
+.collections-course .collections-process li > span { width: 34px; height: 34px; font-size: 15px; border-color: #8995a6; color: #475569; background: #f4f6fa; }
+.collections-course .collections-process li::before { top: 17px; background: #b8c3d2; }
+.collections-course .collections-process li.is-current { color: #70112c; font-weight: 750; }
+.collections-course .collections-process li.is-current > span { background: #831336; color: #fff; border: 2px solid #831336; outline: 3px solid #f1d9e0; outline-offset: 2px; }
+.collections-course .collections-process li.is-done > span { background: #f8f1df; color: #704d12; border-color: #b89a58; }
+
+/* Controles grandes, límites visibles y foco de teclado. */
+.collections-course .collections-card :is(button,input,select,textarea) { font-size: 16px; line-height: 1.6; }
+.collections-course :is(.collections-primary,.collections-secondary,.collections-plan-source) { min-height: 50px; max-width: 100%; padding: 13px 20px; border-radius: 12px; font-size: 16px; font-weight: 700; line-height: 1.5; white-space: normal; text-align: center; }
+.collections-course .collections-primary { background: #831336; border-color: #70112c; color: #fff; box-shadow: 0 5px 12px #83133617; }
+.collections-course .collections-secondary { background: #fff; border-color: #8b6a7a; color: #70112c; }
+.collections-course .collections-card :is(input:not([type=radio]):not([type=checkbox]),select,textarea) { width: 100%; max-width: 100%; min-width: 0; border: 1.5px solid #7c899c; border-radius: 10px; background-color: #fff; color: #233247; padding: 13px 14px; font-size: 16px; font-weight: 500; line-height: 1.6; }
+.collections-course .collections-card :is(input:not([type=radio]):not([type=checkbox]),select) { min-height: 50px; }
+.collections-course .collections-card select { padding-right: 36px; white-space: normal; text-overflow: clip; }
+.collections-course .collections-card :is(input,textarea)::placeholder { color: #526071; opacity: 1; font-weight: 400; }
+.collections-course .collections-card textarea { resize: vertical; min-height: 120px; }
+.collections-course .collections-card :is(input,select,textarea):disabled { color: #475569; background: #e9eef4; border-style: dashed; opacity: 1; }
+.collections-course .collections-card :is(input[type=radio],input[type=checkbox]) { width: 20px; height: 20px; flex-shrink: 0; accent-color: #831336; }
+.collections-course .collections-plan-field { font-size: 16px; gap: 10px; margin: 24px 0 18px; font-weight: 650; }
+.collections-course .collections-card .collections-select-value { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border-left: 3px solid #831336; border-radius: 6px; background: #fbf0f3; color: #70112c; font-size: 15px; font-weight: 500; line-height: 1.6; }
+.collections-course .collections-select-value > span:first-child { flex-shrink: 0; font-weight: 800; }
+.collections-course :is(button,input,select,textarea,a,summary):focus-visible { outline: 3px solid #005fcc; outline-offset: 3px; box-shadow: 0 0 0 2px #fff; }
+.collections-course :is(.collections-exam-selection label,.collections-option):focus-within { outline: 3px solid #005fcc; outline-offset: 2px; }
+.collections-course .collections-card button:disabled { opacity: 1; cursor: not-allowed; }
+.collections-course :is(.collections-primary,.collections-secondary):disabled { color: #475569; background: #e9eef4; border: 1px dashed #7c899c; box-shadow: none; transform: none; }
+.collections-course .collections-card button:disabled:not(.is-correct):not(.is-wrong):not(.is-dimmed):not(.fontana-concept-arrow) { opacity: 1; }
+
+/* Tarjetas: todo el contenido usa la altura que necesita. */
+.collections-course .fontana-concept-stage { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; padding: clamp(16px,2.4vw,28px); border: 1px solid #d9c89f; border-radius: 20px; background: radial-gradient(ellipse at 100% 0,#f0dce2,transparent 70%), #f7f1e5; overflow: visible; box-shadow: none; }
+.collections-course .fontana-concept-stage::before, .collections-course .fontana-concept-stage::after { display: none; }
+.collections-course .fontana-concept-card { grid-column: 1/-1; width: 100%; max-width: none; min-height: 0; height: auto; padding: clamp(22px,3vw,36px); border: 1px solid #d7c69d; border-top: 5px solid #831336; border-radius: 16px; background: #fff; box-shadow: 0 10px 30px #3b254811; }
+.collections-course .fontana-concept-brand { color: #70112c; gap: 10px; }
+.collections-course .fontana-concept-brand > span:not(.fontana-concept-number) { font: 750 16px/1.4 'Manrope','Segoe UI',Arial,sans-serif; letter-spacing: .04em; }
+.collections-course .fontana-concept-brand small { font-size: 14px; color: #704d12; letter-spacing: .1em; }
+.collections-course .fontana-concept-number { width: 42px; height: 42px; color: #70112c; background: #f8edf1; border-color: #c79ba9; font: 750 19px/1 'Segoe UI',Arial,sans-serif; }
+.collections-course .collections-card .fontana-concept-notice { padding: 16px; margin-top: 20px; font-size: 16px; line-height: 1.65; background: #fff7df; color: #69480f; border-color: #c6a14e; }
+.collections-course .fontana-concept-icon { width: 76px; height: 76px; margin: 26px auto 20px; border-radius: 22px; background: #fcf3dc; color: #831336; border-color: #d3b66d; transform: none; box-shadow: none; }
+.collections-course .fontana-concept-icon svg { transform: none; width: 46px; height: 46px; }
+.collections-course .collections-card .fontana-concept-card h3 { margin: 0 auto 16px; max-width: 26ch; font: 800 clamp(26px,2.7vw,34px)/1.25 'Manrope','Segoe UI',Arial,sans-serif; color: #70112c; }
+.collections-course .collections-card .fontana-concept-definition { min-height: 0; margin: 0 auto 24px; max-width: 52ch; color: #233247; font-size: 19px; line-height: 1.7; }
+.collections-course .fontana-concept-example { padding: 20px; background: #f5f7fb; border-color: var(--fc-line); border-radius: 12px; }
+.collections-course .fontana-concept-example > span { font-size: 14px; font-weight: 750; color: #475569; letter-spacing: .05em; }
+.collections-course .collections-card .fontana-concept-example p { margin-top: 10px; color: #233247; font-size: var(--fc-body); line-height: 1.7; }
+.collections-course .collections-card .fontana-concept-reminder { margin-top: 24px; padding-top: 18px; color: #70112c; font-size: 16px; line-height: 1.65; border-color: var(--fc-line); }
+.collections-course .fontana-concept-stage .fontana-concept-arrow { position: static; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: auto; min-height: 50px; margin: 0; padding: 10px; border: 1px solid #8b6a7a; border-radius: 12px; color: #70112c; background: #fff; transform: none; box-shadow: none; }
+.collections-course .fontana-concept-arrow svg { width: 22px; height: 22px; flex-shrink: 0; }
+.collections-course .fontana-concept-arrow::after { content: attr(aria-label); font-size: 15px; font-weight: 700; line-height: 1.5; }
+.collections-course .fontana-concept-stage .fontana-concept-arrow:disabled { border: 1px dashed #8995a6; color: #526071; background: #e9eef4; opacity: 1; }
+.collections-course .fontana-concept-arrow:disabled::after { content: 'No disponible'; }
+.collections-course .fontana-concept-footer { margin: 22px 0 12px; gap: 14px; flex-wrap: wrap; }
+.collections-course .fontana-concept-counter, .collections-course .collections-card .fontana-concept-instruction { font-size: 15px; color: var(--fc-muted); }
+.collections-course .fontana-concept-dots { gap: 10px; }
+.collections-course .fontana-concept-dots > span { width: 9px; height: 9px; background: #8c99aa; }
+.collections-course .fontana-concept-dots > span.is-current { width: 28px; background: #831336; }
+.collections-course .fontana-concept-card--quiz { padding: 0; }
+
+/* Actividades y avisos: estados que no dependen solo del color. */
+.collections-course .collections-quick-challenge { padding: clamp(20px,2.5vw,32px); }
+.collections-course .collections-card .collections-quick-challenge h3 { font: 750 27px/1.35 'Manrope','Segoe UI',Arial,sans-serif; }
+.collections-course .collections-quick-challenge > header > span { font-size: 14px; color: #704d12; border-color: #b89a58; }
+.collections-course .collections-card .collections-quick-caption, .collections-course .collections-quick-challenge > footer > span { font-size: 15px; color: var(--fc-muted); }
+.collections-course .collections-quick-choices button { min-height: 64px; padding: 18px; border: 1.5px solid #7c899c; border-radius: 12px; background: #fff; color: #233247; font-size: 17px; font-weight: 550; line-height: 1.65; box-shadow: none; }
+.collections-course .collections-quick-choices button > span { width: 30px; height: 30px; border: 1px solid #8b6a7a; color: #70112c; background: #fbf0f3; font-size: 16px; }
+.collections-course .collections-quick-choices button.is-correct { background: #edf8f1; color: #14532d; border: 2px solid #187044; }
+.collections-course .collections-quick-choices button.is-correct > span { color: #fff; background: #187044; border-color: #187044; }
+.collections-course .collections-quick-choices button.is-wrong { background: #fff0f3; color: #901336; border: 2px solid #a82047; }
+.collections-course .collections-quick-choices button.is-wrong > span { color: #fff; background: #a82047; border-color: #a82047; }
+.collections-course .collections-quick-choices button.is-dimmed { opacity: 1; color: #475569; background: #f0f3f7; border-color: #a6b1bf; box-shadow: none; }
+.collections-course .collections-quick-verdict { border: 1px solid currentColor; padding: 18px; }
+.collections-course .collections-quick-verdict strong { font-size: 19px; }
+.collections-course .collections-card .collections-quick-verdict p { font-size: 16px; line-height: 1.7; }
+.collections-course .collections-quick-verdict.is-correct { color: #14532d; background: #edf8f1; }
+.collections-course .collections-quick-verdict.is-wrong { color: #901336; background: #fff0f3; }
+.collections-course .collections-quick-challenge > footer .collections-primary { min-height: 50px; padding: 13px 20px; font-size: 16px; }
+.collections-course .collections-card .collections-quick-finish { font-size: 19px; line-height: 1.65; }
+.collections-course .collections-card :is(.collections-submit-error,.collections-dossier-feedback) { margin-top: 18px; padding: 16px 18px; border: 1px solid #ba5670; border-left: 4px solid #a82047; border-radius: 10px; color: #901336; background: #fff0f3; font-size: 16px; line-height: 1.7; }
+.collections-course .collections-card :is(.collections-plan-success,.collections-plan-identity,.collections-case-confirmation,.collections-alternative-success,.collections-balance-identity) { color: #14532d; background: #edf8f1; border: 1px solid #6c9e7e; border-left: 4px solid #187044; border-radius: 10px; padding: 14px 16px; font-size: 16px; line-height: 1.7; }
+.collections-course .collections-complete { color: #14532d; background: #edf8f1; border-color: #6c9e7e; }
+
+/* Caso guiado y alternativas: evita una segunda columna de lectura estrecha. */
+.collections-course .collections-dossier { border-color: var(--fc-line); border-radius: 16px; background: #fff; }
+.collections-course .collections-dossier-head { gap: 20px; padding: 26px; background: #233247; border-bottom: 3px solid #d4af37; }
+.collections-course .collections-card .collections-dossier-head p { font-size: 14px; line-height: 1.6; color: #f5d98e; letter-spacing: .04em; }
+.collections-course .collections-card .collections-dossier-head h3 { color: #fff; font: 750 clamp(24px,2.2vw,30px)/1.3 'Manrope','Segoe UI',Arial,sans-serif; }
+.collections-course .collections-dossier-head > div > span { font-size: 15px; color: #f1f5f9; }
+.collections-course .collections-dossier-badge { font-size: 14px; border-color: #e4c67f; color: #ffedbd; background: #344156; }
+.collections-course .collections-dossier-progress { padding: 20px 24px; background: #f8f3e8; }
+.collections-course .collections-dossier-progress strong { font-size: 16px; }
+.collections-course .collections-dossier-progress > div > span { font-size: 14px; color: #526071; }
+.collections-course .collections-plan-workspace { grid-template-columns: minmax(0,1fr); gap: 24px; padding: 24px; }
+.collections-course .collections-plan-actions h4 { font-size: 19px; }
+.collections-course .collections-card .collections-plan-actions p { font-size: 15px; color: var(--fc-muted); }
+.collections-course .collections-plan-slots { grid-template-columns: repeat(auto-fit,minmax(min(100%,180px),1fr)); gap: 10px; }
+.collections-course .collections-plan-slots li { grid-template-columns: 32px minmax(0,1fr); padding: 16px 12px; color: #526071; background: #f3f5f8; border-color: #8d99aa; }
+.collections-course .collections-plan-slots strong { font-size: 15px; }
+.collections-course .collections-plan-slots small { font-size: 14px; }
+.collections-course .collections-plan-slots .is-active { color: #70112c; background: #fbf0f3; border: 2px solid #831336; }
+.collections-course .collections-plan-slots .is-done { color: #14532d; background: #edf8f1; border: 1px solid #6c9e7e; }
+.collections-course .collections-dossier-detail { padding: 24px; background: #fff; border-color: var(--fc-line); }
+.collections-course .collections-plan-workspace--wide > .collections-dossier-detail { padding: 0; border: 0; }
+.collections-course .collections-card .collections-dossier-detail > .collections-kicker { font-size: 14px; }
+.collections-course .collections-card .collections-dossier-detail p { font-size: var(--fc-body); line-height: 1.7; }
+.collections-course .collections-card .collections-dossier-detail :is(.collections-plan-hint,.collections-quality-scenario,.collections-balance-instruction) { font-size: 15px; color: var(--fc-muted); }
+.collections-course .collections-case-facts { gap: 20px; padding: 20px; border: 1px solid var(--fc-line); border-radius: 12px; background: #f5f7fb; }
+.collections-course .collections-case-facts dt { color: #475569; font-size: 14px; font-weight: 650; }
+.collections-course .collections-case-facts dd { color: #233247; font-size: 17px; }
+.collections-course .collections-plan-source { width: auto; font-size: 16px; }
+.collections-course .collections-plan-source[aria-expanded=false] { background: #831336; color: #fff; border-color: #70112c; animation-duration: 4s; }
+.collections-course .collections-plan-source[aria-expanded=true] { color: #14532d; background: #edf8f1; border-color: #6c9e7e; }
+.collections-course .collections-plan-ledger { padding: 20px; border-color: var(--fc-line); background: #f5f7fb; }
+.collections-course .collections-plan-ledger > span { font-size: 14px; color: #704d12; line-height: 1.7; }
+.collections-course .collections-plan-ledger dl > div { gap: 8px 20px; padding: 12px 0; font-size: 16px; border-color: var(--fc-line); }
+.collections-course .collections-plan-ledger dd { font-size: 17px; font-weight: 650; }
+.collections-course .collections-plan-script { padding: 22px; font-size: 18px; line-height: 1.8; color: #233247; background: #fcf5e4; border-color: #ae8127; border-left-width: 4px; }
+.collections-course .collections-plan-reply { padding: 22px; border-radius: 14px; background: #233247; }
+.collections-course .collections-plan-reply > span { font-size: 14px; color: #f5d98e; letter-spacing: .04em; }
+.collections-course .collections-card .collections-plan-reply p { color: #fff; font-size: 18px; line-height: 1.75; }
+.collections-course .collections-quality-message { padding: 22px; background: #fcf5e4; border-color: #b89a58; }
+.collections-course .collections-card .collections-quality-message p { font-size: 18px; color: #233247; }
+.collections-course .collections-quality-message > span { flex-shrink: 0; }
+.collections-course .collections-balance-script { padding: 26px; background: #70112c; border: 0; }
+.collections-course .collections-balance-script > span { color: #ffe5a4; font-size: 14px; }
+.collections-course .collections-balance-script blockquote { color: #fff; font-size: 20px; line-height: 1.8; }
+.collections-course .collections-balance-script strong { color: #ffecb8; }
+.collections-course .collections-balance-script .collections-balance-amount { font-size: 30px; }
+.collections-course .collections-balance-recall { padding: 22px; background: #f8fafc; border-color: var(--fc-line); }
+.collections-course .collections-card .collections-balance-recall > p { color: var(--fc-muted); font-size: 16px; }
+.collections-course :is(.collections-balance-help,.collections-registration-example,.collections-call-summary) { font-size: 16px; }
+.collections-course :is(.collections-balance-help,.collections-registration-example) summary { min-height: 44px; padding: 10px 0; font-size: 16px; line-height: 1.7; }
+.collections-course .collections-alternative-layout { gap: 24px; grid-template-columns: repeat(auto-fit,minmax(min(100%,310px),1fr)); }
+.collections-course .collections-payment-paths { gap: 14px; }
+.collections-course .collections-payment-paths article { padding: 20px; border-color: #d5c297; border-radius: 14px; background: #fcf6e8; }
+.collections-course .collections-payment-paths article:nth-child(3) { background: #fbf0f3; border-color: #c79ba9; }
+.collections-course .collections-payment-paths h5 { font-size: 19px; line-height: 1.5; }
+.collections-course .collections-card .collections-payment-paths p { font-size: 17px; color: #233247; }
+.collections-course .collections-payment-paths small { color: #475569; font-size: 15px; }
+.collections-course .collections-alternative-drill { padding: 22px; border: 1px solid #b7c4d6; border-top: 4px solid #831336; border-radius: 14px; background: #fff; }
+.collections-course .collections-card .collections-alternative-drill > .collections-kicker { font-size: 14px; }
+.collections-course .collections-alternative-drill h5 { font-size: 20px; line-height: 1.5; }
+.collections-course .collections-alternative-drill blockquote { padding: 20px; color: #fff; background: #233247; font-size: 18px; }
+.collections-course .collections-alternative-choices { gap: 10px; }
+.collections-course .collections-alternative-choices button { min-height: 54px; padding: 14px 16px; border: 1.5px solid #7c899c; color: #233247; background: #fff; font-size: 16px; font-weight: 650; }
+.collections-course .collections-card .collections-alternative-drill .collections-alternative-success { color: #14532d; font-size: 16px; }
+.collections-course .collections-registration-exercise { padding: 24px; border-color: #b7c4d6; border-top: 4px solid #831336; background: #fff; }
+.collections-course .collections-registration-sequence { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.collections-course .collections-registration-sequence li { flex-wrap: wrap; padding: 14px 10px; color: #475569; background: #edf1f6; border-color: #8d99aa; font-size: 16px; }
+.collections-course .collections-registration-sequence span { font-size: 14px; line-height: 1.6; }
+.collections-course .collections-registration-sequence .is-active { color: #70112c; background: #fbf0f3; border: 2px solid #831336; }
+.collections-course .collections-registration-sequence .is-done { color: #14532d; background: #edf8f1; border-color: #6c9e7e; }
+.collections-course .collections-registration-situation { padding: 22px; background: #233247; }
+.collections-course .collections-registration-situation > span { color: #f5d98e; font-size: 14px; }
+.collections-course .collections-card .collections-registration-situation p { color: #fff; font-size: 18px; line-height: 1.75; }
+.collections-course .collections-card .collections-registration-exercise > p { color: #475569; font-size: 15px; }
+.collections-course .collections-card .collections-registration-example p, .collections-course .collections-card .collections-call-summary p { font-size: 17px; color: #233247; }
+.collections-course .collections-call-summary h5 { font-size: 18px; }
+.collections-course .collections-card .collections-dossier-note { padding: 18px 24px; color: #475569; background: #f5f7fb; border-color: var(--fc-line); font-size: 14px; line-height: 1.7; }
+
+/* Evaluación: preguntas separadas y estados de avance legibles. */
+.collections-course .collections-card :is(.collections-exam-intro,.collections-exam-result) h3 { font: 800 clamp(27px,2.6vw,34px)/1.3 'Manrope','Segoe UI',Arial,sans-serif; color: #70112c; }
+.collections-course .collections-exam-intro > p { max-width: 68ch; }
+.collections-course .collections-exam-facts { gap: 14px; }
+.collections-course .collections-exam-facts li { flex: 1 1 150px; border-color: var(--fc-line); border-radius: 14px; padding: 20px; background: #f7f2e9; }
+.collections-course .collections-exam-facts strong { font: 800 32px/1.2 'Manrope','Segoe UI',Arial,sans-serif; color: #70112c; }
+.collections-course .collections-exam-facts span { display: block; margin-top: 8px; color: #475569; font-size: 15px; }
+.collections-course .collections-card .collections-exam-outline li { font-size: 16px; line-height: 1.6; padding: 14px 0; }
+.collections-course .collections-exam-outline { max-width: none; }
+.collections-course .collections-exam-policy { padding: 22px; border-color: #d3bd88; background: #fcf6e8; font-size: 16px; }
+.collections-course .collections-exam-policy summary, .collections-course .collections-exam-review > summary { font-size: 17px; line-height: 1.6; }
+.collections-course .collections-card :is(.collections-exam-note,.collections-exam-last,.collections-exam-help) { color: #475569; font-size: 15px; line-height: 1.7; }
+.collections-course .collections-exam-top { gap: 12px; flex-wrap: wrap; color: #704d12; font-size: 16px; line-height: 1.6; letter-spacing: 0; }
+.collections-course .collections-exam-stages { gap: 8px; margin: 20px 0 24px; }
+.collections-course .collections-exam-stages li { gap: 5px; padding: 12px 4px; color: #475569; background: #edf1f6; border-color: #8d99aa; font-size: 16px; font-weight: 750; line-height: 1.5; }
+.collections-course .collections-exam-stages li::after { content: 'Pendiente'; font-size: 14px; font-weight: 500; }
+.collections-course .collections-exam-stages li.is-current { color: #fff; background: #831336; border: 2px solid #70112c; }
+.collections-course .collections-exam-stages li.is-current::after { content: 'Actual'; }
+.collections-course .collections-exam-stages li.is-complete { color: #14532d; background: #edf8f1; border: 1px solid #6c9e7e; }
+.collections-course .collections-exam-stages li.is-complete::after { content: 'Guardada'; }
+.collections-course .collections-exam-scenario { padding: 24px; border-radius: 14px; background: #233247; }
+.collections-course .collections-exam-scenario > span { font-size: 14px; color: #f5d98e; }
+.collections-course .collections-card .collections-exam-scenario p { color: #fff; font-size: 18px; line-height: 1.8; }
+.collections-course .collections-exam-written, .collections-course .collections-exam-selection { min-width: 0; padding: 22px; margin-bottom: 26px; border-color: #b7c4d6; background: #fff; border-radius: 14px; color: #233247; font-size: 17px; line-height: 1.7; }
+.collections-course .collections-exam-written > span:first-child, .collections-course .collections-exam-selection legend { font-size: 18px; line-height: 1.65; font-weight: 700; }
+.collections-course .collections-exam-selection legend { max-width: 100%; padding: 0 6px; }
+.collections-course .collections-exam-written > small, .collections-course .collections-exam-selection legend small { color: #704d12; font-size: 14px; }
+.collections-course .collections-exam-written .collections-select-value { margin-top: 10px; }
+.collections-course .collections-exam-selection label { flex-wrap: wrap; align-items: flex-start; gap: 10px; padding: 16px; border: 1.5px solid #7c899c; border-radius: 10px; background: #fff; color: #233247; font-size: 17px; line-height: 1.65; }
+.collections-course .collections-exam-selection label > span { flex: 1; min-width: 0; }
+.collections-course .collections-exam-selection input { margin-top: 5px; }
+.collections-course .collections-exam-selection label:has(input:checked) { border: 2px solid #831336; background: #fbf0f3; }
+.collections-course .collections-exam-selection label:has(input:checked)::after { content: '✓ Seleccionada'; flex-basis: 100%; padding-left: 30px; color: #70112c; font-size: 14px; font-weight: 700; }
+.collections-course .collections-exam-breakdown { overflow: visible; }
+.collections-course .collections-exam-breakdown table { table-layout: fixed; width: 100%; font-size: 16px; }
+.collections-course .collections-exam-breakdown :is(caption,th,td) { color: #233247; padding: 13px 10px; font-size: 16px; line-height: 1.65; }
+.collections-course .collections-exam-breakdown th:first-child { width: 75%; }
+.collections-course .collections-exam-breakdown thead th { background: #f7f2e9; color: #70112c; }
+.collections-course .collections-exam-breakdown caption { padding-left: 0; color: #70112c; font-size: 18px; }
+.collections-course .collections-exam-feedback { gap: 18px; }
+.collections-course .collections-exam-feedback section { padding: 22px; border-color: var(--fc-line); background: #f8fafc; }
+.collections-course .collections-exam-feedback h4 { font-size: 20px; }
+.collections-course .collections-exam-feedback li { color: #233247; font-size: 16px; line-height: 1.75; margin-block: 10px; }
+.collections-course .collections-exam-review article { margin-top: 16px; padding: 20px; background: #fff; border-color: #c79ba9; }
+.collections-course .collections-exam-review article h4 { font-size: 18px; }
+.collections-course .collections-card .collections-exam-review article p, .collections-course .collections-exam-review ul { font-size: 16px; color: #233247; line-height: 1.75; }
+.collections-course .collections-exam-result .collections-submit-error { text-align: left; }
+.collections-course .collections-exam-score { width: 112px; height: 112px; font: 800 36px/1 'Manrope','Segoe UI',Arial,sans-serif; }
+
+@media(hover:hover) {
+  .collections-course .collections-primary:not(:disabled):hover, .collections-course .collections-plan-source[aria-expanded=false]:hover { background: #68102b; border-color: #68102b; }
+  .collections-course .collections-nav button:not(:disabled):not([aria-current]):hover { transform: none; border-color: #831336; background: #fbf0f3; }
+  .collections-course .fontana-concept-stage .fontana-concept-arrow:not(:disabled):hover { transform: none; background: #fbf0f3; border-color: #831336; }
+  .collections-course .collections-alternative-choices button:not(:disabled):hover { color: #70112c; background: #fbf0f3; border-color: #831336; }
+  .collections-course .collections-quick-choices button:not(:disabled):hover { color: #70112c; background: #fbf0f3; border-color: #831336; transform: none; }
+}
+@media(max-width:1100px) {
+  .collections-course .collections-layout { grid-template-columns: minmax(0,1fr); }
+  .collections-course .collections-nav { position: static; }
+  .collections-course .collections-nav ol { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media(max-width:720px) {
+  body:has(.collections-course) .auth-main { padding: 22px 16px 60px; }
+  .collections-course { --fc-body: 16px; }
+  .collections-course .collections-heading { display: flex; flex-direction: column; align-items: flex-start; padding: 24px; }
+  .collections-course .collections-nav ol { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .collections-course .collections-nav { padding: 12px; }
+  .collections-course .collections-card { padding: 22px; }
+  .collections-course .collections-plan-workspace { padding: 20px; }
+  .collections-course .collections-plan-slots { grid-template-columns: minmax(0,1fr); }
+  .collections-course .collections-dossier-detail { padding: 20px; }
+  .collections-course .collections-dossier-head { flex-direction: column; align-items: flex-start; padding: 24px 20px; }
+  .collections-course .collections-dossier-badge { align-self: flex-start; }
+  .collections-course .collections-exam-stages { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  .collections-course .collections-exam-feedback { grid-template-columns: minmax(0,1fr); }
+  .collections-course .collections-alternative-layout { grid-template-columns: minmax(0,1fr); }
+}
+@media(max-width:480px) {
+  body:has(.collections-course) .auth-main { padding-inline: 12px; }
+  .collections-course .collections-heading { padding: 22px 18px; border-radius: 16px; }
+  .collections-course .collections-heading h1 { font-size: 30px; }
+  .collections-course .collections-card { padding: 20px 14px; border-radius: 16px; }
+  .collections-course .collections-nav button { grid-template-columns: 28px minmax(0,1fr); gap: 8px; padding: 12px 10px; }
+  .collections-course .collections-nav-mark { grid-column: 1; grid-row: 2; justify-self: center; }
+  .collections-course .collections-nav-copy { grid-column: 2; grid-row: 1 / span 2; }
+  .collections-course .collections-step { width: 28px; height: 28px; }
+  .collections-course .collections-progress { padding: 18px; }
+  .collections-course .collections-progress > div { align-items: flex-start; }
+  .collections-course .collections-process { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px 10px; }
+  .collections-course .collections-process li::before { display: none; }
+  .collections-course .fontana-concept-stage { padding: 12px; gap: 12px; }
+  .collections-course .fontana-concept-card { padding: 22px 16px; }
+  .collections-course .fontana-concept-card--quiz { padding: 0; }
+  .collections-course .collections-card .fontana-concept-definition { font-size: 18px; }
+  .collections-course .collections-quick-challenge { padding: 22px 14px; }
+  .collections-course .collections-quick-choices button { padding: 14px; font-size: 16px; }
+  .collections-course .collections-dossier-head, .collections-course .collections-dossier-progress { padding: 20px 16px; }
+  .collections-course .collections-plan-workspace { padding: 16px; }
+  .collections-course .collections-dossier-detail { padding: 18px 14px; }
+  .collections-course .collections-plan-workspace--wide > .collections-dossier-detail { padding: 0; }
+  .collections-course .collections-case-facts { grid-template-columns: minmax(0,1fr); padding: 18px; }
+  .collections-course .collections-case-facts dd { font-size: 16px; }
+  .collections-course .collections-plan-script, .collections-course .collections-plan-reply, .collections-course .collections-registration-situation { padding: 18px; }
+  .collections-course .collections-balance-script { padding: 22px 18px; }
+  .collections-course .collections-balance-script blockquote { font-size: 18px; }
+  .collections-course .collections-quality-message { flex-direction: column; padding: 18px; }
+  .collections-course .collections-payment-paths article { padding: 18px 14px; grid-template-columns: 32px minmax(0,1fr); gap: 10px; }
+  .collections-course .collections-payment-paths article > span { width: 32px; height: 32px; }
+  .collections-course .collections-payment-paths svg { width: 24px; height: 24px; }
+  .collections-course .collections-alternative-drill, .collections-course .collections-registration-exercise { padding: 20px 14px; }
+  .collections-course .collections-registration-sequence { grid-template-columns: minmax(0,1fr); }
+  .collections-course .collections-card .collections-dossier-note { padding: 18px 16px; }
+  .collections-course .collections-exam-written, .collections-course .collections-exam-selection { padding: 18px 12px; }
+  .collections-course .collections-exam-scenario, .collections-course .collections-exam-policy, .collections-course .collections-exam-review article { padding: 20px 16px; }
+  .collections-course .collections-exam-selection label { padding: 14px 10px; font-size: 16px; }
+  .collections-course .collections-exam-stages { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .collections-course .collections-exam-nav, .collections-course .collections-actions { flex-direction: column; }
+  .collections-course .collections-actions :is(button,a), .collections-course .collections-dossier-detail .collections-primary { width: 100%; }
+}
+@media(max-width:359px) { .collections-course .collections-nav ol { grid-template-columns: minmax(0,1fr); } }
+@media(prefers-reduced-motion:reduce) {
+  .collections-course *, .collections-course *::before, .collections-course *::after { animation: none !important; transition: none !important; }
+}

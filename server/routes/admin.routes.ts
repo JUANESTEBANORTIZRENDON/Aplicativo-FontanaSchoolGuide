@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import * as training from '../controllers/admin-training.controller.js';
 import * as users from '../controllers/admin-users.controller.js';
 import { Role } from '../domain/enums.js';
@@ -10,6 +11,8 @@ import {
   attemptLimitBody, attemptLimitParams, auditQuery, catalogStatusBody, evaluationBody, metricsQuery, moduleMetricsParams, reactivateBody, reactivateParams, reasonBody,
 } from '../validators/admin.validator.js';
 import { idParams } from '../validators/common.js';
+import { validParams, validQuery } from '../middleware/validate.js';
+import { advisorCollectionsHistory, advisorCollectionsAttempt } from '../services/collections-admin.service.js';
 import {
   changeStatusBody, createUserBody, legacyCreateBody, legacyListQuery, legacyUpdateBody, listUsersQuery, resetPasswordBody, setPasswordBody, updateUserBody,
 } from '../validators/user.validator.js';
@@ -26,6 +29,13 @@ adminRouter.post('/users/:id/reset-password', validate({ params: idParams, body:
 adminRouter.post('/users/:id/reset-course', validate({ params: idParams, body: reasonBody }), users.resetCourse);
 adminRouter.put('/users/:id/password', validate({ params: idParams, body: setPasswordBody }), users.setPassword);
 adminRouter.get('/advisors/:id/progress', validate({ params: idParams }), training.advisorProgress);
+adminRouter.get('/advisors/:id/collections-exams', validate({ params: idParams, query: z.object({ cursor: z.uuid().optional() }).strict() }), async (request, response) => {
+  response.json({ data: await advisorCollectionsHistory(validParams<{ id: string }>(request).id, validQuery<{ cursor?: string }>(request).cursor) });
+});
+adminRouter.get('/advisors/:id/collections-exams/:attemptId', validate({ params: idParams.extend({ attemptId: z.uuid() }) }), async (request, response) => {
+  const { id, attemptId } = validParams<{ id: string; attemptId: string }>(request);
+  response.json({ data: await advisorCollectionsAttempt(id, attemptId) });
+});
 adminRouter.get('/advisors/:id/office', validate({ params: idParams }), officeAdmin.advisorOffice);
 
 // Módulo Ofimática: configuración versionada, contenido, medios

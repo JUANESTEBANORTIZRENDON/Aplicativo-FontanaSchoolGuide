@@ -98,6 +98,45 @@
 }
 
 /* Encabezados ordenables de la tabla de usuarios */
+.collections-admin-history { margin-top: 18px; }
+.collections-admin-history .metric-cards { margin: 18px 0; }
+.collections-admin-history .table-wrap { margin-top: 18px; }
+.collections-admin-history caption { text-align: left; padding: 0 0 10px; color: #657184; font-size: 12px; }
+.collections-admin-history tr.is-selected { background: #fff1f4; }
+.collections-admin-history small { color: #657184; line-height: 1.5; }
+.collections-admin-history .status { justify-self: start; }
+.collections-admin-detail { margin-top: 22px; overflow-wrap: anywhere; }
+.collections-admin-detail:empty { display: none; }
+.collections-admin-report-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px; border: 1px solid #ddc99b; border-top: 4px solid #8b1538; border-radius: 12px; background: #fff9ed; }
+.collections-admin-report-head h3 { margin: 6px 0; color: #192840; font-size: 20px; }
+.collections-admin-report-head p { margin: 0; color: #8b1538; font-size: 11px; font-weight: 700; letter-spacing: .05em; }
+.collections-admin-report-head > div:last-child { display: grid; gap: 10px; justify-items: end; }
+.collections-admin-report-head strong { color: #70112c; font-size: 28px; }
+.collections-admin-report-head span { font-size: 12px; }
+.collections-admin-scores th:first-child { min-width: 170px; }
+.collections-admin-scores td:last-child { min-width: 100px; }
+.collections-admin-coaching { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 18px; margin: 22px 0; }
+.collections-admin-coaching > section { padding: 16px; border: 1px solid #e5d8bc; border-radius: 12px; background: #fffdf8; }
+.collections-admin-coaching h4 { margin: 0 0 14px; color: #70112c; font-size: 15px; }
+.collections-admin-coaching h4 > span { padding: 2px 7px; border-radius: 20px; background: #f2e5c6; font-size: 12px; }
+.collections-admin-skill { padding: 12px; margin: 10px 0; border: 1px solid #e7dcc6; border-radius: 9px; background: #fff; font-size: 13px; line-height: 1.7; }
+.collections-admin-skill.is-critical { border-color: #c98998; background: #fff4f6; }
+.collections-admin-skill summary, .collections-admin-responses summary { cursor: pointer; color: #70112c; font-weight: 700; }
+.collections-admin-skill ul { padding-left: 18px; }
+.collections-admin-skill li { margin-bottom: 12px; }
+.collections-admin-skill p { color: #354355; font-size: 13px; line-height: 1.7; }
+.collections-admin-skill blockquote { margin: 10px 0; padding: 10px; border-left: 3px solid #cba650; background: #f8f2e6; color: #465568; font-size: 12px; white-space: pre-wrap; }
+.collections-admin-skill .collections-admin-action { padding: 10px; border-radius: 8px; background: #f5eedc; }
+.collections-admin-critical { padding: 16px; margin-top: 18px; border: 1px solid #d4a5af; border-radius: 10px; background: #fff1f4; color: #70112c; font-size: 13px; }
+.collections-admin-critical h4 { margin-top: 0; }
+.collections-admin-critical li { margin: 8px 0; line-height: 1.6; }
+.collections-admin-responses { margin: 20px 0; padding: 16px; border: 1px solid #e5d8bc; border-radius: 10px; font-size: 13px; }
+.collections-admin-responses article { padding: 12px 0; border-bottom: 1px solid #e8dfcb; }
+.collections-admin-responses article p { white-space: pre-wrap; line-height: 1.7; }
+.collections-admin-history :focus-visible { outline: 3px solid #b78a22; outline-offset: 3px; }
+@media(max-width:600px) { .collections-admin-report-head { align-items: start; flex-direction: column; } .collections-admin-report-head > div:last-child { justify-items: start; } }
+
+/* Encabezados ordenables de la tabla de usuarios */
 .sort-button { padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; white-space: nowrap; }
 .sort-button:hover, th[aria-sort="ascending"] .sort-button, th[aria-sort="descending"] .sort-button { color: #8b1538; }
 .sort-arrow { display: inline-block; min-width: 1.2em; }

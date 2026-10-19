@@ -2,13 +2,14 @@ import { prisma } from '../config/prisma.js';
 import { Role } from '../domain/enums.js';
 import { ForbiddenError, NotFoundError } from '../domain/errors.js';
 import { audit, type ActionContext } from './audit.service.js';
+import { EXAM_HISTORY_PREFIX } from '../domain/collections-exam.js';
 
 // Reinicio del curso para pruebas: solo existe para esta cuenta. El servidor lo exige además del panel.
 export const COURSE_RESET_DOCUMENT = '1021803088';
 
 // Borra todo el progreso del asesor para empezar de cero: intentos y resultados, sellos, certificados,
 // excepciones, cupos, avance, lecciones vistas y la inducción inicial. Conserva la cuenta, sus datos y la
-// auditoría (que es solo de inserción y registra este reinicio). Todo en una transacción: o se borra todo o nada.
+// auditoría y el historial del examen de cobranzas. Todo en una transacción.
 export async function resetCourse(userId: string, reason: string, context: ActionContext) {
   return prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM induccion.usuarios WHERE id = ${userId}::uuid FOR UPDATE`;
@@ -34,7 +35,7 @@ export async function resetCourse(userId: string, reason: string, context: Actio
     // Las excepciones se borran después de los intentos que las usaron.
     const overrides = (await tx.userActivityOverride.deleteMany({ where: { userId } })).count;
     const limits = (await tx.userAttemptLimit.deleteMany({ where: { userId } })).count;
-    await tx.collectionsBlockProgress.deleteMany({ where: { userId } });
+    await tx.collectionsBlockProgress.deleteMany({ where: { userId, NOT: { blockKey: { startsWith: EXAM_HISTORY_PREFIX } } } });
     await tx.userActivityProgress.deleteMany({ where: { userId } });
     await tx.userModuleProgress.deleteMany({ where: { userId } });
     await tx.activitySectionView.deleteMany({ where: { userId } });
@@ -47,7 +48,7 @@ export async function resetCourse(userId: string, reason: string, context: Actio
     });
     await audit(tx, context, {
       action: 'COURSE_RESET', entityType: 'Usuario', entityId: userId, reason,
-      after: { intentosBorrados: attempts, excepcionesBorradas: overrides, cuposBorrados: limits, certificadosBorrados: certificates, sellosBorrados: seals },
+      after: { intentosBorrados: attempts, excepcionesBorradas: overrides, cuposBorrados: limits, certificadosBorrados: certificates, sellosBorrados: seals, historialExamenCobranzasConservado: true },
     });
     return { attemptsDeleted: attempts, overridesDeleted: overrides };
   }, { timeout: 30_000 });

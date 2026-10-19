@@ -1,7 +1,8 @@
 import './collections.css';
+import './collections-ui.css';
 import { api, escapar } from '../http';
 import { mountConceptsSlider } from './concepts-slider';
-import { mountExam, type ExamResult, type ExamState } from './exam';
+import { mountExam, type ExamResult, type ExamState, type ExamDraft } from './exam';
 import { PROCESS } from './lessons';
 import { CHALLENGES, mountQuickChallenge, type QuickChallengeState } from './quick-challenge';
 import { mountGuidedCase } from './guided-case';
@@ -104,7 +105,9 @@ export async function mountCollections(container: HTMLElement, backHref: string)
     const examRoot = container.querySelector<HTMLElement>('#collections-exam');
     if (examRoot) mountExam(examRoot, {
       exam: state.exam, experienced: state.experienced, theoryRequired: state.theoryRequired, simulatorRoute: state.simulatorRoute, backHref,
-      blockTitles: Object.fromEntries(state.blocks.map((item) => [item.key, item.title])), result: examResult, submit: submitExam, goTheory,
+      result: examResult, submit: submitExam, goTheory,
+      start: async () => (await api<{ data: ExamDraft }>(`${BASE}/exam/start`, { method: 'POST', body: JSON.stringify({}) })).data,
+      saveSection: async (key, answers) => (await api<{ data: ExamDraft }>(`${BASE}/exam/sections/${key}`, { method: 'POST', body: JSON.stringify({ answers }) })).data,
     });
     if (block) {
       const dossier = container.querySelector<HTMLElement>('#collections-guided-case');
