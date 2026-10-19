@@ -3,17 +3,48 @@ import request from 'supertest';
 import { afterAll, describe, expect, it } from 'vitest';
 import { app } from '../app.js';
 import { prisma } from '../config/prisma.js';
-import { COLLECTIONS_BLOCKS, COLLECTIONS_EXAM } from '../domain/collections.js';
+import { COLLECTIONS_BLOCKS, COLLECTIONS_EXAM, EXAM_SECTIONS } from '../domain/collections.js';
 import { activityIds, cleanupSuite, createTestUser, loginAgent, ORIGIN } from './helpers.js';
 
 const SUITE = 'cobranzas';
 const BASE = '/api/training/collections';
 // Las primeras `wrong` preguntas del examen se responden mal y el resto bien.
-const examAnswers = (wrong = 0) => Object.fromEntries(COLLECTIONS_EXAM.map((q, index) => [q.key, q.options.find((o) => o.correct === (index >= wrong))!.id]));
+const examAnswers = (wrong = 0) => Object.fromEntries(COLLECTIONS_EXAM.map((q, index) => [q.key, q.kind === 'text' ? (index >= wrong ? q.example : 'No s\u00e9.') : q.options.find((o) => o.correct === (index >= wrong) && (index >= wrong || !o.critical))!.id]));
 const correct = (index: number) => Object.fromEntries(COLLECTIONS_BLOCKS[index]!.questions.map((q) => [q.key, q.options.find((o) => o.correct)!.id]));
+
+async function sendExam(agent: Awaited<ReturnType<typeof loginAgent>>['agent'], answers: Record<string, string>) {
+  expect((await agent.post(`${BASE}/exam/start`).set(ORIGIN).send({})).status).toBe(200);
+  for (const section of EXAM_SECTIONS) {
+    const saved = await agent.post(`${BASE}/exam/sections/${section.key}`).set(ORIGIN).send({ answers: Object.fromEntries(section.questions.map((q) => [q.key, answers[q.key]])) });
+    expect(saved.status).toBe(200);
+    expect(saved.body.data).not.toHaveProperty('result');
+  }
+  return agent.post(`${BASE}/exam`).set(ORIGIN).send({ answers });
+}
 
 describe('módulo 02: práctica de cobranzas', () => {
   afterAll(() => cleanupSuite(SUITE));
+
+  it('guarda las secciones sin calificar y exige orden antes de permitir el envío final', async () => {
+    const user = await createTestUser(SUITE);
+    const { modules } = await activityIds();
+    await prisma.usuario.update({ where: { id: user.id }, data: { tieneExperienciaCobranzasDigitales: true } });
+    await prisma.seal.create({ data: { userId: user.id, moduleId: modules.m1.id, status: 'ACTIVE' } });
+    const { agent } = await loginAgent(user.numeroDocumento, 'asesor');
+    expect((await agent.post(`${BASE}/exam/start`).set(ORIGIN).send({})).status).toBe(200);
+    const answers = examAnswers();
+    const later = EXAM_SECTIONS[1]!;
+    expect((await agent.post(`${BASE}/exam/sections/${later.key}`).set(ORIGIN).send({ answers: Object.fromEntries(later.questions.map((q) => [q.key, answers[q.key]])) })).body.code).toBe('PREVIOUS_SECTION_REQUIRED');
+    const first = { 'inicio-accion': 'saldo', 'inicio-guion': 'No sé.' };
+    const saved = await agent.post(`${BASE}/exam/sections/inicio`).set(ORIGIN).send({ answers: first });
+    expect(saved.status).toBe(200); expect(saved.body.data.sectionIndex).toBe(1);
+    expect(saved.body.data).not.toHaveProperty('result'); expect(saved.body.data).not.toHaveProperty('score');
+    const resumed = (await agent.get(`${BASE}/module`)).body.data;
+    expect(resumed.exam.draft.answers).toEqual(first); expect(resumed.exam.attempts).toBe(0);
+    expect(resumed.exam.lastResult).toBeNull(); expect(resumed.completedCount).toBe(0);
+    expect((await agent.post(`${BASE}/exam`).set(ORIGIN).send({ answers })).status).toBe(400);
+    expect((await agent.post(`${BASE}/exam/sections/inicio`).set(ORIGIN).send({ answers: { ...first, 'inicio-accion': 'identificar' } })).body.code).toBe('PREVIOUS_SECTION_REQUIRED');
+  });
 
   it('exige sesión, perfil completo y experiencia declarada', async () => {
     expect((await request(app).get(`${BASE}/module`)).status).toBe(401);
@@ -53,13 +84,27 @@ describe('módulo 02: práctica de cobranzas', () => {
       expect(saved.status).toBe(200);
       expect(saved.body.data.percent).toBe((index + 1) * 16);
     }
-    // La teoría completa no emite el sello: falta aprobar el examen final (8 de 10).
+    // La teoría completa no emite el sello: falta aprobar el examen final (80/100 y sin errores criticos).
     expect(await prisma.seal.count({ where: { userId: user.id, moduleId: modules.induction.id, status: 'ACTIVE' } })).toBe(0);
-    const failedExam = await agent.post(`${BASE}/exam`).set(ORIGIN).send({ answers: examAnswers(3) });
-    expect(failedExam.body.data.result).toMatchObject({ passed: false, correctCount: 7 });
+    const failedExam = await sendExam(agent, examAnswers(4));
+    expect(failedExam.body.data.result).toMatchObject({ passed: false, score: 75 });
     expect(failedExam.body.data.state.complete).toBe(false);
-    const passedExam = await agent.post(`${BASE}/exam`).set(ORIGIN).send({ answers: examAnswers(2) });
-    expect(passedExam.body.data.result).toMatchObject({ passed: true, correctCount: 8 });
+    const passedExam = await sendExam(agent, examAnswers(2));
+    expect(passedExam.body.data.result).toMatchObject({ passed: true, score: 85 });
+    const historyUrl = `/api/admin/advisors/${user.id}/collections-exams`;
+    expect((await request(app).get(historyUrl)).status).toBe(401);
+    expect((await agent.get(historyUrl)).status).toBe(403);
+    const history = await adminAgent.get(historyUrl);
+    expect(history.status).toBe(200);
+    expect(history.body.data.advisor.id).toBe(user.id);
+    expect(history.body.data.items.map((item: { attempt: number }) => item.attempt)).toEqual([2, 1]);
+    expect(history.body.data.items[0]).toMatchObject({ score: 85, verdict: 'Apto' });
+    const report = await adminAgent.get(`${historyUrl}/${history.body.data.items[1].id}`);
+    expect(report.status).toBe(200);
+    expect(report.body.data.result.sections).toHaveLength(7);
+    expect(report.body.data.result).toMatchObject({ score: 75, verdict: 'Requiere refuerzo' });
+    expect(report.body.data.coaching.improvements.length).toBeGreaterThan(0);
+    expect(report.body.data.coachingSaved).toBe(true);
     const resumed = await loginAgent(user.numeroDocumento, 'asesor');
     const state = (await resumed.agent.get(`${BASE}/module`)).body.data;
     expect(state.complete).toBe(true);
@@ -143,17 +188,17 @@ describe('módulo 02: práctica de cobranzas', () => {
     expect(initial.blocks.every((block: { enabled: boolean }) => !block.enabled)).toBe(true);
     expect((await agent.post(`${BASE}/blocks/conceptos/complete`).set(ORIGIN).send({})).body.code).toBe('EXAM_FIRST');
     expect((await agent.post(`${BASE}/exam`).set(ORIGIN).send({ answers: { reporte: 'reportado' } })).status).toBe(400);
-    const failed = (await agent.post(`${BASE}/exam`).set(ORIGIN).send({ answers: examAnswers(5) })).body.data;
+    const failed = (await sendExam(agent, examAnswers(5))).body.data;
     expect(failed.result.passed).toBe(false);
     expect(failed.state).toMatchObject({ theoryRequired: true, currentBlock: 'conceptos' });
     expect(failed.state.exam.enabled).toBe(false);
     expect(failed.state.blocks[0].enabled).toBe(true);
-    expect((await agent.post(`${BASE}/exam`).set(ORIGIN).send({ answers: examAnswers() })).body.code).toBe('THEORY_REQUIRED');
+    expect((await agent.post(`${BASE}/exam/start`).set(ORIGIN).send({})).body.code).toBe('THEORY_REQUIRED');
     for (let index = 0; index < COLLECTIONS_BLOCKS.length; index++) {
       expect((await agent.post(`${BASE}/blocks/${COLLECTIONS_BLOCKS[index]!.key}`).set(ORIGIN).send({ answers: correct(index) })).status).toBe(200);
     }
-    const passed = (await agent.post(`${BASE}/exam`).set(ORIGIN).send({ answers: examAnswers() })).body.data;
-    expect(passed.result).toMatchObject({ passed: true, correctCount: 10 });
+    const passed = (await sendExam(agent, examAnswers())).body.data;
+    expect(passed.result).toMatchObject({ passed: true, score: 100 });
     expect(passed.state).toMatchObject({ complete: true, percent: 100 });
     expect(await prisma.seal.count({ where: { userId: user.id, moduleId: modules.induction.id, status: 'ACTIVE' } })).toBe(1);
   });
@@ -164,7 +209,7 @@ describe('módulo 02: práctica de cobranzas', () => {
     await prisma.usuario.update({ where: { id: user.id }, data: { tieneExperienciaCobranzasDigitales: true } });
     await prisma.seal.create({ data: { userId: user.id, moduleId: modules.m1.id, status: 'ACTIVE' } });
     const { agent } = await loginAgent(user.numeroDocumento, 'asesor');
-    const passed = (await agent.post(`${BASE}/exam`).set(ORIGIN).send({ answers: examAnswers(2) })).body.data;
+    const passed = (await sendExam(agent, examAnswers(2))).body.data;
     expect(passed.result.passed).toBe(true);
     expect(passed.state).toMatchObject({ complete: true, percent: 100, theoryRequired: false });
     const views = (await agent.get('/api/advisor/modules')).body.data;

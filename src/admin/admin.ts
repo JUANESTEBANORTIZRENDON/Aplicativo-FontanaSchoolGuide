@@ -1,6 +1,7 @@
 import './admin.css';
 import { api, escapar, formatDate } from '../http';
 import { officeFileHtml, officeSection } from './office-admin';
+import { mountCollectionsHistory } from './collections-admin';
 
 // Panel administrativo. Navegación por hash dentro de /admin:
 // #asesores, #ficha/<id>, #modulos, #ofimatica, #metricas, #auditoria.
@@ -24,7 +25,7 @@ const COURSE_RESET_DOCUMENT = '1021803088';
 // Borra todo el progreso del asesor para volver a probar el curso desde cero.
 async function resetCourse(user: { id: string; nombreCompleto: string }, after: () => unknown): Promise<void> {
   const data = await askForm(`Reiniciar el curso de ${user.nombreCompleto}`, `
-    <p class="dialog-note dialog-danger"><strong>Se borrará todo su progreso:</strong> intentos y notas, sellos, certificados, excepciones, cupos de intentos, lecciones vistas, su respuesta de experiencia y la inducción inicial. Empezará desde cero. La cuenta y la auditoría se conservan. No se puede deshacer.</p>`, { submit: 'Reiniciar curso' });
+    <p class="dialog-note dialog-danger"><strong>Se reiniciará su progreso:</strong> intentos de otras actividades, sellos, certificados, excepciones, cupos de intentos, lecciones vistas, su respuesta de experiencia y la inducción inicial. Empezará desde cero. Se conservan la cuenta, la auditoría y el historial del examen de cobranzas. No se puede deshacer.</p>`, { submit: 'Reiniciar curso' });
   if (!data) return;
   await run(() => api(`/admin/users/${user.id}/reset-course`, { method: 'POST', body: JSON.stringify({ reason: data.reason }) }), 'Curso reiniciado: el asesor empieza desde cero.', after);
 }
@@ -358,6 +359,7 @@ async function advisorFileSection(view: HTMLElement, userId: string): Promise<vo
     <section class="auth-card admin-card"><div class="section-title"><div><h2>Ruta de formación</h2>
       <p>Módulos en orden. Reactiva la prueba cuando se quede sin intentos o ajusta cuántos intentos tiene en cada actividad.</p></div></div>
       <div class="module-list">${moduleCards}</div></section>
+    <div id="advisor-collections-history"></div>
     ${history('Historial de intentos y notas', `<div class="table-wrap"><table><thead><tr><th>#</th><th>Actividad</th><th>Versión</th><th>Estado</th><th>Nota</th><th>Inicio</th><th>Envío</th><th>Duración</th></tr></thead><tbody>
       ${data.attempts.map((a) => `<tr><td>${a.number}</td><td>${escapar(a.evaluation.activity.title)}</td><td>v${a.evaluation.version}</td><td>${badge(a.status)}</td><td>${escapar(a.score ?? '—')}</td><td>${formatDate(a.startedAt)}</td><td>${formatDate(a.submittedAt)}</td><td>${a.durationSeconds !== null ? `${Math.round(a.durationSeconds / 60)} min` : '—'}</td></tr>`).join('') || empty(8)}
       </tbody></table></div>`)}
@@ -376,6 +378,8 @@ async function advisorFileSection(view: HTMLElement, userId: string): Promise<vo
       </tbody></table></div>`)}
     ${history('Últimas acciones de auditoría', `<ul class="audit-list">${data.audit.map((a) => `<li><strong>${escapar(a.action)}</strong> · ${escapar(a.actor.nombreCompleto)} · ${formatDate(a.createdAt)}${a.reason ? ` — ${escapar(a.reason)}` : ''}</li>`).join('') || '<li>Sin acciones registradas.</li>'}</ul>`)}`;
 
+  const collectionsRoot = view.querySelector<HTMLElement>('#advisor-collections-history');
+  if (collectionsRoot) void mountCollectionsHistory(collectionsRoot, userId);
   const reload = rerender;
   view.addEventListener('click', async (event) => {
     const target = event.target as HTMLElement;

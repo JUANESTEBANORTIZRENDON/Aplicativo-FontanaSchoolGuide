@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COLLECTIONS_BLOCKS, COLLECTIONS_EXAM, COLLECTIONS_KEYS, EXAM_MIN_CORRECT, gradeCollections, gradeExam, mergeCollectionsAnswers, publicBlock, publicExam, reviewCollections } from '../domain/collections.js';
+import { COLLECTIONS_BLOCKS, COLLECTIONS_KEYS, gradeCollections, mergeCollectionsAnswers, publicBlock, reviewCollections } from '../domain/collections.js';
 
 describe('inducción para asesores nuevos', () => {
   it('incluye los cinco bloques, objetivos y validaciones internas', () => {
@@ -64,37 +64,5 @@ describe('inducción para asesores nuevos', () => {
   it('ignora distractores antiguos retirados y conserva el resto del progreso', () => {
     const answers = mergeCollectionsAnswers(COLLECTIONS_BLOCKS[0]!, { cartera: 'abono', saldo: 'saldo' }, { abono: 'abono' });
     expect(answers).toEqual({ saldo: 'saldo', abono: 'abono' });
-  });
-});
-
-describe('examen final del módulo 02', () => {
-  const answers = (wrong: number) => Object.fromEntries(COLLECTIONS_EXAM.map((q, index) => [q.key, q.options.find((o) => o.correct === (index >= wrong))!.id]));
-
-  it('cubre los cinco bloques con una sola respuesta correcta por pregunta', () => {
-    expect(COLLECTIONS_EXAM).toHaveLength(10);
-    expect(new Set(COLLECTIONS_EXAM.map((q) => q.block))).toEqual(new Set(COLLECTIONS_KEYS));
-    expect(new Set(COLLECTIONS_EXAM.map((q) => q.key)).size).toBe(COLLECTIONS_EXAM.length);
-    for (const question of COLLECTIONS_EXAM) expect(question.options.filter((option) => option.correct)).toHaveLength(1);
-  });
-
-  it('no envía las respuestas correctas antes de calificar', () => {
-    for (const question of publicExam().questions) for (const option of question.options) expect(Object.keys(option).sort()).toEqual(['id', 'text']);
-  });
-
-  it('aprueba con 8 de 10 y muestra la respuesta correcta de cada error', () => {
-    expect(gradeExam(answers(2))).toMatchObject({ passed: true, correctCount: 8 });
-    const failed = gradeExam(answers(3));
-    expect(failed).toMatchObject({ passed: false, correctCount: 7, minCorrect: EXAM_MIN_CORRECT });
-    const first = failed.results[0]!;
-    expect(first.correct).toBe(false);
-    expect(first.correctOption).toBe(COLLECTIONS_EXAM[0]!.options.find((o) => o.correct)!.id);
-  });
-
-  it('rechaza exámenes incompletos o con opciones inventadas', () => {
-    const complete = answers(0);
-    const { reporte: _omitted, ...incomplete } = complete;
-    expect(() => gradeExam(incomplete)).toThrow();
-    expect(() => gradeExam({ ...complete, reporte: 'inventada' })).toThrow();
-    expect(() => gradeExam({ ...complete, extra: 'reportado' })).toThrow();
   });
 });

@@ -58,7 +58,7 @@ export async function seedCompletedInduction(prisma: PrismaClient, userId: strin
       await tx.collectionsBlockProgress.upsert({ where: { userId_moduleId_blockKey_contentVersion: data }, create: { ...data, attempts: 1, answers: Object.fromEntries(block.questions.map((q) => [q.key, q.options.find((o) => o.correct)!.id])), completedAt: now }, update: {} });
     }
     const exam = { userId, moduleId: module.id, blockKey: EXAM_KEY, contentVersion: COLLECTIONS_VERSION };
-    await tx.collectionsBlockProgress.upsert({ where: { userId_moduleId_blockKey_contentVersion: exam }, create: { ...exam, attempts: 1, answers: Object.fromEntries(COLLECTIONS_EXAM.map((q) => [q.key, q.options.find((o) => o.correct)!.id])), completedAt: now }, update: {} });
+    await tx.collectionsBlockProgress.upsert({ where: { userId_moduleId_blockKey_contentVersion: exam }, create: { ...exam, attempts: 1, answers: Object.fromEntries(COLLECTIONS_EXAM.map((q) => [q.key, q.kind === 'text' ? q.example : q.options.find((o) => o.correct)!.id])), completedAt: now }, update: {} });
     for (const activity of module.activities) await tx.userActivityProgress.upsert({ where: { userId_activityId: { userId, activityId: activity.id } }, create: { userId, activityId: activity.id, status: 'PASSED', completedAt: now }, update: { status: 'PASSED', completedAt: now } });
     await completeModule(tx, userId, module.id, undefined, now);
   });
