@@ -2,6 +2,7 @@ import './styles.css';
 import { stages } from './content';
 import { api } from './http';
 import { showAppLoading } from './loading';
+import type { PrinciplesPanel } from './tutor/principles-panel';
 
 // Obtiene un elemento obligatorio y detecta referencias HTML incorrectas.
 function element<T extends HTMLElement>(selector: string): T {
@@ -19,7 +20,23 @@ const pathResizeObserver = new ResizeObserver(() => {
 pathResizeObserver.observe(learningPath);
 const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
 const methodTab = element<HTMLButtonElement>('#method-tab');
+const principlesTab = element<HTMLButtonElement>('#principles-tab');
 let methodUnlocked = false;
+// PRINCIPIOS DE TRABAJO: el tutor (con voz) se carga solo al abrir la pestaña y se silencia al salir de ella.
+let principles: PrinciplesPanel | null = null;
+let principlesVisible = false;
+async function showPrinciples(): Promise<void> {
+  if (!principles) {
+    const { mountPrinciples } = await import('./tutor/principles-panel');
+    principles ??= mountPrinciples(element('#principles-mount'), { onProgress: updatePrinciplesProgress });
+  }
+  if (principlesVisible) principles.show(); else principles.hide();
+}
+// El método se habilita al terminar Nuestra historia; los principios, al terminar el método (etapa 05).
+function unlockTab(tab: HTMLButtonElement): void {
+  tab.disabled = false;
+  tab.removeAttribute('title');
+}
 function selectTab(index: number): void {
   if (!tabs[index] || tabs[index].disabled || (tabs[index] === methodTab && !methodUnlocked)) return;
   tabs.forEach((tab, position) => {
@@ -28,6 +45,8 @@ function selectTab(index: number): void {
     tab.tabIndex = selected ? 0 : -1;
     element(`#${tab.getAttribute('aria-controls')}`).hidden = !selected;
   });
+  principlesVisible = tabs[index] === principlesTab;
+  if (principlesVisible || principles) void showPrinciples();
 }
 tabs.forEach((tab, index) => {
   tab.addEventListener('click', () => selectTab(index));
@@ -126,8 +145,7 @@ function exploreMethod(): void {
   if (!storyCompleted) return;
   methodUnlocked = true;
   if (completionDialog.open) completionDialog.close();
-  methodTab.disabled = false;
-  methodTab.removeAttribute('title');
+  unlockTab(methodTab);
   selectTab(tabs.indexOf(methodTab));
   focusContent();
 }
@@ -146,14 +164,28 @@ const experienceResult = element('#experience-result');
 let currentStage = 0;
 // Solo «Siguiente etapa» habilita una etapa nueva; las visitadas permiten repaso.
 let highestUnlockedStage = 0;
+// Recorrido: Nuestra historia → Método de trabajo → Principios de trabajo → aula. La confirmación de lectura y el acceso
+// al aula quedan al final de los principios, cuando se revisaron los cinco.
+const toPrinciples = element<HTMLButtonElement>('#to-principles');
+const principlesProgress = element('#principles-progress');
+let principlesReviewed = false;
+// Con la inducción ya terminada (repaso) los principios no vuelven a bloquear el acceso.
+let inductionCompleted = false;
 function updateExperienceAccess(): void {
-  const lastStage = currentStage === stages.length - 1;
-  const unlocked = lastStage && companyRead.checked;
-  // La confirmación de lectura se muestra únicamente al terminar las cinco etapas.
-  readingConfirmation.hidden = !lastStage;
-  // La casilla habilita las opciones de experiencia dentro de la última etapa.
+  const unlocked = principlesReviewed && companyRead.checked;
+  // La confirmación de lectura se muestra únicamente al revisar los cinco principios.
+  readingConfirmation.hidden = !principlesReviewed;
+  // La casilla habilita el acceso al aula.
   experienceSection.hidden = !unlocked;
   experienceFields.disabled = !unlocked;
+}
+function updatePrinciplesProgress({ reviewed, total }: { reviewed: number; total: number }): void {
+  if (inductionCompleted) return;
+  principlesReviewed = reviewed >= total;
+  principlesProgress.textContent = principlesReviewed
+    ? 'Revisaste los cinco principios. Confirma tu lectura para continuar al aula.'
+    : `Revisa los cinco principios para continuar. Llevas ${reviewed} de ${total}.`;
+  updateExperienceAccess();
 }
 function showStage(index: number): void {
   const stage = stages[index];
@@ -170,7 +202,9 @@ function showStage(index: number): void {
   element('#detail-text').textContent = stage.description;
   element('#detail-note').textContent = stage.note;
   previous.disabled = index === 0;
-  next.hidden = index === stages.length - 1;
+  const lastStage = index === stages.length - 1;
+  next.hidden = lastStage;
+  toPrinciples.hidden = !lastStage;
   updateExperienceAccess();
 }
 stepButtons.forEach((button, index) => button.addEventListener('click', () => showStage(index)));
@@ -179,8 +213,15 @@ next.addEventListener('click', () => {
   const destination = currentStage + 1;
   if (destination >= stages.length) return;
   highestUnlockedStage = Math.max(highestUnlockedStage, destination);
-  if (highestUnlockedStage === stages.length - 1) saveProgress('metodo');
+  if (highestUnlockedStage === stages.length - 1) { saveProgress('metodo'); unlockTab(principlesTab); }
   showStage(destination);
+});
+// Al terminar el método se pasa a los principios de trabajo (todavía no al aula).
+toPrinciples.addEventListener('click', () => {
+  if (highestUnlockedStage !== stages.length - 1) return;
+  unlockTab(principlesTab);
+  selectTab(tabs.indexOf(principlesTab));
+  focusContent();
 });
 showStage(0);
 
@@ -195,7 +236,7 @@ companyRead.addEventListener('change', () => {
 let finishing = false;
 experienceForm.addEventListener('submit', async (event: SubmitEvent) => {
   event.preventDefault();
-  if (finishing || currentStage !== stages.length - 1 || !companyRead.checked) return;
+  if (finishing || !principlesReviewed || !companyRead.checked) return;
   finishing = true;
   const submit = experienceForm.querySelector<HTMLButtonElement>('button[type="submit"]')!;
   const originalLabel = submit.textContent;
@@ -238,16 +279,19 @@ export function restoreProgress(progress: { historia: boolean; metodo: boolean; 
     storyCompleted = true;
     methodUnlocked = true;
     finishStory.textContent = 'Continuar al método →';
-    methodTab.disabled = false;
-    methodTab.removeAttribute('title');
+    unlockTab(methodTab);
   }
   if (metodo) {
+    unlockTab(principlesTab);
     savedProgress.metodo = true;
     highestUnlockedStage = stages.length - 1;
     showStage(currentStage);
   }
   if (progress.completada) {
     // Inducción ya terminada: se puede repasar con la confirmación marcada.
+    inductionCompleted = true;
+    principlesReviewed = true;
+    principlesProgress.textContent = 'Ya completaste los principios de trabajo.';
     companyRead.checked = true;
     updateExperienceAccess();
   }
@@ -291,6 +335,7 @@ startCarousel();
 // Evita temporizadores duplicados cuando Vite actualiza el código al guardar.
 if (import.meta.hot) import.meta.hot.dispose(() => {
   window.clearInterval(carouselTimer);
+  principles?.destroy();
   pathResizeObserver.disconnect();
   carouselResizeObserver.disconnect();
 });

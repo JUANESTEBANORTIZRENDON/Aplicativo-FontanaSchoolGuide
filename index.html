@@ -141,6 +141,13 @@
             </span>
             Método de trabajo
           </button>
+          <!-- Principios de trabajo: el tutor explica con voz cada uno. Se habilita al terminar el método y es el último paso antes del aula. -->
+          <button id="principles-tab" role="tab" aria-selected="false" aria-controls="principles" tabindex="-1" disabled title="Disponible al terminar el método de trabajo.">
+            <span class="tab-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg>
+            </span>
+            Principios de trabajo
+          </button>
         </div>
 
         <!-- PESTAÑA 1 — NUESTRA HISTORIA: completa aquí la información oficial. -->
@@ -272,15 +279,37 @@
               <div class="step-controls">
                 <button id="previous" disabled>Anterior</button>
                 <button id="next" class="primary">Siguiente etapa</button>
+                <!-- En la etapa 05 el método termina y se pasa a los principios de trabajo. -->
+                <button id="to-principles" class="primary" hidden>Siguiente: Principios de trabajo →</button>
               </div>
-              <!-- Confirmación disponible únicamente en la etapa 05. -->
-              <label id="reading-confirmation" class="reading-confirmation" hidden>
-                <input id="company-read" type="checkbox" aria-controls="experience-section">
-                <span>He leído acerca de la empresa</span>
-              </label>
             </article>
           </div>
-          <!-- Se desbloquea al marcar la confirmación de lectura. -->
+        </div>
+
+        <!-- PESTAÑA 3 — PRINCIPIOS DE TRABAJO: cinco opciones; el tutor (src/tutor) explica cada una con voz.
+             Los textos y los audios están en src/tutor/principles.json (contenido pendiente de validación). -->
+        <div id="principles" class="panel" role="tabpanel" aria-labelledby="principles-tab" hidden>
+          <div class="method-heading">
+            <div>
+              <p class="eyebrow">PRINCIPIOS DE TRABAJO</p>
+              <h3>Cómo trabajamos, en cinco ideas.</h3>
+            </div>
+            <p class="proposal">
+              Contenido propuesto para capacitación.
+              <br>
+              Pendiente de validación por la empresa.
+            </p>
+          </div>
+          <div id="principles-mount"></div>
+          <!-- Al revisar los cinco principios se confirma la lectura y se pasa al aula. -->
+          <div class="principles-finish">
+            <p id="principles-progress" class="principles-progress" role="status" aria-live="polite">Revisa los cinco principios para continuar. Llevas 0 de 5.</p>
+            <label id="reading-confirmation" class="reading-confirmation" hidden>
+              <input id="company-read" type="checkbox" aria-controls="experience-section">
+              <span>He leído acerca de la empresa</span>
+            </label>
+          </div>
+          <!-- Se desbloquea al marcar la confirmación de lectura (después de revisar los cinco principios). -->
           <section id="experience-section" class="experience-section" aria-labelledby="experience-title" hidden>
             <p class="eyebrow">LISTO PARA CONTINUAR</p>
             <h3 id="experience-title">Tu ruta de formación te espera</h3>

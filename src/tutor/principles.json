@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "note": "Propuesta de contenido basada en los textos ya existentes de la inducción (Método de trabajo y «Una carta a García»). Pendiente de validación por la empresa. Si cambias un texto, vuelve a generar su audio con: node scripts/tutor/generate-principle-audio.mjs",
+  "items": [
+    {
+      "id": "respeto",
+      "title": "Respeto y trato digno",
+      "summary": "Detrás de cada cuenta hay una persona.",
+      "narration": "Primer principio: respeto y trato digno. Detrás de cada cuenta hay una persona. Escucha con calma, evita las suposiciones y mantén siempre un trato respetuoso, incluso cuando la conversación sea difícil. Un buen trato abre el diálogo y hace posible llegar a acuerdos."
+    },
+    {
+      "id": "informacion",
+      "title": "Protección de la información",
+      "summary": "La confianza se construye cuidando lo que se nos confía.",
+      "narration": "Segundo principio: protege la información del cliente. Antes de hablar de una obligación, valida la identidad siguiendo el protocolo definido por la empresa. Si no estás seguro de con quién hablas, no compartas datos. La confianza se construye cuidando lo que se nos confía."
+    },
+    {
+      "id": "verificar",
+      "title": "Verificar antes de informar",
+      "summary": "Informa solo lo que puedes respaldar.",
+      "narration": "Tercer principio: verifica antes de informar. Revisa la información disponible del caso y confirma que esté actualizada. Distingue lo que está confirmado de lo que solo reporta el cliente. Informa únicamente lo que puedes respaldar y, si tienes dudas, consulta antes de responder."
+    },
+    {
+      "id": "claridad",
+      "title": "Claridad y honestidad",
+      "summary": "No prometas lo que no puedes cumplir.",
+      "narration": "Cuarto principio: claridad y honestidad. Explica el motivo del contacto con palabras sencillas y ofrece solo las alternativas que estén autorizadas por la empresa. No prometas lo que no puedes cumplir. Asegúrate de que el cliente comprende cada condición antes de continuar."
+    },
+    {
+      "id": "compromiso",
+      "title": "Compromiso y seguimiento",
+      "summary": "Cada compromiso se lleva hasta el final.",
+      "narration": "Quinto principio: compromiso y seguimiento. Registra lo conversado según el procedimiento interno y confirma los acuerdos con sus condiciones. Toma la iniciativa, pide orientación cuando haga falta y da seguimiento a cada compromiso hasta llevarlo a término."
+    }
+  ]
+}

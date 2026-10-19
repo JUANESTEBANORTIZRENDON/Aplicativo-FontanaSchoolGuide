@@ -1,0 +1,44 @@
+/* Tutor pixel art: la imagen nunca se deforma; solo respira y entra con pequeños desplazamientos. */
+.tutor { --tutor-width: clamp(170px, 18vw, 240px); position: relative; flex: none; width: var(--tutor-width); max-width: 100%; opacity: 0; transform: translateY(10px); transition: opacity .5s ease, transform .5s ease; pointer-events: none; user-select: none; }
+.tutor.is-ready { opacity: 1; transform: none; }
+.tutor-figure { position: relative; width: 100%; aspect-ratio: var(--tutor-ratio, 424 / 484); transform-origin: 50% 100%; animation: tutor-breathe 4.6s ease-in-out infinite;
+  /* el torso termina en un corte recto: se disuelve en lugar de verse cortado */
+  -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent 100%); mask-image: linear-gradient(to bottom, #000 80%, transparent 100%); }
+.tutor-frame { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; visibility: hidden; image-rendering: auto; }
+.tutor-frame.is-visible { visibility: visible; }
+@keyframes tutor-breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+/* Al hablar, un balanceo mínimo acompaña a la voz (los cambios de boca y de gesto son cuadros reales). */
+.tutor.is-talking .tutor-figure { animation: tutor-talk 0.62s ease-in-out infinite; }
+@keyframes tutor-talk { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) {
+  .tutor { transition: none; transform: none; }
+  .tutor-figure, .tutor.is-talking .tutor-figure { animation: none; }
+}
+
+/* Pestaña «Principios de trabajo»: opciones a la izquierda y, a la derecha, el tutor con el texto y el reproductor. */
+#principles-mount { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1.6fr; gap: 24px; }
+.principle-options .step { min-height: 62px; }
+.principle-detail { gap: 0; }
+.principle-stage { display: grid; grid-template-columns: auto 1fr; align-items: end; gap: 20px; }
+.principle-tutor { align-self: end; margin-bottom: -4px; }
+.principle-copy { padding-bottom: 8px; }
+.principle-detail h4 { margin: 10px 0 8px; font-size: 25px; outline: none; }
+.principle-detail h4:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; border-radius: 4px; }
+.principle-summary { margin: 0; color: var(--muted); font-size: 16px; }
+.principle-narration { margin-top: 12px; }
+.principle-narration p { color: var(--navy); font-size: 15px; line-height: 1.65; }
+.principle-audio { display: flex; align-items: center; gap: 14px; margin-top: 18px; flex-wrap: wrap; }
+.principle-audio .primary { min-width: 150px; }
+.principle-progress { flex: 1 1 140px; height: 8px; border-radius: 8px; background: #e6dcc8; overflow: hidden; }
+.principle-progress span { display: block; width: 0; height: 100%; border-radius: 8px; background: linear-gradient(90deg, #71112e, #a52d4c 65%, #c59b39); }
+.principle-time { min-width: 84px; color: var(--muted); font-size: 13px; text-align: right; white-space: nowrap; }
+.principle-replay { border: 1px solid #d4af3799; border-radius: 12px; background: #fffdf6; color: var(--red); font-weight: 600; font-size: 14px; padding: 10px 16px; cursor: pointer; }
+.principle-audio button:focus-visible, .principle-options .step:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.principle-status { margin: 12px 0 0; color: var(--muted); font-size: 13px; min-height: 1.4em; }
+@media (max-width: 900px) { #principles-mount { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .principle-stage { grid-template-columns: 1fr; justify-items: center; text-align: center; } .principle-audio { justify-content: center; } }
+
+/* Final de los principios: confirmación de lectura y acceso al aula. */
+#principles .principles-finish { grid-column: 1 / -1; }
+.principles-progress { margin: 0; color: var(--muted); font-size: 14px; font-weight: 600; }
+#principles .reading-confirmation { margin-top: 12px; }
