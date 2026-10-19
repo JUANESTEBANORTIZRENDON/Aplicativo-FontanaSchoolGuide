@@ -1,5 +1,6 @@
 import { escapar } from '../http';
 import { showSelectedCollectionOptions } from './ui';
+import { isLowScore, lowScoreAlertHtml } from '../low-score';
 
 export type ExamContent = ReturnType<typeof import('../../server/domain/collections-exam').publicExam>;
 export type ExamResult = ReturnType<typeof import('../../server/domain/collections-exam').gradeExam>;
@@ -72,6 +73,7 @@ export function mountExam(root: HTMLElement, options: ExamOptions): void {
       return q?.kind === 'text' ? answer : q?.options?.find((o) => o.id === answer)?.text ?? answer;
     };
     return `<section class="collections-exam-result ${data.passed ? 'is-correct' : 'is-wrong'}"><div class="collections-exam-score" aria-hidden="true">${data.score}<small>/100</small></div><h3 id="exam-title" tabindex="-1">${escapar(data.verdict)}</h3>
+      ${isLowScore(data.score) ? lowScoreAlertHtml('el examen final') : ''}
       <p role="status">${data.passed ? 'Alcanzaste el mínimo y no registraste errores críticos en esta evaluación.' : `Necesitas al menos ${data.minScore}/100 y ningún error crítico. ${data.criticalErrors.length ? 'Debes reforzar las decisiones críticas señaladas.' : 'Repasa las secciones con menor puntaje.'}`}</p>
       <div class="collections-exam-breakdown"><table><caption>Puntaje por sección</caption><thead><tr><th scope="col">Sección</th><th scope="col">Puntaje</th></tr></thead><tbody>${data.sections.map((section) => `<tr><th scope="row">${escapar(section.title)}</th><td>${section.score}/${section.maxScore}</td></tr>`).join('')}</tbody></table></div>
       <div class="collections-exam-feedback"><section><h4>Fortalezas</h4>${data.strengths.length ? `<ul>${data.strengths.map((s) => `<li>${escapar(s)}</li>`).join('')}</ul>` : '<p>Aún necesitas practicar las decisiones de los casos.</p>'}</section><section><h4>Para mejorar</h4>${data.improvements.length ? `<ul>${data.improvements.map((s) => `<li>${escapar(s)}</li>`).join('')}</ul>` : '<p>Mantén estas prácticas y valida su aplicación con tu líder.</p>'}</section></div>
