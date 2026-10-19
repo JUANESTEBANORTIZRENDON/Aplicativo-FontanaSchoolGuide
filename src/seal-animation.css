@@ -1,0 +1,27 @@
+/* Animación de sello de módulo completado (compartida). */
+.fontana-seal-stage { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 20px; background: rgba(35, 8, 20, .62); backdrop-filter: blur(4px); animation: fontana-seal-fade .35s ease-out both; }
+.fontana-seal-stage.is-leaving { animation: fontana-seal-out .26s ease-in forwards; }
+.fontana-seal-paper { position: relative; width: min(500px, 100%); padding: 34px 28px 28px; overflow: hidden; border-radius: 26px; background: linear-gradient(160deg, #fffefa, #f8efdb); box-shadow: 0 34px 90px rgba(20, 5, 12, .5); text-align: center; animation: fontana-seal-paper .5s cubic-bezier(.2, .8, .2, 1) both; }
+.fontana-seal-paper::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 3px #d4af37; opacity: 0; pointer-events: none; animation: fontana-seal-glow .9s ease-out 1s both; }
+.fontana-seal-eyebrow { margin: 0; color: #896411; font: 700 13px/1.3 'Segoe UI', Arial, sans-serif; letter-spacing: .14em; }
+.fontana-seal-paper h2 { margin: 8px 0 16px; color: #70112c; font: 600 clamp(24px, 4vw, 32px)/1.2 Georgia, serif; }
+.fontana-seal-stamp { position: relative; width: min(240px, 62vw); aspect-ratio: 1; margin: 0 auto; animation: fontana-seal-stamp .75s cubic-bezier(.2, 1.4, .4, 1) .45s both; }
+.fontana-seal-stamp svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 8px 10px rgba(63, 10, 27, .35)); transform: rotate(-8deg); }
+.fontana-seal-ripple { position: absolute; inset: 0; border: 3px solid #d4af37; border-radius: 50%; opacity: 0; animation: fontana-seal-ripple .8s ease-out 1.05s both; }
+.fontana-seal-glint { position: absolute; inset: 6px; overflow: hidden; border-radius: 50%; pointer-events: none; }
+.fontana-seal-glint::before { content: ''; position: absolute; top: -20%; bottom: -20%; left: -60%; width: 40%; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .55), transparent); transform: skewX(-18deg); animation: fontana-seal-glint 1s ease-in-out 1.35s both; }
+.fontana-seal-caption { margin: 20px 0 0; color: #243448; font-size: 18px; font-weight: 600; line-height: 1.5; opacity: 0; animation: fontana-seal-fade .4s ease-out 1.2s both; }
+.fontana-seal-caption strong { color: #8b1538; }
+.fontana-seal-continue { margin-top: 20px; min-height: 50px; padding: 12px 34px; border: 1px solid #8b1538; border-radius: 14px; background: linear-gradient(110deg, #74112e, #a02447); color: #fff; font: 700 17px/1 'Segoe UI', Arial, sans-serif; cursor: pointer; box-shadow: 0 8px 18px rgba(116, 17, 46, .28); opacity: 0; animation: fontana-seal-fade .4s ease-out 1.4s both; }
+.fontana-seal-continue:focus-visible { outline: 3px solid #d4af37; outline-offset: 3px; }
+@keyframes fontana-seal-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fontana-seal-out { to { opacity: 0; } }
+@keyframes fontana-seal-paper { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes fontana-seal-stamp { 0% { opacity: 0; transform: scale(2.8) rotate(-30deg); } 70% { opacity: 1; transform: scale(.9) rotate(-6deg); } 100% { opacity: 1; transform: scale(1) rotate(-8deg); } }
+@keyframes fontana-seal-ripple { 0% { opacity: .9; transform: scale(.95); } 100% { opacity: 0; transform: scale(1.35); } }
+@keyframes fontana-seal-glint { from { left: -60%; } to { left: 130%; } }
+@keyframes fontana-seal-glow { 0% { opacity: 0; } 40% { opacity: 1; } 100% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) {
+  .fontana-seal-stage, .fontana-seal-paper, .fontana-seal-stamp, .fontana-seal-caption, .fontana-seal-continue, .fontana-seal-paper::after { animation-duration: .01s; animation-delay: 0s; }
+  .fontana-seal-ripple, .fontana-seal-glint { display: none; }
+}

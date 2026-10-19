@@ -69,10 +69,11 @@ function formularioLogin(): void {
       <form id="login-form" class="auth-form">
         <input type="hidden" name="tipo" value="asesor">
         <label><span id="identity-label">Número de documento</span><input name="identificador" required autocomplete="username" maxlength="150" placeholder="Escribe tu documento"></label>
-        <div class="password-field">
+        <p id="advisor-access-note" class="login-access-note">Tu acceso es con el número de documento registrado. No necesitas contraseña.</p>
+        <div class="password-field" id="password-field" hidden>
           <label for="login-password">Contraseña</label>
           <div class="password-control">
-            <input id="login-password" name="password" type="password" required autocomplete="current-password" placeholder="Escribe tu contraseña">
+            <input id="login-password" name="password" type="password" disabled autocomplete="current-password" placeholder="Escribe tu contraseña">
             <button class="password-toggle" type="button" aria-label="Mostrar contraseña" aria-pressed="false" aria-controls="login-password">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/><path class="eye-slash" d="M3 3l18 18"/></svg>
             </button>
@@ -108,6 +109,13 @@ function formularioLogin(): void {
       tab.setAttribute('aria-selected', String(tab === button));
     });
     (form.elements.namedItem('tipo') as HTMLInputElement).value = button.dataset.role!;
+    const advisor = button.dataset.role === 'asesor';
+    // El asesor entra solo con su documento: el campo de contraseña se oculta y no se envía.
+    form.querySelector<HTMLElement>('#password-field')!.hidden = advisor;
+    form.querySelector<HTMLElement>('#advisor-access-note')!.hidden = !advisor;
+    passwordInput.disabled = advisor;
+    passwordInput.required = !advisor;
+    if (advisor) { passwordInput.value = ''; passwordInput.type = 'password'; }
     document.querySelector('#identity-label')!.textContent = button.dataset.role === 'asesor' ? 'Número de documento' : 'Documento o correo administrativo';
     (form.elements.namedItem('identificador') as HTMLInputElement).placeholder = button.dataset.role === 'asesor' ? 'Escribe tu documento' : 'Documento o correo';
   }));

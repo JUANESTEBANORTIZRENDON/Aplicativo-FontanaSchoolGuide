@@ -499,3 +499,13 @@ body:has(.collections-course) .auth-intro { display: none; }
 @media(max-width:700px) { .collections-dossier-head, .collections-dossier-progress { padding: 18px; } .collections-plan-workspace { padding: 16px; gap: 18px; } .collections-dossier-detail { padding: 16px; } .collections-plan-slots { grid-template-columns: 1fr; } .collections-card .collections-dossier-note { padding: 14px 16px; } }
 @media(max-width:480px) { .collections-balance-script { padding: 18px; } .collections-balance-script blockquote { font-size: 16px; } .collections-balance-recall { padding: 14px; } }
 @media(max-width:480px) { .collections-registration-exercise { padding: 14px; } }
+/* Opciones del examen: radios nativos agrupados (teclado y lectores de pantalla). */
+.collections-exam-options { display: grid; gap: 10px; min-width: 0; padding: 0; margin: 0; border: 0; }
+.collections-exam-options legend { padding: 0; margin: 0 0 16px; color: #243448; font-size: 17px; font-weight: 600; line-height: 1.5; }
+.collections-exam-option { position: relative; display: flex; gap: 12px; align-items: flex-start; min-height: 62px; padding: 15px; border: 1px solid #dfd2bd; border-radius: 12px; background: #fffefa; color: #243448; font: 14px/1.5 'Segoe UI', Arial, sans-serif; text-align: left; cursor: pointer; }
+.collections-exam-option input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.collections-exam-option > span { display: grid; place-items: center; flex-shrink: 0; width: 25px; height: 25px; border: 1px solid #dcc690; border-radius: 8px; color: #8b1538; background: #fbf2df; font-size: 12px; font-weight: 700; }
+.collections-exam-option.is-selected { border-color: #8b1538; background: #fff1f4; box-shadow: 0 0 0 1px #8b1538; }
+.collections-exam-option.is-selected > span { background: #8b1538; border-color: #8b1538; color: #fff; }
+.collections-exam-option:has(input:focus-visible) { outline: 3px solid #d4af37; outline-offset: 2px; }
+.collections-exam-options:disabled .collections-exam-option { cursor: default; opacity: .7; }

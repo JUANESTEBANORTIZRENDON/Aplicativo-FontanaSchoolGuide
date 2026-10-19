@@ -1,6 +1,7 @@
 import '../styles.css';
 import '../practice.css';
 import './office.css';
+import { playSeal } from '../seal-animation';
 import { mountHeaderAccount } from '../header-account';
 import { escapar } from '../http';
 import { ApiError, officeApi, SECTION_KEYS, type Lesson, type ModuleState, type SectionKey } from './api';
@@ -97,6 +98,7 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
   root.innerHTML = `
     <header><a class="brand" href="${escapar(backHref)}" aria-label="Fontana, volver a tu ruta de formación"><span class="brand-image"><img src="/imagenes/fontana-logo.png" alt=""><strong class="brand-name">FONTANA</strong></span></a><span class="header-divider"></span><span class="platform">AULA DE FORMACIÓN</span></header>
     <main class="office-main">
+      <div class="office-progress-bar"><a class="office-progress-link" href="${escapar(backHref)}">Ver mi progreso del aula <span aria-hidden="true">→</span></a></div>
       <nav class="office-steps" aria-label="Secciones del módulo"></nav>
       <section id="office-view" class="office-view" tabindex="-1" aria-live="polite">${loadingCard('Cargando tu módulo…')}</section>
       <footer><span>Fontana · Aula de formación</span><span>Módulo 01</span></footer>
@@ -262,34 +264,11 @@ async function renderResult(ctx: OfficeContext): Promise<void> {
       </div>
     </section>`;
   ctx.view.querySelector<HTMLButtonElement>('#result-continue')?.addEventListener('click', () => ctx.go(state.currentSection));
-  const nextLink = ctx.view.querySelector<HTMLAnchorElement>('#result-next');
-  nextLink?.addEventListener('click', (event) => {
-    event.preventDefault();
-    playSealAnimation('Ofimática para tus cobranzas', () => location.assign(nextLink.href));
-  });
-}
-
-// Animación de sellado al pasar al siguiente módulo: el sello cae sobre la tarjeta y luego se navega.
-function playSealAnimation(moduleName: string, done: () => void): void {
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const layer = document.createElement('div');
-  layer.className = 'office-seal-stage';
-  layer.setAttribute('role', 'status');
-  layer.innerHTML = `
-    <div class="office-seal-paper">
-      <p class="eyebrow">MÓDULO COMPLETADO</p>
-      <h2>${escapar(moduleName)}</h2>
-      <div class="office-seal-stamp" aria-hidden="true">
-        <svg viewBox="0 0 200 200"><defs><path id="seal-arc" d="M100,100 m-63,0 a63,63 0 1,1 126,0 a63,63 0 1,1 -126,0"/></defs>
-          <circle cx="100" cy="100" r="92" fill="none" stroke="currentColor" stroke-width="6"/>
-          <circle cx="100" cy="100" r="80" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 5"/>
-          <text font-size="15" font-weight="800" letter-spacing="3" fill="currentColor"><textPath href="#seal-arc" startOffset="2%">FONTANA · AULA DE FORMACIÓN · SELLO ·</textPath></text>
-          <text x="100" y="95" text-anchor="middle" font-size="34" font-weight="900" fill="currentColor">✓</text>
-          <text x="100" y="125" text-anchor="middle" font-size="18" font-weight="900" letter-spacing="2" fill="currentColor">APROBADO</text>
-        </svg>
-      </div>
-      <p class="office-seal-caption">¡Sello obtenido! Pasando al siguiente módulo…</p>
-    </div>`;
-  document.body.append(layer);
-  window.setTimeout(done, reduced ? 900 : 2600);
+  // El sello se celebra una sola vez por navegador (la clave incluye la fecha en que se emitió).
+  if (result.sealIssued && result.sealIssuedAt) {
+    const key = `fontana:sello:ofimatica-mecanografia:${result.sealIssuedAt}`;
+    let celebrated = true;
+    try { celebrated = localStorage.getItem(key) === '1'; if (!celebrated) localStorage.setItem(key, '1'); } catch { celebrated = false; }
+    if (!celebrated) void playSeal({ moduleName: 'Ofimática para tus cobranzas', moduleNumber: 1, label: 'APROBADO', nextName: next?.name ?? null });
+  }
 }

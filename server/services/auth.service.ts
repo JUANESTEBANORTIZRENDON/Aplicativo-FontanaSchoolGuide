@@ -23,10 +23,11 @@ function logLogin(event: 'login_success' | 'login_failure', data: Record<string,
   console.info(JSON.stringify({ event, at: new Date().toISOString(), ...data }));
 }
 
-// El asesor se identifica por documento; el administrador por documento o correo. Nunca por nombre.
+// El asesor se identifica solo por documento (sin contraseña); el administrador, por documento o correo y con
+// contraseña. Nunca por nombre.
 export async function login(input: LoginBody, context: LoginContext): Promise<AuthUser> {
   const usuario = await findForLogin(input.identificador, input.tipo);
-  const valid = await bcrypt.compare(input.password, usuario?.passwordHash ?? await getDummyHash());
+  const valid = input.tipo === Role.ADMIN ? await bcrypt.compare(input.password, usuario?.passwordHash ?? await getDummyHash()) : true;
   const roleMatches = usuario ? (input.tipo === Role.ADMIN ? esAdministrador(usuario.rol) : usuario.rol === Role.ADVISOR) : false;
   if (!usuario || !valid || !roleMatches || usuario.estado !== UserStatus.ACTIVE) {
     const reason = !usuario ? 'not_found' : !valid ? 'bad_password' : !roleMatches ? 'role_mismatch' : `status_${usuario.estado}`;

@@ -26,9 +26,28 @@ describe('autenticación', () => {
     expect(updated.ultimoAcceso).not.toBeNull();
   });
 
-  it('responde un mensaje genérico ante credenciales inválidas', async () => {
+  it('el asesor entra solo con su documento y se descarta cualquier contraseña enviada', async () => {
     const user = await createTestUser(SUITE);
-    const wrong = await loginAgent(user.numeroDocumento, 'asesor', 'otra-clave-123');
+    const sin = await request(app).post('/api/auth/login').set(ORIGIN).send({ identificador: user.numeroDocumento, tipo: 'asesor' });
+    expect(sin.status).toBe(200);
+    expect(String(sin.headers['set-cookie'])).toMatch(/HttpOnly/i);
+    const conClave = await request(app).post('/api/auth/login').set(ORIGIN).send({ identificador: user.numeroDocumento, tipo: 'asesor', password: 'cualquier-cosa' });
+    expect(conClave.status).toBe(200);
+    expect((await request(app).post('/api/auth/login').set(ORIGIN).send({ identificador: '', tipo: 'asesor' })).status).toBe(400);
+  });
+
+  it('el administrador sigue necesitando contraseña', async () => {
+    const admin = await createTestUser(SUITE, { rol: 'administrador' });
+    const sinClave = await request(app).post('/api/auth/login').set(ORIGIN).send({ identificador: admin.numeroDocumento, tipo: 'administrador' });
+    expect(sinClave.status).toBe(400);
+    const incorrecta = await loginAgent(admin.numeroDocumento, 'administrador', 'otra-clave-123');
+    expect(incorrecta.response.status).toBe(401);
+    expect((await loginAgent(admin.numeroDocumento, 'administrador')).response.status).toBe(200);
+  });
+
+  it('responde un mensaje genérico ante credenciales inválidas', async () => {
+    const admin = await createTestUser(SUITE, { rol: 'administrador' });
+    const wrong = await loginAgent(admin.numeroDocumento, 'administrador', 'otra-clave-123');
     const missing = await loginAgent('TEST-no-existe', 'asesor');
     expect(wrong.response.status).toBe(401);
     expect(missing.response.status).toBe(401);
@@ -55,11 +74,11 @@ describe('autenticación', () => {
   });
 
   it('limita los intentos fallidos por IP e identificador', async () => {
-    const user = await createTestUser(SUITE);
+    const admin = await createTestUser(SUITE, { rol: 'administrador' });
     for (let index = 0; index < LOGIN_LIMITS.perIdentifier; index++) {
-      expect((await loginAgent(user.numeroDocumento, 'asesor', 'clave-incorrecta')).response.status).toBe(401);
+      expect((await loginAgent(admin.numeroDocumento, 'administrador', 'clave-incorrecta')).response.status).toBe(401);
     }
-    const blocked = await loginAgent(user.numeroDocumento, 'asesor');
+    const blocked = await loginAgent(admin.numeroDocumento, 'administrador');
     expect(blocked.response.status).toBe(429);
     expect(blocked.response.body.code).toBe('TOO_MANY_REQUESTS');
   });
@@ -162,7 +181,7 @@ describe('autenticación', () => {
   });
 
   it('rechaza escrituras de otro origen (CSRF)', async () => {
-    const response = await request(app).post('/api/auth/login').set({ Origin: 'https://otro-sitio.test', Host: '127.0.0.1:3000' }).send({ identificador: 'x', password: 'y', tipo: 'asesor' });
+    const response = await request(app).post('/api/auth/login').set({ Origin: 'https://otro-sitio.test', Host: '127.0.0.1:3000' }).send({ identificador: 'x', tipo: 'asesor' });
     expect(response.status).toBe(403);
     expect(response.body.code).toBe('ORIGIN_NOT_ALLOWED');
   });

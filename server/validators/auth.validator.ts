@@ -2,12 +2,13 @@ import { z } from 'zod';
 import { email, trimmed } from './common.js';
 import { BANCOS, SEXOS, TALLAS_CAMISA, TIPOS_DOCUMENTO, TIPOS_SANGRE } from '../domain/profile.js';
 
-// Contrato existente de POST /api/auth/login: no cambia.
-export const loginBody = z.object({
-  identificador: z.string().trim().min(1).max(150),
-  password: z.string().min(1).max(200),
-  tipo: z.enum(['asesor', 'administrador']),
-});
+// POST /api/auth/login: el asesor entra solo con su número de documento (cualquier `password` que envíe se
+// descarta y no se valida); el administrador conserva documento o correo más contraseña obligatoria.
+const identificador = z.string().trim().min(1).max(150);
+export const loginBody = z.discriminatedUnion('tipo', [
+  z.object({ tipo: z.literal('asesor'), identificador }),
+  z.object({ tipo: z.literal('administrador'), identificador, password: z.string().min(1).max(200) }),
+]);
 export type LoginBody = z.infer<typeof loginBody>;
 
 export const completarDatosBody = z.object({

@@ -1,5 +1,6 @@
 import './collections.css';
 import './collections-ui.css';
+import { playSeal } from '../seal-animation';
 import { api, escapar } from '../http';
 import { mountConceptsSlider } from './concepts-slider';
 import { mountExam, type ExamResult, type ExamState, type ExamDraft } from './exam';
@@ -63,9 +64,11 @@ export async function mountCollections(container: HTMLElement, backHref: string)
   }
   async function submitExam(answers: Record<string, string>): Promise<void> {
     const { data } = await api<{ data: { result: ExamResult; state: State } }>(`${BASE}/exam`, { method: 'POST', body: JSON.stringify({ answers }) });
+    const wasComplete = state.complete;
     state = data.state;
     examResult = data.result;
     selected = EXAM;
+    if (data.result.passed && !wasComplete && state.complete) await playSeal({ moduleName: 'Inducción a las cobranzas', moduleNumber: 2, label: 'APROBADO', nextName: 'Enfréntate a la objeción' });
     render(); focus('exam-title');
   }
   function goTheory(): void {
@@ -81,7 +84,7 @@ export async function mountCollections(container: HTMLElement, backHref: string)
     const items = state.blocks.map((item, position) => `<li><button type="button" data-block="${item.key}"${item.enabled ? '' : ' disabled'}${item.key === selected ? ' aria-current="step"' : ''}><span class="collections-step">${item.completed ? '✓' : String(position + 1).padStart(2, '0')}</span><span class="collections-nav-copy">${escapar(item.title)}<small>${item.completed ? 'Completado · Puedes repasar' : item.enabled ? 'Disponible' : lockedHint}</small></span><span class="collections-nav-mark" aria-hidden="true">${item.enabled ? '›' : lock}</span></button></li>`);
     const exam = state.exam;
     const open = exam.enabled || Boolean(examResult);
-    const examItem = `<li class="collections-nav-exam"><button type="button" data-block="${EXAM}"${open ? '' : ' disabled'}${selected === EXAM ? ' aria-current="step"' : ''}><span class="collections-step">${exam.passed ? '✓' : '★'}</span><span class="collections-nav-copy">Examen final<small>${exam.passed ? 'Aprobado · Simulador habilitado' : exam.enabled ? 'Disponible' : 'Completa los cinco bloques'}</small></span><span class="collections-nav-mark" aria-hidden="true">${open ? '›' : lock}</span></button></li>`;
+    const examItem = `<li class="collections-nav-exam"><button type="button" data-block="${EXAM}"${open ? '' : ' disabled'}${selected === EXAM ? ' aria-current="step"' : ''}><span class="collections-step">${exam.passed ? '✓' : '★'}</span><span class="collections-nav-copy">Examen final<small>${exam.passed ? 'Aprobado · Siguiente módulo habilitado' : exam.enabled ? 'Disponible' : 'Completa los cinco bloques'}</small></span><span class="collections-nav-mark" aria-hidden="true">${open ? '›' : lock}</span></button></li>`;
     const ordered = state.experienced && !state.theoryRequired ? [examItem, ...items] : [...items, examItem];
     return `<nav class="collections-nav" aria-label="Pasos del módulo"><div class="collections-nav-label"><span>Tu recorrido</span><small>${state.experienced && !state.theoryRequired ? 'Examen primero' : '5 bloques + examen'}</small></div><ol>${ordered.join('')}</ol></nav>`;
   }
@@ -95,10 +98,10 @@ export async function mountCollections(container: HTMLElement, backHref: string)
     const onExam = selected === EXAM;
     if (!onExam && (!block?.content || !block.enabled)) return;
     const index = block ? state.blocks.indexOf(block) : -1;
-    const subtitle = state.experienced && !state.theoryRequired ? 'Valida lo que ya sabes con el examen final y continúa al simulador.' : 'Acompaña el caso ficticio de Camila: comprende, decide y aprende.';
-    container.innerHTML = `<section class="collections-course" aria-labelledby="collections-title"><header class="collections-heading"><div><p class="collections-kicker">MÓDULO 02 · ${state.experienced ? 'PARA ASESORES CON EXPERIENCIA' : 'PARA ASESORES NUEVOS'}</p><h1 id="collections-title">Inducción a las cobranzas</h1><p>${escapar(subtitle)}</p></div><a href="${escapar(backHref)}" class="collections-back">← Tu ruta</a></header>
+    const subtitle = state.experienced && !state.theoryRequired ? 'Valida lo que ya sabes con el examen final y continúa al módulo de objeciones.' : 'Acompaña el caso ficticio de Camila: comprende, decide y aprende.';
+    container.innerHTML = `<section class="collections-course collections-course--induction" aria-labelledby="collections-title"><header class="collections-heading"><div><p class="collections-kicker">MÓDULO 02 · ${state.experienced ? 'PARA ASESORES CON EXPERIENCIA' : 'PARA ASESORES NUEVOS'}</p><h1 id="collections-title">Inducción a las cobranzas</h1><p>${escapar(subtitle)}</p></div><a href="${escapar(backHref)}" class="collections-back">Ver mi progreso del aula →</a></header>
       <div class="collections-progress"><div><strong>${escapar(progressLabel())}</strong><span>${state.percent} %</span></div><progress max="100" value="${state.percent}" aria-label="Avance del módulo 02">${state.percent} %</progress></div>
-      ${state.complete ? `<div class="collections-complete" role="status"><strong>¡Completaste la inducción a las cobranzas!</strong><p>Ya tienes habilitado el Simulador de cobranzas. Puedes repasar lo aprendido cuando quieras.</p>${state.simulatorRoute ? `<a class="collections-primary" href="${escapar(state.simulatorRoute)}">Ir al Simulador →</a>` : ''}</div>` : ''}
+      ${state.complete ? `<div class="collections-complete" role="status"><strong>¡Completaste la inducción a las cobranzas!</strong><p>Ya tienes habilitado el módulo «Enfréntate a la objeción». Puedes repasar lo aprendido cuando quieras.</p>${state.simulatorRoute ? `<a class="collections-primary" href="${escapar(state.simulatorRoute)}">Ir a «Enfréntate a la objeción» →</a>` : ''}</div>` : ''}
       <div class="collections-layout">${navHtml()}
       <article class="collections-card"><div class="collections-block-toolbar"><p class="collections-kicker">${onExam ? 'EVALUACIÓN FINAL' : `BLOQUE ${String(index + 1).padStart(2, '0')} DE 05`}</p></div><h2 id="block-title" tabindex="-1">${onExam ? 'Examen final' : escapar(block!.title)}</h2>
       ${onExam ? '<div id="collections-exam"></div>' : lessonHtml(block!)}</article></div></section>`;
