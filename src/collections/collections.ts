@@ -1,9 +1,11 @@
 import './collections.css';
 import { api, escapar } from '../http';
-import { mountConceptsSlider, mountSlider } from './concepts-slider';
+import { mountConceptsSlider } from './concepts-slider';
 import { mountExam, type ExamResult, type ExamState } from './exam';
-import { LESSONS, PROCESS } from './lessons';
+import { PROCESS } from './lessons';
 import { CHALLENGES, mountQuickChallenge, type QuickChallengeState } from './quick-challenge';
+import { mountGuidedCase } from './guided-case';
+import { GUIDED_BLOCKS, createGuidedCaseState, isGuidedBlock } from './guided-case-model';
 
 type Content = { objective: string; explanation: string[]; example: { title: string; paragraphs: string[] }; workedExample: { decision: string; why: string }; validation: string[] };
 type Block = { key: string; title: string; enabled: boolean; completed: boolean; content: Content | null };
@@ -11,7 +13,7 @@ type State = { name: string; experienced: boolean; theoryRequired: boolean; simu
 const BASE = '/training/collections';
 const EXAM = 'examen';
 
-// Cada bloque: tarjetas cortas de teoría y, al final, un reto rápido de dos opciones. El examen final valida.
+// Conceptos conserva sus tarjetas; los bloques 02 a 05 continúan un caso guiado. El examen final valida.
 export async function mountCollections(container: HTMLElement, backHref: string): Promise<void> {
   container.innerHTML = '<p role="status">Cargando tu inducción a las cobranzas…</p>';
   let state: State;
@@ -21,6 +23,7 @@ export async function mountCollections(container: HTMLElement, backHref: string)
   let examResult: ExamResult | null = null;
   const slides = new Map<string, number>();
   const challenges = new Map<string, QuickChallengeState>();
+  const guidedCase = createGuidedCaseState();
   try {
     state = (await api<{ data: State }>(`${BASE}/module`)).data;
     selected = state.currentBlock;
@@ -41,16 +44,12 @@ export async function mountCollections(container: HTMLElement, backHref: string)
     return `<ol class="collections-process" aria-label="Ruta de la gestión de cobranza">${PROCESS.map((step, index) => `<li class="${index < position ? 'is-done' : index === position ? 'is-current' : ''}"${index === position ? ' aria-current="step"' : ''}><span>${index + 1}</span>${escapar(step.label)}</li>`).join('')}</ol>`;
   }
   function lessonHtml(block: Block): string {
-    const content = block.content!;
     if (block.key === 'conceptos') return `${processHtml(block.key)}<p class="fontana-concepts-intro">Cinco claves para iniciar tu gestión.</p><div id="collections-concepts-slider"></div>`;
-    return `${processHtml(block.key)}<p class="fontana-concepts-intro">${escapar(content.objective)}</p>
-      <div id="collections-lesson-slider"></div>
-      <details class="collections-more"><summary>Ver un ejemplo resuelto</summary><p class="collections-case-caption">${escapar(content.example.title)}</p>${content.example.paragraphs.map((text) => `<p>${escapar(text)}</p>`).join('')}
-        <div class="collections-solved"><strong>Qué haría el asesor</strong><p>${escapar(content.workedExample.decision)}</p><strong>Por qué</strong><p>${escapar(content.workedExample.why)}</p></div></details>
-      <details class="collections-validation"><summary>Qué requiere validación interna antes de una gestión real</summary><ul>${content.validation.map((text) => `<li>${escapar(text)}</li>`).join('')}</ul></details>`;
+    if (isGuidedBlock(block.key)) return `${processHtml(block.key)}<p class="fontana-concepts-intro">${GUIDED_BLOCKS[block.key].intro}</p><div id="collections-guided-case"></div>`;
+    return '';
   }
   async function continueBlock(block: Block): Promise<void> {
-    if (saving || !challengeOf(block.key).finished) return;
+    if (saving || !(isGuidedBlock(block.key) ? guidedCase.progress[block.key].finished : challengeOf(block.key).finished)) return;
     saving = true; error = ''; render();
     try {
       state = (await api<{ data: State }>(`${BASE}/blocks/${block.key}/complete`, { method: 'POST', body: JSON.stringify({}) })).data;
@@ -108,6 +107,8 @@ export async function mountCollections(container: HTMLElement, backHref: string)
       blockTitles: Object.fromEntries(state.blocks.map((item) => [item.key, item.title])), result: examResult, submit: submitExam, goTheory,
     });
     if (block) {
+      const dossier = container.querySelector<HTMLElement>('#collections-guided-case');
+      if (dossier && isGuidedBlock(block.key)) mountGuidedCase(dossier, guidedCase, { block: block.key, onContinue: () => { void continueBlock(block); }, saving, error });
       const last = index === state.blocks.length - 1;
       const challenge = (root: HTMLElement) => mountQuickChallenge(root, challengeOf(block.key), {
         cases: CHALLENGES[block.key] ?? [], continueLabel: last ? 'Continuar al examen final →' : 'Continuar al siguiente bloque →',
@@ -116,14 +117,6 @@ export async function mountCollections(container: HTMLElement, backHref: string)
       const onSlide = (position: number) => { slides.set(block.key, position); };
       const concepts = container.querySelector<HTMLElement>('#collections-concepts-slider');
       if (concepts) mountConceptsSlider(concepts, { initialSlide: slides.get(block.key) ?? 0, onSlide, mountChallenge: challenge });
-      const lesson = container.querySelector<HTMLElement>('#collections-lesson-slider');
-      if (lesson) mountSlider(lesson, {
-        slides: LESSONS[block.key] ?? [], label: `Teoría del bloque ${block.title} y reto rápido`,
-        notice: '<strong>Lee con atención:</strong> al terminar las tarjetas tendrás un reto rápido.',
-        finalName: 'Reto rápido', finalLastHint: 'Pulsa la flecha derecha para ir al reto rápido.', finalHint: 'Elige una respuesta y practica a tu ritmo.',
-        initialSlide: slides.get(block.key) ?? 0, onSlide, mountFinal: challenge,
-        finalFocus: '#quick-challenge-question, #quick-challenge-title',
-      });
     }
     container.querySelectorAll<HTMLButtonElement>('[data-block]').forEach((button) => button.addEventListener('click', async () => {
       if (saving) return;
