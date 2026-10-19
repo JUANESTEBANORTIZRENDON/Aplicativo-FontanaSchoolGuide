@@ -190,18 +190,9 @@ button.office-secondary:disabled { opacity: .5; cursor: not-allowed; }
 .office-module-score small { color: #626672; }
 .office-summary li[data-alert="true"] { border-color: #e9c46a; background: #fff8e6; }
 
-/* Animación de sellado */
-.office-seal-stage { position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center; padding: 20px; background: rgba(25, 40, 64, .55); backdrop-filter: blur(3px); animation: seal-fade .35s ease-out both; }
-.office-seal-paper { position: relative; width: min(440px, 100%); padding: 34px 28px 30px; border-radius: 22px; text-align: center; background: linear-gradient(160deg, #fffdf7, #f6efe0); box-shadow: 0 30px 80px rgba(14, 25, 42, .35); overflow: hidden; }
-.office-seal-paper h2 { margin: 6px 0 14px; color: #192840; font: 800 22px 'Manrope', sans-serif; }
-.office-seal-stamp { width: 190px; height: 190px; margin: 0 auto; color: #8b1538; animation: seal-stamp .7s cubic-bezier(.2, 1.4, .4, 1) .45s both; }
-.office-seal-stamp svg { width: 100%; height: 100%; filter: drop-shadow(0 4px 0 rgba(139, 21, 56, .15)); }
-.office-seal-caption { margin: 16px 0 0; color: #24324a; font-weight: 700; opacity: 0; animation: seal-fade .4s ease-out 1.2s both; }
-.office-seal-paper::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 3px #d4af37; opacity: 0; animation: seal-glow .9s ease-out 1s both; }
-@keyframes seal-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes seal-stamp { 0% { opacity: 0; transform: scale(2.6) rotate(-28deg); } 70% { opacity: 1; transform: scale(.92) rotate(-8deg); } 100% { opacity: 1; transform: scale(1) rotate(-12deg); } }
-@keyframes seal-glow { 0% { opacity: 0; } 40% { opacity: 1; } 100% { opacity: .4; } }
-@media (prefers-reduced-motion: reduce) {
-  .office-seal-stage, .office-seal-stamp, .office-seal-caption, .office-seal-paper::after { animation-duration: .01s; animation-delay: 0s; }
-  .office-seal-stamp { transform: rotate(-12deg); }
-}
+
+/* Acceso a la vista de progreso del aula desde cualquier sección del módulo. */
+.office-progress-bar { display: flex; justify-content: flex-end; margin: 0 0 14px; }
+.office-progress-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 20px; border: 1px solid #cfb88d; border-radius: 24px; background: #fffcf5; color: #8b1538; font-weight: 700; font-size: 15px; text-decoration: none; transition: background-color .18s ease, border-color .18s ease; }
+.office-progress-link:hover { background: #f6ebd3; border-color: #b18b32; }
+.office-progress-link:focus-visible { outline: 3px solid #d4af37; outline-offset: 2px; }

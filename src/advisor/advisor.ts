@@ -73,6 +73,8 @@ export async function mountLearningPath(): Promise<void> {
 }
 
 const INDUCTION_SLUG = 'induccion-cobranzas';
+// El módulo 03 conserva su slug técnico; su nombre visible es «Enfréntate a la objeción».
+const OBJECTIONS_SLUG = 'simulador-cobranzas';
 
 // Primera pantalla de «Inducción a las cobranzas»: la experiencia define el camino. Quien es nuevo recorre la
 // teoría y luego el examen final; quien tiene experiencia empieza por el mismo examen y, si no lo aprueba, ve la teoría.
@@ -103,6 +105,12 @@ export async function renderModulePage(container: HTMLElement, backHref = '/indu
   const page = container.querySelector<HTMLElement>('.module-page')!;
   try {
     const { data } = await api<{ data: { module: ModuleView; activities: { title: string; enabled: boolean; blockedReason: string | null }[]; content: { message: string } } }>(`/advisor/modules/${encodeURIComponent(slug)}`);
+    // El acceso ya se validó arriba (prerrequisitos, estado): el módulo 03 tiene su propia aplicación.
+    if (slug === OBJECTIONS_SLUG) {
+      const { mountObjections } = await import('../objections/objections');
+      await mountObjections(container, backHref);
+      return;
+    }
     page.innerHTML = `
       <p class="auth-kicker">MÓDULO ${String(data.module.order).padStart(2, '0')}</p>
       <h2>${escapar(data.module.name)}</h2>

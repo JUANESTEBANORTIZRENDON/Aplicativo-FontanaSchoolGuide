@@ -48,7 +48,7 @@ Al terminar las cinco etapas de `/induccion`, la confirmación de lectura habili
 
 ### Reglas de la ruta de formación
 
-- Catálogo inicial: 1 Ofimática para tus cobranzas → 2 Inducción a las cobranzas → 3 Simulador de cobranzas → 4 Tipificación de llamadas → 5 Certificado (requiere los cuatro sellos).
+- Catálogo inicial: 1 Ofimática para tus cobranzas → 2 Inducción a las cobranzas → 3 Enfréntate a la objeción → 4 Tipificación de llamadas → 5 Certificado (requiere los cuatro sellos).
 - `computeModuleViews` (dominio) calcula el estado efectivo de cada módulo combinando el estado del catálogo, prerrequisitos, sellos, progreso, intentos y excepciones vigentes. La usan el área del asesor, el panel y la sincronización que alimenta las métricas.
 - Un módulo `INACTIVE` se muestra "No disponible", con el botón deshabilitado. Un módulo aprobado muestra "Completado"; el módulo 1 tiene pantalla de resultado y sigue abierto para repasarlo (los demás se habilitarán cuando tengan la suya).
 - Intentos: numeración consecutiva con bloqueo de fila, límite `maxAttempts` más excepciones vigentes y espera `waitMinutes` tras un fallo. Una configuración evaluable nueva crea otra versión; nunca se edita una versión existente.

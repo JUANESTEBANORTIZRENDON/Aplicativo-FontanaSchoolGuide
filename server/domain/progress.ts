@@ -10,7 +10,9 @@ export const EXHAUSTED_REASON = 'Agotaste los intentos disponibles. Solicita una
 // Módulos con pantalla de resultados: al aprobarlos siguen abiertos para repasar su resumen.
 // Los demás se habilitan cuando tengan su pantalla de resultados.
 export const RESULT_SCREEN_AVAILABLE = false;
-export const RESULT_SCREEN_SLUGS: ReadonlySet<string> = new Set(["ofimatica-mecanografia", "induccion-cobranzas"]);
+export const RESULT_SCREEN_SLUGS: ReadonlySet<string> = new Set(["ofimatica-mecanografia", "induccion-cobranzas", "simulador-cobranzas"]);
+// Módulos guiados por bloques: mientras no tengan sello muestran el avance guardado de sus bloques.
+const GUIDED_BLOCK_SLUGS: ReadonlySet<string> = new Set(["induccion-cobranzas", "simulador-cobranzas"]);
 
 const GRANT_ACTIONS: OverrideAction[] = ['EXTRA_ATTEMPT', 'REACTIVATE'];
 
@@ -161,7 +163,7 @@ export function computeModuleViews(modules: ModuleInput[], state: UserTrainingSt
       catalogStatus: module.status, hasSeal, waitUntil: null as string | null,
       lastActivityAt: stored?.lastActivityAt?.toISOString() ?? null,
     };
-    const percent = (module.slug === 'induccion-cobranzas' && stored?.percent && !hasSeal && stored.status !== 'PASSED'
+    const percent = (GUIDED_BLOCK_SLUGS.has(module.slug) && stored?.percent && !hasSeal && stored.status !== 'PASSED'
       ? stored.percent
       : hasSeal && required.length === 0 ? new Prisma.Decimal(100) : percentOf(passedCount, required.length)).toFixed(2);
     const missing = module.prerequisites.filter((prerequisite) => !state.sealedModuleIds.has(prerequisite.id)).map((prerequisite) => prerequisite.name);

@@ -1,4 +1,5 @@
 import './collections.css';
+import { playSeal } from '../seal-animation';
 import { api, escapar } from '../http';
 import { mountConceptsSlider, mountSlider } from './concepts-slider';
 import { mountExam, type ExamResult, type ExamState } from './exam';
@@ -63,9 +64,12 @@ export async function mountCollections(container: HTMLElement, backHref: string)
   }
   async function submitExam(answers: Record<string, string>): Promise<void> {
     const { data } = await api<{ data: { result: ExamResult; state: State } }>(`${BASE}/exam`, { method: 'POST', body: JSON.stringify({ answers }) });
+    const wasComplete = state.complete;
     state = data.state;
     examResult = data.result;
     selected = EXAM;
+    // Al aprobar por primera vez se emite el sello: la animación va antes de mostrar el resultado.
+    if (data.result.passed && !wasComplete && state.complete) await playSeal({ moduleName: 'Inducción a las cobranzas', moduleNumber: 2, label: 'APROBADO', nextName: 'Enfréntate a la objeción' });
     render(); focus('exam-title');
   }
   function goTheory(): void {
@@ -81,7 +85,7 @@ export async function mountCollections(container: HTMLElement, backHref: string)
     const items = state.blocks.map((item, position) => `<li><button type="button" data-block="${item.key}"${item.enabled ? '' : ' disabled'}${item.key === selected ? ' aria-current="step"' : ''}><span class="collections-step">${item.completed ? '✓' : String(position + 1).padStart(2, '0')}</span><span class="collections-nav-copy">${escapar(item.title)}<small>${item.completed ? 'Completado · Puedes repasar' : item.enabled ? 'Disponible' : lockedHint}</small></span><span class="collections-nav-mark" aria-hidden="true">${item.enabled ? '›' : lock}</span></button></li>`);
     const exam = state.exam;
     const open = exam.enabled || Boolean(examResult);
-    const examItem = `<li class="collections-nav-exam"><button type="button" data-block="${EXAM}"${open ? '' : ' disabled'}${selected === EXAM ? ' aria-current="step"' : ''}><span class="collections-step">${exam.passed ? '✓' : '★'}</span><span class="collections-nav-copy">Examen final<small>${exam.passed ? 'Aprobado · Simulador habilitado' : exam.enabled ? 'Disponible' : 'Completa los cinco bloques'}</small></span><span class="collections-nav-mark" aria-hidden="true">${open ? '›' : lock}</span></button></li>`;
+    const examItem = `<li class="collections-nav-exam"><button type="button" data-block="${EXAM}"${open ? '' : ' disabled'}${selected === EXAM ? ' aria-current="step"' : ''}><span class="collections-step">${exam.passed ? '✓' : '★'}</span><span class="collections-nav-copy">Examen final<small>${exam.passed ? 'Aprobado · Siguiente módulo habilitado' : exam.enabled ? 'Disponible' : 'Completa los cinco bloques'}</small></span><span class="collections-nav-mark" aria-hidden="true">${open ? '›' : lock}</span></button></li>`;
     const ordered = state.experienced && !state.theoryRequired ? [examItem, ...items] : [...items, examItem];
     return `<nav class="collections-nav" aria-label="Pasos del módulo"><div class="collections-nav-label"><span>Tu recorrido</span><small>${state.experienced && !state.theoryRequired ? 'Examen primero' : '5 bloques + examen'}</small></div><ol>${ordered.join('')}</ol></nav>`;
   }
@@ -96,16 +100,26 @@ export async function mountCollections(container: HTMLElement, backHref: string)
     if (!onExam && (!block?.content || !block.enabled)) return;
     const index = block ? state.blocks.indexOf(block) : -1;
     const subtitle = state.experienced && !state.theoryRequired ? 'Valida lo que ya sabes con el examen final y continúa al simulador.' : 'Acompaña el caso ficticio de Camila: comprende, decide y aprende.';
-    container.innerHTML = `<section class="collections-course" aria-labelledby="collections-title"><header class="collections-heading"><div><p class="collections-kicker">MÓDULO 02 · ${state.experienced ? 'PARA ASESORES CON EXPERIENCIA' : 'PARA ASESORES NUEVOS'}</p><h1 id="collections-title">Inducción a las cobranzas</h1><p>${escapar(subtitle)}</p></div><a href="${escapar(backHref)}" class="collections-back">← Tu ruta</a></header>
+    container.innerHTML = `<section class="collections-course" aria-labelledby="collections-title"><header class="collections-heading"><div><p class="collections-kicker">MÓDULO 02 · ${state.experienced ? 'PARA ASESORES CON EXPERIENCIA' : 'PARA ASESORES NUEVOS'}</p><h1 id="collections-title">Inducción a las cobranzas</h1><p>${escapar(subtitle)}</p></div><a href="${escapar(backHref)}" class="collections-back">Ver mi progreso del aula →</a></header>
       <div class="collections-progress"><div><strong>${escapar(progressLabel())}</strong><span>${state.percent} %</span></div><progress max="100" value="${state.percent}" aria-label="Avance del módulo 02">${state.percent} %</progress></div>
-      ${state.complete ? `<div class="collections-complete" role="status"><strong>¡Completaste la inducción a las cobranzas!</strong><p>Ya tienes habilitado el Simulador de cobranzas. Puedes repasar lo aprendido cuando quieras.</p>${state.simulatorRoute ? `<a class="collections-primary" href="${escapar(state.simulatorRoute)}">Ir al Simulador →</a>` : ''}</div>` : ''}
+      ${state.complete ? `<div class="collections-complete" role="status"><strong>¡Completaste la inducción a las cobranzas!</strong><p>Ya tienes habilitado el módulo «Enfréntate a la objeción». Puedes repasar lo aprendido cuando quieras.</p>${state.simulatorRoute ? `<a class="collections-primary" href="${escapar(state.simulatorRoute)}">Ir a «Enfréntate a la objeción» →</a>` : ''}</div>` : ''}
       <div class="collections-layout">${navHtml()}
       <article class="collections-card"><div class="collections-block-toolbar"><p class="collections-kicker">${onExam ? 'EVALUACIÓN FINAL' : `BLOQUE ${String(index + 1).padStart(2, '0')} DE 05`}</p></div><h2 id="block-title" tabindex="-1">${onExam ? 'Examen final' : escapar(block!.title)}</h2>
       ${onExam ? '<div id="collections-exam"></div>' : lessonHtml(block!)}</article></div></section>`;
     const examRoot = container.querySelector<HTMLElement>('#collections-exam');
     if (examRoot) mountExam(examRoot, {
-      exam: state.exam, experienced: state.experienced, theoryRequired: state.theoryRequired, simulatorRoute: state.simulatorRoute, backHref,
-      blockTitles: Object.fromEntries(state.blocks.map((item) => [item.key, item.title])), result: examResult, submit: submitExam, goTheory,
+      exam: state.exam, blockTitles: Object.fromEntries(state.blocks.map((item) => [item.key, item.title])), result: examResult, submit: submitExam, goTheory,
+      intro: state.exam.passed
+        ? 'Ya aprobaste este examen. Puedes volver a presentarlo para repasar; tu sello se conserva.'
+        : state.experienced && !state.theoryRequired
+          ? 'Como tienes experiencia, empiezas por aquí. Si lo apruebas, pasas directo al módulo «Enfréntate a la objeción». Si no, recorrerás la teoría y luego lo presentarás de nuevo.'
+          : 'Ya recorriste la teoría. Demuestra lo que aprendiste: si apruebas, se habilita el módulo «Enfréntate a la objeción».',
+      facts: [{ value: String(state.exam.content.total), label: 'preguntas' }, { value: String(state.exam.content.minCorrect), label: 'correctas para aprobar' }, { value: '1', label: 'caso ficticio nuevo' }],
+      passedText: (data) => `Respondiste bien ${data.correctCount} de ${data.total}. Ganaste el sello del módulo y se habilitó «Enfréntate a la objeción».`,
+      failedText: (data) => `Respondiste bien ${data.correctCount} de ${data.total}; necesitas ${data.minCorrect}. ${state.experienced && state.theoryRequired && state.exam.attempts <= 1 ? 'Ahora recorrerás la teoría del módulo para reforzar lo necesario y luego podrás presentarlo de nuevo.' : 'Revisa las correcciones, repasa la teoría y vuelve a intentarlo.'}`,
+      next: { href: state.simulatorRoute ?? backHref, label: 'Ir a «Enfréntate a la objeción» →' },
+      theoryFirst: state.experienced && state.theoryRequired && state.exam.attempts <= 1,
+      lowScoreName: 'el examen final',
     });
     if (block) {
       const last = index === state.blocks.length - 1;

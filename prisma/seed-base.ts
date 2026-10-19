@@ -3,6 +3,7 @@ import type { PrismaClient } from '@prisma/client';
 import { setPrerequisites } from '../server/services/catalog.service.js';
 import { completeModule, initializeForUser } from '../server/services/progress.service.js';
 import { COLLECTIONS_BLOCKS, COLLECTIONS_EXAM, COLLECTIONS_VERSION, EXAM_KEY } from '../server/domain/collections.js';
+import { OBJECTIONS_ACTIVITY_TITLE, OBJECTIONS_NAME, OBJECTIONS_SLUG } from '../server/domain/objections.js';
 import { OFFICE_MODULE_SLUG, SECTION_ORDER, SECTION_TITLE } from '../server/domain/office.js';
 import { DICTATIONS, EXCEL_ANSWER_KEY, EXCEL_SCENARIO_DATA, SPELLING_RULES, TYPING_TEXTS } from './seed-office-content.js';
 
@@ -10,12 +11,23 @@ import { DICTATIONS, EXCEL_ANSWER_KEY, EXCEL_SCENARIO_DATA, SPELLING_RULES, TYPI
 export const CATALOG = [
   { order: 1, slug: 'ofimatica-mecanografia', name: 'Ofimática para tus cobranzas', route: '/induccion/modulos/ofimatica-mecanografia', prerequisites: [] as string[] },
   { order: 2, slug: 'induccion-cobranzas', name: 'Inducción a las cobranzas', route: '/induccion/modulos/induccion-cobranzas', prerequisites: ['ofimatica-mecanografia'] },
-  { order: 3, slug: 'simulador-cobranzas', name: 'Simulador de cobranzas', route: '/induccion/modulos/simulador-cobranzas', prerequisites: ['induccion-cobranzas'] },
+  { order: 3, slug: OBJECTIONS_SLUG, name: OBJECTIONS_NAME, route: '/induccion/modulos/simulador-cobranzas', prerequisites: ['induccion-cobranzas'] },
   { order: 4, slug: 'tipificacion-llamadas', name: 'Tipificación de llamadas', route: '/induccion/modulos/tipificacion-llamadas', prerequisites: ['simulador-cobranzas'] },
   { order: 5, slug: 'certificado', name: 'Certificado', route: '/induccion/certificado', prerequisites: ['ofimatica-mecanografia', 'induccion-cobranzas', 'simulador-cobranzas', 'tipificacion-llamadas'] },
 ];
 
 export const INDUCTION_MODULE_SLUG = 'induccion-cobranzas';
+
+// Módulo 03 «Enfréntate a la objeción» (slug técnico conservado): su única actividad obligatoria es una lección
+// que se aprueba con el examen final. Convierte el marcador de posición anterior sin cambiar su id, así que
+// conserva su historial. Idempotente.
+async function seedObjections(prisma: PrismaClient, moduleId: string, route: string): Promise<void> {
+  await prisma.activity.upsert({
+    where: { moduleId_order: { moduleId, order: 1 } },
+    create: { moduleId, order: 1, type: 'LESSON', status: 'ACTIVE', isRequired: true, title: OBJECTIONS_ACTIVITY_TITLE, route },
+    update: { type: 'LESSON', status: 'ACTIVE', isRequired: true, title: OBJECTIONS_ACTIVITY_TITLE, route },
+  });
+}
 
 // Introducción (solo para quien no tiene experiencia) y examen de inducción: 80 % y 3 intentos. Idempotente.
 async function seedInduction(prisma: PrismaClient, moduleId: string, route: string): Promise<void> {
@@ -64,6 +76,7 @@ export async function seedCatalog(prisma: PrismaClient): Promise<Map<string, str
     // La inducción conserva su introducción y examen de catálogo; los bloques guiados aportan su evidencia.
     // (seedOfficeModule); los demás, una actividad PLACEHOLDER activa y obligatoria, sin evaluación.
     if (item.slug === INDUCTION_MODULE_SLUG) await seedInduction(prisma, module.id, item.route);
+    else if (item.slug === OBJECTIONS_SLUG) await seedObjections(prisma, module.id, item.route);
     else if (item.slug !== 'certificado' && item.slug !== OFFICE_MODULE_SLUG) {
       await prisma.activity.upsert({
         where: { moduleId_order: { moduleId: module.id, order: 1 } },
