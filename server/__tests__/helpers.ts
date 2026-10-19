@@ -41,7 +41,9 @@ export async function createTestUser(suite: string, options: { rol?: 'asesor' | 
 
 export async function loginAgent(documento: string, tipo: 'asesor' | 'administrador', password = PASSWORD) {
   const agent = request.agent(app);
-  const response = await agent.post('/api/auth/login').set(ORIGIN).send({ identificador: documento, password, tipo });
+  // El asesor entra solo con su documento; la contraseña únicamente se envía en el acceso administrativo.
+  const body = tipo === 'administrador' ? { identificador: documento, password, tipo } : { identificador: documento, tipo };
+  const response = await agent.post('/api/auth/login').set(ORIGIN).send(body);
   return { agent, response };
 }
 

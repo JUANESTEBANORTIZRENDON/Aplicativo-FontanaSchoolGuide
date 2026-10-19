@@ -278,3 +278,7 @@ body.auth-login {
   .auth-login *, .auth-login *::before, .auth-login *::after { animation: none !important; transition: none !important; }
   .auth-login .primary-action:hover:not(:disabled), .auth-login .role-tab:hover:not(:disabled), .auth-login .auth-form > label:hover, .auth-login .password-field:hover { transform: none; }
 }
+
+/* Acceso del asesor: solo documento. El campo de contraseña pertenece a la administración. */
+.password-field[hidden], .login-access-note[hidden] { display: none !important; }
+.login-access-note { margin: 0; padding: 10px 12px; border: 1px solid #e3d3a4; border-radius: 10px; background: #fff8e6; color: #5a4310; font-size: 13px; line-height: 1.5; }
