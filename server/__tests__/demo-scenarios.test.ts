@@ -122,7 +122,7 @@ describe('escenarios demo', () => {
 
   it('1000000111 · sin sellos completos: certificado bloqueado con la lista', async () => {
     const { modules } = await advisor('1000000111');
-    expect(modules[3]).toMatchObject({ status: 'BLOCKED', missingSeals: ['Tipificación de llamadas'] });
+    expect(modules[3]).toMatchObject({ status: 'BLOCKED', missingSeals: ['Tipifica'] });
   });
 
   it('1000000112 · detenido: aparece en asesores detenidos con days=7', async () => {

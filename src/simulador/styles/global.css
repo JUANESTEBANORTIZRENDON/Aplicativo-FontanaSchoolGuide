@@ -1,0 +1,99 @@
+/* Base del simulador: todo cuelga de .sim-root. */
+.sim-root {
+  color-scheme: light;
+  min-height: 100vh;
+  background: var(--sim-bg);
+  color: var(--sim-ink);
+  font-family: var(--sim-font);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sim-root *,
+.sim-root *::before,
+.sim-root *::after {
+  box-sizing: border-box;
+}
+
+.sim-root :where(h1, h2, h3, p, ul, ol, dl, dd, figure, fieldset) {
+  margin: 0;
+}
+
+.sim-root :where(ul, ol) {
+  padding: 0;
+}
+
+.sim-root :where(button, input, select, textarea) {
+  font: inherit;
+  color: inherit;
+}
+
+.sim-root a {
+  color: var(--sim-brand-600);
+}
+
+.sim-root code {
+  font-family: var(--sim-font-mono);
+  font-size: 0.95em;
+}
+
+.sim-root :focus-visible {
+  outline: 2px solid var(--sim-focus);
+  outline-offset: 2px;
+}
+
+.sim-root [hidden] {
+  display: none !important;
+}
+
+.sim-visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sim-skip-link {
+  position: absolute;
+  left: var(--sim-space-4);
+  top: -60px;
+  z-index: 100;
+  padding: var(--sim-space-2) var(--sim-space-4);
+  background: var(--sim-brand-900);
+  color: #fff !important;
+  border-radius: var(--sim-radius-sm);
+}
+
+.sim-skip-link:focus {
+  top: var(--sim-space-2);
+}
+
+.sim-icon {
+  display: inline-flex;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+}
+
+.sim-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-root *,
+  .sim-root *::before,
+  .sim-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

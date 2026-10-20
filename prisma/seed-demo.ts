@@ -50,7 +50,7 @@ export const SCENARIOS: DemoRow[] = [
   { documento: '1000000108', nombre: 'Demo · Asesor Excepción Revocada', escenario: 'REACTIVATE revocada', esperado: 'Revocada en la ficha; M1 sigue sin intentos' },
   { documento: '1000000109', nombre: 'Demo · Asesor Completo', escenario: 'Módulos 1 a 3 aprobados y FSG-DEMO-0001', esperado: '"Ver certificado"; certificado ACTIVE en el panel' },
   { documento: '1000000110', nombre: 'Demo · Asesor Certificado Reemitido', escenario: 'Certificado REVOKED y reemitido', esperado: 'Ficha con dos versiones enlazadas' },
-  { documento: '1000000111', nombre: 'Demo · Asesor Sin Sellos', escenario: 'Módulos 1 y 2 aprobados', esperado: 'Certificado BLOCKED: falta Tipificación de llamadas' },
+  { documento: '1000000111', nombre: 'Demo · Asesor Sin Sellos', escenario: 'Módulos 1 y 2 aprobados', esperado: 'Certificado BLOCKED: falta Tipifica' },
   { documento: '1000000112', nombre: 'Demo · Asesor Detenido', escenario: 'Último avance hace 15 días en M2', esperado: 'Aparece en "Asesores detenidos" (days=7)' },
   { documento: '1000000113', nombre: 'Demo · Asesor Inactivo', escenario: 'Inactivo con historial', esperado: 'No inicia sesión; historial visible; no cuenta como activo' },
   { documento: '1000000114', nombre: 'Demo · Asesor Bloqueado', escenario: 'Bloqueado con motivo auditado', esperado: 'No inicia sesión (mensaje genérico); sesión previa inválida' },

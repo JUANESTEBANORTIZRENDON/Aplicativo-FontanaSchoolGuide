@@ -1,0 +1,60 @@
+/* Módulo 04 «Tipifica»: pantalla de práctica de Control Next con pantalla completa y explicación de apartados. */
+.tipifica { display: grid; gap: 22px; max-width: 1320px; margin: 0 auto; }
+.tipifica-head h2 { margin: 4px 0 8px; color: var(--navy); font-size: clamp(30px, 3.4vw, 42px); }
+.tipifica-lead { max-width: 920px; margin: 0; color: #364152; font-size: 17px; line-height: 1.6; }
+.tipifica-lead strong { color: var(--red); }
+
+/* Pantalla tipo monitor */
+.tipifica-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; border: 1px solid #1f2a3733; border-radius: 18px; background: #11161f; box-shadow: 0 24px 50px #1f2a3730, 0 0 0 6px #ffffff; }
+.tipifica-screen__bar { display: flex; align-items: center; gap: 14px; padding: 9px 16px; background: #1b2230; }
+.tipifica-dots { display: inline-flex; gap: 6px; }
+.tipifica-dots i { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; }
+.tipifica-dots i:nth-child(2) { background: #febc2e; }
+.tipifica-dots i:nth-child(3) { background: #28c840; }
+.tipifica-url { flex: 1; max-width: 420px; padding: 4px 14px; border-radius: 999px; background: #2a3344; color: #c6cfdc; font: 13px/1.4 'Segoe UI', Arial, sans-serif; }
+.tipifica-screen__frame { position: relative; height: min(78vh, 820px); min-height: 520px; background: #f1f2f4; }
+.tipifica-screen__frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+.tipifica-screen__controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; background: linear-gradient(180deg, #1b2230, #121822); }
+.tipifica-ctl { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 16px; border: 1px solid #ffffff2b; border-radius: 10px; background: #ffffff14; color: #f4f6fb; font: 600 14px/1.2 'Segoe UI', Arial, sans-serif; cursor: pointer; transition: background-color .15s ease; }
+.tipifica-ctl:hover { background: #ffffff26; }
+.tipifica-ctl:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.tipifica-ctl svg { width: 20px; height: 20px; }
+.tipifica-ctl--icon { justify-content: center; width: 40px; padding: 0; font-size: 20px; }
+.tipifica-ctl--full { background: linear-gradient(110deg, #74112e, #a02447); border-color: transparent; }
+.tipifica-ctl--full:hover { background: linear-gradient(110deg, #86163a, #b12a50); }
+.tipifica-count { margin-left: auto; color: #b9f3cf; font: 600 13px/1.3 'Segoe UI', Arial, sans-serif; }
+.tipifica-screen:fullscreen { width: 100vw; height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
+.tipifica-screen:fullscreen .tipifica-screen__frame { height: auto; min-height: 0; }
+/* Respaldo cuando el navegador no permite la pantalla completa: se amplía dentro de la ventana. */
+.tipifica-screen.is-expanded { position: fixed; inset: 0; z-index: 9999; border-radius: 0; }
+.tipifica-screen.is-expanded .tipifica-screen__frame { height: auto; min-height: 0; }
+body.tipifica-locked { overflow: hidden; }
+.tipifica-hint { margin: -8px 0 0; color: var(--muted); font-size: 14px; }
+.tipifica-hint kbd { padding: 1px 6px; border: 1px solid #c9ced8; border-bottom-width: 2px; border-radius: 4px; background: #fff; font-size: 12px; }
+
+/* Explicaciones */
+.tipifica-block { padding: 22px 24px; border: 1px solid var(--line); border-radius: 18px; background: #fff; }
+.tipifica-block h3 { margin: 0 0 14px; color: var(--navy); font-size: 21px; }
+.tipifica-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+.tipifica-cards li { display: grid; gap: 6px; align-content: start; padding: 16px; border: 1px solid #ece3cf; border-radius: 14px; background: linear-gradient(160deg, #fffdf7, #fbf4e4); }
+.tipifica-cards strong { color: var(--navy); font-size: 16px; }
+.tipifica-cards p { margin: 0; color: #4b5563; font-size: 15px; line-height: 1.5; }
+.tipifica-num { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--red); color: #fff; font-weight: 800; }
+.tipifica-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.tipifica-dl { display: grid; gap: 10px; margin: 0; }
+.tipifica-dl div { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; padding-bottom: 10px; border-bottom: 1px dashed #e5e7ed; }
+.tipifica-dl div:last-child { border-bottom: 0; padding-bottom: 0; }
+.tipifica-dl dt { color: var(--red); font-weight: 700; }
+.tipifica-dl dd { margin: 0; color: #374151; line-height: 1.5; }
+.tipifica-note { margin: 14px 0 0; padding: 10px 12px; border-left: 4px solid var(--gold); background: #fffaf0; color: #5b4a1d; font-size: 14px; }
+
+@media (max-width: 960px) {
+  .tipifica-cards, .tipifica-two { grid-template-columns: minmax(0, 1fr); }
+  .tipifica-screen__frame { height: 72vh; min-height: 460px; }
+  .tipifica-count { margin-left: 0; width: 100%; order: 5; }
+}
+@media (max-width: 560px) {
+  .tipifica-dl div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .tipifica-ctl { flex: 1 1 auto; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) { .tipifica-ctl { transition: none; } }

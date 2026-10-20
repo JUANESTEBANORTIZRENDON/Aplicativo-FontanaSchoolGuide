@@ -7,7 +7,13 @@ export default defineConfig({
   // ese reinicio falla con «Cannot find module ... vite.config.ts.timestamp-...»).
   envDir: false,
   // Solo index.html es entrada: las copias de otras ramas (.mergejuan, .mergemain) tienen su propio index.html.
-  optimizeDeps: { entries: ['index.html'] },
+  // simulador/index.html es el clon de Control Next del módulo Tipifica (se muestra en un iframe en /simulador/).
+  optimizeDeps: { entries: ['index.html', 'simulador/index.html'] },
+  build: {
+    rollupOptions: {
+      input: { main: 'index.html', simulador: 'simulador/index.html' },
+    },
+  },
   server: {
     // El servidor solo acepta el origen http://127.0.0.1:5173 en desarrollo: si el puerto está ocupado, falla
     // en vez de saltar a otro (con otro puerto, cerrar sesión y demás acciones dan «Origen no permitido»).

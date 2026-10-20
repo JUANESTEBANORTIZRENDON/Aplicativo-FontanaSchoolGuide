@@ -38,7 +38,7 @@ export async function mountObjections(container: HTMLElement, backHref: string):
     return items;
   }
   function nextStepSlide(): DeckSlide {
-    const nextName = state.nextName ?? 'Tipificación de llamadas';
+    const nextName = state.nextName ?? 'Tipifica';
     return {
       eyebrow: 'Siguiente paso', title: nextName, icon: NEXT_ICON, tone: 'highlight',
       lead: state.complete
@@ -120,7 +120,7 @@ export async function mountObjections(container: HTMLElement, backHref: string):
         <span class="deck-count" aria-live="polite">${index + 1} de ${items.length}</span>
         ${last
           ? (isLastBlock && state.complete && state.nextRoute
-            ? `<a class="deck-nav deck-nav--primary" href="${escapar(state.nextRoute)}">Ir a ${escapar(state.nextName ?? 'Tipificación de llamadas')} →</a>`
+            ? `<a class="deck-nav deck-nav--primary" href="${escapar(state.nextRoute)}">Ir a ${escapar(state.nextName ?? 'Tipifica')} →</a>`
             : `<button type="button" class="deck-nav deck-nav--primary" data-finish${saving ? ' disabled' : ''}>${saving ? 'Guardando…' : isLastBlock ? 'Finalizar módulo ✓' : 'Continuar al siguiente bloque →'}</button>`)
           : '<button type="button" class="deck-nav deck-nav--primary" data-next>Siguiente <span aria-hidden="true">→</span></button>'}
         <button type="button" class="deck-full" data-full aria-label="Pantalla completa" title="Pantalla completa">${FULL_ICON}</button>

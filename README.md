@@ -48,7 +48,7 @@ Al terminar las cinco etapas de `/induccion`, la confirmación de lectura habili
 
 ### Reglas de la ruta de formación
 
-- Catálogo inicial: 1 Ofimática para tus cobranzas → 2 Inducción a las cobranzas → 3 Enfréntate a la objeción → 4 Tipificación de llamadas → 5 Certificado (requiere los cuatro sellos).
+- Catálogo inicial: 1 Ofimática para tus cobranzas → 2 Inducción a las cobranzas → 3 Enfréntate a la objeción → 4 Tipifica (práctica en el clon de Control Next) → 5 Certificado (requiere los cuatro sellos).
 - `computeModuleViews` (dominio) calcula el estado efectivo de cada módulo combinando el estado del catálogo, prerrequisitos, sellos, progreso, intentos y excepciones vigentes. La usan el área del asesor, el panel y la sincronización que alimenta las métricas.
 - Un módulo `INACTIVE` se muestra "No disponible", con el botón deshabilitado. Un módulo aprobado muestra "Completado"; el módulo 1 tiene pantalla de resultado y sigue abierto para repasarlo (los demás se habilitarán cuando tengan la suya).
 - Intentos: numeración consecutiva con bloqueo de fila, límite `maxAttempts` más excepciones vigentes y espera `waitMinutes` tras un fallo. Una configuración evaluable nueva crea otra versión; nunca se edita una versión existente.
@@ -260,7 +260,7 @@ Ejecuta `npm run db:seed` y `npm run db:seed:demo` sobre la base de desarrollo, 
 | 1000000108 | Panel | ficha | Excepción REACTIVATE "Revocada"; el módulo 1 sigue sin intentos. |
 | 1000000109 | Asesor / panel | `/induccion`, ficha | Certificado con "Ver certificado"; en la ficha, FSG-DEMO-0001 activo y tres sellos. |
 | 1000000110 | Panel | ficha | FSG-DEMO-0002 anulado con motivo y FSG-DEMO-0003 activo que lo reemplaza. |
-| 1000000111 | Asesor | `/induccion` | Certificado bloqueado: "Te faltan los sellos de: Tipificación de llamadas". |
+| 1000000111 | Asesor | `/induccion` | Certificado bloqueado: "Te faltan los sellos de: Tipifica". |
 | 1000000112 | Panel | Métricas | Aparece en "Asesores detenidos" (7 días). |
 | 1000000113 | Asesor / panel | login, ficha | No inicia sesión; su historial de intentos sigue visible. |
 | 1000000114 | Asesor / panel | login, Auditoría | Mensaje genérico al entrar; el bloqueo y su motivo están en auditoría. |

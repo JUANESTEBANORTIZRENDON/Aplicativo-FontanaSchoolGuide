@@ -12,11 +12,14 @@ export const CATALOG = [
   { order: 1, slug: 'ofimatica-mecanografia', name: 'Ofimática para tus cobranzas', route: '/induccion/modulos/ofimatica-mecanografia', prerequisites: [] as string[] },
   { order: 2, slug: 'induccion-cobranzas', name: 'Inducción a las cobranzas', route: '/induccion/modulos/induccion-cobranzas', prerequisites: ['ofimatica-mecanografia'] },
   { order: 3, slug: OBJECTIONS_SLUG, name: OBJECTIONS_NAME, route: '/induccion/modulos/simulador-cobranzas', prerequisites: ['induccion-cobranzas'] },
-  { order: 4, slug: 'tipificacion-llamadas', name: 'Tipificación de llamadas', route: '/induccion/modulos/tipificacion-llamadas', prerequisites: ['simulador-cobranzas'] },
+  { order: 4, slug: 'tipificacion-llamadas', name: 'Tipifica', route: '/induccion/modulos/tipificacion-llamadas', prerequisites: ['simulador-cobranzas'] },
   { order: 5, slug: 'certificado', name: 'Certificado', route: '/induccion/certificado', prerequisites: ['ofimatica-mecanografia', 'induccion-cobranzas', 'simulador-cobranzas', 'tipificacion-llamadas'] },
 ];
 
 export const INDUCTION_MODULE_SLUG = 'induccion-cobranzas';
+// Módulo 04 «Tipifica» (slug técnico conservado): práctica de tipificación en el clon de Control Next.
+export const TIPIFICA_SLUG = 'tipificacion-llamadas';
+const TIPIFICA_ACTIVITY_TITLE = 'Tipifica: práctica en Control Next';
 
 // Módulo 03 «Enfréntate a la objeción» (slug técnico conservado): su única actividad obligatoria es una lección
 // que se aprueba con el examen final. Convierte el marcador de posición anterior sin cambiar su id, así que
@@ -80,7 +83,7 @@ export async function seedCatalog(prisma: PrismaClient): Promise<Map<string, str
     else if (item.slug !== 'certificado' && item.slug !== OFFICE_MODULE_SLUG) {
       await prisma.activity.upsert({
         where: { moduleId_order: { moduleId: module.id, order: 1 } },
-        create: { moduleId: module.id, order: 1, type: 'PLACEHOLDER', status: 'ACTIVE', isRequired: true, title: `${item.name}: contenido en preparación`, route: item.route },
+        create: { moduleId: module.id, order: 1, type: 'PLACEHOLDER', status: 'ACTIVE', isRequired: true, title: item.slug === TIPIFICA_SLUG ? TIPIFICA_ACTIVITY_TITLE : `${item.name}: contenido en preparación`, route: item.route },
         update: {},
       });
     }

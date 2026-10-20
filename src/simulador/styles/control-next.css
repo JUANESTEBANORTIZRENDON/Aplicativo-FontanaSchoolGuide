@@ -1,0 +1,404 @@
+/* Aspecto de Control Next (encabezado, campañas, ficha del cliente, panel Buscar) y la guía interactiva.
+   Va después de components.css y solo sobrescribe dentro de .sim-root. */
+
+.sim-root {
+  --cn-blue: #1f5cf2;
+  --cn-table: #2a7bf5;
+  --cn-gold: #fde9ad;
+  --cn-gold-soft: #fff6dc;
+  --cn-teal: #4cbfa6;
+  --cn-teal-ink: #1f8f78;
+  --cn-gray: #6c757d;
+  --cn-dark-strip: #262626;
+  --sim-brand-600: var(--cn-blue);
+}
+
+/* ---------- Encabezado ---------- */
+.sim-root .sim-sidebar { background: var(--cn-blue); }
+.sim-root .sim-topbar {
+  min-height: 72px;
+  box-shadow: 0 1px 0 #e6e8eb;
+  border-bottom: 0;
+}
+.sim-root .sim-topbar--perfil { min-height: 72px; }
+.sim-root .sim-topbar__brand { background: var(--cn-dark-strip); width: 220px; }
+.sim-root .sim-school-logo { gap: 10px; font-size: 18px; }
+.sim-root .sim-school-logo__text strong { color: #fff; font-weight: 800; }
+.sim-root .sim-school-logo__text span { color: #ff5a5f; font-weight: 700; }
+.sim-root .sim-clock--pill {
+  padding: 8px 22px 8px 14px;
+  border: 0;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.18), 0 3px 10px rgb(0 0 0 / 0.08);
+}
+.sim-root .sim-clock--pill .sim-clock__time { font-size: 18px; color: #222; }
+.sim-root .sim-clock--plain .sim-clock__time { font-size: 20px; color: #222; }
+.sim-root .sim-conn__line { color: #9aa0a8; gap: 6px; }
+.sim-root .sim-conn__ext { color: #9aa0a8; font-size: 15px; }
+.sim-root .sim-conn--conectado .sim-conn__line .sim-icon:first-child { color: #555; }
+.sim-root .sim-conn__state { border-color: #d9dcdf; font-size: 10px; color: #333; }
+.sim-root .sim-topbar__icons { gap: 14px; }
+.sim-root .sim-topbar__icons .sim-icon-btn { color: #333; font-size: 19px; }
+.sim-avatar-img {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.sim-avatar-img:hover { background: #f1f3f5; }
+.sim-advisors { display: block; max-width: 100%; height: auto; }
+
+/* ---------- Dashboard: perfil y campañas ---------- */
+.sim-root .sim-profile-card__aside .sim-advisors { width: 210px; }
+.sim-root .sim-alert--warning { background: #fff3cd; color: #6b5300; }
+.sim-root .sim-profile-card__name { font-size: 28px; }
+.sim-root .sim-portfolios__title { font-size: 26px; font-weight: 400; color: #333; }
+.sim-root .sim-portfolios__grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.sim-root .sim-portfolio-card {
+  display: grid;
+  place-items: center;
+  min-height: 118px;
+  padding: 8px 12px;
+  border-radius: 8px 8px 6px 6px;
+  border-bottom: 4px solid #2a3d6e;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.14);
+  color: #111;
+  text-decoration: none;
+}
+.sim-root .sim-portfolio-card:hover,
+.sim-root .sim-portfolio-card:focus-visible { transform: translateY(-3px); box-shadow: 0 8px 18px rgb(0 0 0 / 0.18); }
+.sim-wordmark {
+  font-family: 'Arial Black', 'Segoe UI Black', 'Helvetica Neue', Arial, sans-serif;
+  font-size: clamp(30px, 3.4vw, 42px);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  color: #111;
+}
+.sim-wordmark--propia { display: grid; justify-items: center; }
+.sim-wordmark--propia small {
+  margin-bottom: 4px;
+  font-family: Impact, 'Arial Narrow', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.sim-campaign-img { display: block; width: 124px; height: 100px; border-radius: 2px; }
+
+/* ---------- Clientes ---------- */
+.sim-root .sim-campaign-title {
+  font-family: 'Arial Black', 'Segoe UI Black', Arial, sans-serif;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+.sim-root .sim-tabs { border-bottom: 1px solid #dfe2e6; }
+.sim-tabs__item { display: inline-flex; align-items: center; border: 1px solid transparent; border-bottom: 0; }
+.sim-tabs__item.is-active { border-color: #dfe2e6; background: #fff; border-radius: 4px 4px 0 0; margin-bottom: -1px; }
+.sim-root .sim-tabs__tab { color: #444; font-weight: 700; }
+.sim-tabs__close {
+  display: grid;
+  place-items: center;
+  margin-right: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #e53935;
+  font-size: 18px;
+  cursor: pointer;
+}
+.sim-root .sim-table--cn th { background: var(--cn-table); color: #fff; text-align: center; font-weight: 700; }
+.sim-root .sim-table--cn td { text-align: center; }
+.sim-root .sim-table--cn tbody tr { cursor: pointer; }
+.sim-root .sim-table--cn.sim-cn-hist tbody tr { cursor: default; }
+.sim-root .sim-table__name { font-weight: 600; }
+.sim-ident {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--cn-blue);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.sim-status__dot--sin-gestion { --sim-status-color: var(--sim-info); }
+.sim-status__dot--menos-5-dias { --sim-status-color: var(--sim-warning); }
+.sim-status__dot--mas-5-dias { --sim-status-color: var(--sim-danger); }
+.sim-status__dot--gestionado-hoy { --sim-status-color: var(--sim-success); }
+.sim-ident .sim-status__dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; background: var(--sim-status-color); }
+
+/* ---------- Panel «Buscar» ---------- */
+.sim-search-host[hidden] { display: none; }
+.sim-search-overlay { position: fixed; inset: 0; z-index: 70; background: rgb(0 0 0 / 0.42); }
+.sim-search {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 71;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  width: min(300px, 100%);
+  padding: 18px 0 18px 18px;
+  overflow: auto;
+  background: #fff;
+  box-shadow: -6px 0 24px rgb(0 0 0 / 0.2);
+  transform: translateX(100%);
+  transition: transform 0.22s ease;
+}
+.sim-search-host.is-open .sim-search { transform: none; }
+.sim-search__head { display: flex; align-items: center; justify-content: space-between; padding-right: 10px; border-bottom: 1px solid #e3e5e8; }
+.sim-search__title { padding: 6px 4px 12px; border-bottom: 3px solid var(--cn-blue); font-size: 15px; font-weight: 700; }
+.sim-search__form { display: grid; gap: 10px; padding-right: 0; }
+.sim-search-field { display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: stretch; }
+.sim-search-field__addon { display: grid; place-items: center; border-radius: 4px 0 0 4px; background: #e9ecef; color: #333; font-size: 17px; }
+.sim-search-field .sim-input { border-radius: 0; border-right: 0; min-height: 36px; }
+.sim-search__label { margin-top: 4px; font-size: 14px; }
+.sim-search__tab { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+.sim-search__submit { justify-self: center; margin-top: 8px; }
+
+/* ---------- Ventanas ---------- */
+.sim-root .sim-modal--cn { width: min(470px, 100%); border-radius: 4px; gap: 10px; }
+.sim-root .sim-modal--wide { width: min(640px, 100%); }
+.sim-root .sim-modal--cn .sim-modal__title { font-size: 24px; font-weight: 400; color: #333; }
+.sim-modal__body { display: grid; gap: 4px; font-size: 14px; color: #333; }
+.sim-modal__list { display: grid; gap: 6px; list-style: none; padding: 0; }
+.sim-dl { display: grid; gap: 6px; }
+.sim-dl div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 8px; }
+.sim-dl dt { font-weight: 700; }
+
+/* ---------- Ficha del cliente ---------- */
+.sim-file .sim-card { border-radius: 2px; }
+.sim-file__bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; padding: 28px 48px; }
+.sim-file__campaign { font-size: 20px; font-weight: 800; }
+.sim-file__count { font-size: 20px; font-weight: 700; letter-spacing: 0.1em; }
+.sim-btn-group { display: inline-flex; justify-self: end; }
+.sim-btn-group .sim-btn { border-radius: 0; }
+.sim-btn-group .sim-btn:first-child { border-radius: 4px 0 0 4px; border-right: 1px solid rgb(255 255 255 / 0.25); }
+.sim-btn-group .sim-btn:last-child { border-radius: 0 4px 4px 0; }
+.sim-root .sim-btn--dark { background: var(--cn-gray); color: #fff !important; }
+.sim-root .sim-btn--dark:hover:not(:disabled) { background: #5a6268; }
+.sim-root .sim-btn--sky { background: #5fb8f5; color: #fff !important; }
+.sim-root .sim-btn--sky.sim-btn--danger { background: var(--sim-danger-ink); }
+.sim-root .sim-btn--teal { background: #5aaa86; color: #fff !important; }
+.sim-root .sim-btn--success { background: #28a745; }
+.sim-file__info { display: grid; grid-template-columns: minmax(180px, 0.8fr) minmax(0, 2.2fr); gap: 24px; align-items: center; padding: 30px 40px; }
+.sim-file__info-aside { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.sim-file__info-title { font-size: 20px; font-weight: 400; color: #444; }
+.sim-folder { width: 110px; height: 92px; }
+.sim-kv-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 40px; }
+.sim-kv { display: grid; grid-template-columns: 150px minmax(0, 1fr); min-height: 34px; overflow: hidden; border-radius: 18px; background: #f2f2f2; }
+.sim-kv__k { display: flex; align-items: center; padding: 0 10px; background: var(--cn-gold-soft); font-weight: 700; font-size: 14px; }
+.sim-kv__v { display: flex; align-items: center; padding: 0 10px; font-size: 14px; color: #444; min-width: 0; }
+.sim-kv__input { width: 100%; border: 0; background: transparent; font: inherit; color: #444; }
+.sim-subtabs { display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid #e6e8eb; }
+.sim-subtabs button,
+.sim-pills button {
+  padding: 10px 20px;
+  border: 0;
+  background: transparent;
+  color: #555;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+.sim-subtabs button.is-active { color: var(--cn-teal-ink); box-shadow: inset 0 -2px 0 var(--cn-teal); }
+.sim-root .sim-table--gold th { background: var(--cn-gold); color: #222; font-weight: 700; text-align: center; }
+.sim-root .sim-table--gold td { text-align: center; }
+.sim-root .sim-table--gold tbody tr { border-bottom: 3px solid var(--cn-gold-soft); }
+.sim-round-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: #1e88e5;
+  color: #fff;
+  font-size: 17px;
+  box-shadow: 0 0 0 4px #e3f0fd;
+  cursor: pointer;
+}
+.sim-cn-tabs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.sim-pills { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid #e3e5e8; border-radius: 999px; }
+.sim-pills button { border-radius: 999px; padding: 8px 24px; }
+.sim-pills button.is-active { background: var(--cn-teal); color: #fff; }
+.sim-mic {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid #222;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 17px;
+  cursor: pointer;
+}
+.sim-cn-form { display: grid; gap: 10px; }
+.sim-cn-form__title { display: flex; align-items: center; gap: 6px; font-size: 15px; }
+.sim-cn-form__time-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 18px; }
+.sim-cn-time { display: grid; grid-template-columns: repeat(2, minmax(70px, 180px) 10px) minmax(70px, 180px); align-items: center; gap: 4px; }
+.sim-cn-time span { text-align: center; }
+.sim-cn-time .sim-input { background: #fff; }
+.sim-cn-tools { display: flex; flex-wrap: wrap; gap: 4px; }
+.sim-cn-note { min-height: 110px; }
+.sim-cn-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; }
+.sim-cn-check { display: flex; align-items: center; gap: 8px; min-height: 38px; }
+.sim-cn-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+.sim-hist-tab { display: inline-block; margin-bottom: 14px; padding: 12px 18px; border: 1px solid #e3e5e8; border-bottom: 0; border-radius: 4px 4px 0 0; }
+.sim-hist-tab h2 { display: flex; align-items: center; gap: 6px; font-size: 16px; }
+.sim-cn-hist__tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; font-size: 15px; }
+.sim-cn-hist__tools label { display: flex; align-items: center; gap: 8px; }
+.sim-cn-hist__tools .sim-input { width: auto; min-width: 80px; }
+.sim-cn-hist__tools input.sim-input { min-width: 180px; }
+.sim-root .sim-cn-hist th,
+.sim-root .sim-cn-hist td { font-size: 11.5px; padding: 10px 6px; }
+.sim-root .sim-cn-hist th { text-transform: uppercase; }
+.sim-cn-hist__note { min-width: 240px; }
+.sim-cn-hist tr.is-own td { background: #eefaf3; }
+.sim-play {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 34px;
+  border: 1px solid #222;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+.sim-cn-hist__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+.sim-pager { display: inline-flex; border: 1px solid #dee2e6; border-radius: 4px; overflow: hidden; }
+.sim-pager button,
+.sim-pager span { padding: 8px 14px; border: 0; background: #fff; color: #555; font: inherit; }
+.sim-pager button:not(:disabled) { cursor: pointer; color: var(--cn-blue); }
+.sim-pager button:disabled { color: #999; }
+.sim-pager .is-current { background: var(--cn-blue); color: #fff; }
+.sim-pill { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.sim-pill--ok { background: #e3f6ea; color: #1e7d4f; }
+.sim-pill--late { background: #fdecec; color: #b42323; }
+.sim-pad { padding: 12px; }
+.sim-file__sticky {
+  position: fixed;
+  top: 64px;
+  left: 50px;
+  right: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 24px;
+  pointer-events: none;
+}
+.sim-file__sticky[hidden] { display: none; }
+.sim-file__pill {
+  display: inline-flex;
+  gap: 18px;
+  margin: 0 auto;
+  padding: 12px 22px;
+  border-radius: 0 0 22px 22px;
+  background: #fff;
+  box-shadow: 0 6px 14px rgb(0 0 0 / 0.25);
+  color: #444;
+  font-size: 15px;
+  pointer-events: auto;
+}
+.sim-file__sticky-actions { display: inline-flex; gap: 4px; pointer-events: auto; }
+
+/* ---------- Guía interactiva ---------- */
+.sim-guide { position: fixed; inset: 0; z-index: 1000; pointer-events: none; }
+.sim-guide__spot {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgb(9 18 38 / 0.55), 0 0 0 3px #ffd54f, 0 0 22px 6px rgb(255 213 79 / 0.6);
+  transition: left 0.25s ease, top 0.25s ease, width 0.25s ease, height 0.25s ease;
+  pointer-events: none;
+}
+.sim-guide.is-centered.is-active::before { content: ''; position: fixed; inset: 0; background: rgb(9 18 38 / 0.55); }
+.sim-guide__card {
+  position: fixed;
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 18px 44px rgb(0 0 0 / 0.35);
+  color: #1f2328;
+  pointer-events: auto;
+  transition: left 0.25s ease, top 0.25s ease;
+}
+.sim-guide__card[hidden] { display: none; }
+.sim-guide__head { display: flex; align-items: center; justify-content: space-between; }
+.sim-guide__badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: #fff1f1; color: #c62828; font-size: 12px; font-weight: 800; }
+.sim-guide__close { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 50%; background: #f1f3f5; font-size: 16px; cursor: pointer; }
+.sim-guide__title { font-size: 18px; font-weight: 800; }
+.sim-guide__text { font-size: 15px; line-height: 1.55; color: #333; }
+.sim-guide__extra:empty { display: none; }
+.sim-guide__action { width: 100%; min-height: 44px; font-size: 15px; }
+.sim-guide__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sim-guide__count { color: #6b7280; font-size: 13px; }
+.sim-guide__nav { display: inline-flex; gap: 6px; }
+.sim-guide__fab {
+  position: fixed;
+  left: 62px;
+  bottom: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #c62828;
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 8px 20px rgb(198 40 40 / 0.35);
+  pointer-events: auto;
+  cursor: pointer;
+}
+.sim-guide.is-active .sim-guide__fab { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .sim-guide__spot,
+  .sim-guide__card,
+  .sim-search { transition: none; }
+}
+
+/* Restablecer / Buscar debajo del semáforo, en la cuarta columna (como en Control Next). */
+@media (min-width: 1200px) {
+  .sim-root .sim-filters__actions { grid-column: 4; margin-top: -8px; }
+}
+.sim-root .sim-portfolio-card { grid-template-rows: 1fr; }
+/* Dentro de Fontana School la guía se abre desde la barra de la pantalla: sin botón flotante. */
+.sim-root.is-embedded .sim-guide__fab { display: none; }
+
+/* ---------- Pantallas angostas ---------- */
+@media (max-width: 1199px) {
+  .sim-file__info { grid-template-columns: minmax(0, 1fr); }
+  .sim-kv-grid { gap: 8px 16px; }
+  .sim-cn-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 767px) {
+  .sim-file__bar { grid-template-columns: minmax(0, 1fr); justify-items: center; padding: 18px; }
+  .sim-btn-group { justify-self: center; }
+  .sim-kv-grid,
+  .sim-cn-grid { grid-template-columns: minmax(0, 1fr); }
+  .sim-kv { grid-template-columns: 130px minmax(0, 1fr); }
+  .sim-file__info { padding: 18px; }
+  .sim-file__sticky { left: 0; }
+  .sim-file__sticky-actions { display: none; }
+  .sim-guide__fab { left: 12px; }
+  .sim-root .sim-topbar__brand { width: auto; }
+}

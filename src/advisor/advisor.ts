@@ -75,6 +75,8 @@ export async function mountLearningPath(): Promise<void> {
 const INDUCTION_SLUG = 'induccion-cobranzas';
 // El módulo 03 conserva su slug técnico; su nombre visible es «Enfréntate a la objeción».
 const OBJECTIONS_SLUG = 'simulador-cobranzas';
+// El módulo 04 conserva su slug técnico; su nombre visible es «Tipifica».
+const TIPIFICA_SLUG = 'tipificacion-llamadas';
 
 // Primera pantalla de «Inducción a las cobranzas»: la experiencia define el camino. Quien es nuevo recorre la
 // teoría y luego el examen final; quien tiene experiencia empieza por el mismo examen y, si no lo aprueba, ve la teoría.
@@ -109,6 +111,12 @@ export async function renderModulePage(container: HTMLElement, backHref = '/indu
     if (slug === OBJECTIONS_SLUG) {
       const { mountObjections } = await import('../objections/objections');
       await mountObjections(container, backHref);
+      return;
+    }
+    // Módulo 04 «Tipifica»: práctica en el clon de Control Next.
+    if (slug === TIPIFICA_SLUG) {
+      const { mountTipifica } = await import('../tipifica/tipifica');
+      await mountTipifica(container, backHref, data.module.order);
       return;
     }
     page.innerHTML = `
