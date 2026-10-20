@@ -299,5 +299,10 @@ export async function iniciarInterfaz(): Promise<void> {
   document.querySelector('.learning-path ol')!.outerHTML = pasosCamino('empresa', practiceRoute ? route : null);
   const { restoreProgress } = await import('./training');
   restoreProgress({ historia: usuario.historiaCompletada, metodo: usuario.metodoCompletado, completada: practiceRoute });
+  // Bienvenida ya completada: botón destacado para seguir al aula de formación.
+  if (practiceRoute) {
+    document.querySelector<HTMLAnchorElement>('#welcome-continue-link')!.href = route;
+    document.querySelector<HTMLElement>('#welcome-continue')!.hidden = false;
+  }
   await revealApp();
 }

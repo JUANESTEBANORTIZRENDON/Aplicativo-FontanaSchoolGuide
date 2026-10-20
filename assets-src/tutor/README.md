@@ -20,10 +20,14 @@ alineada por el **cuello**, y coloca todo en un lienzo común (424×484) con alf
 
 ## Voz y boca
 ```bash
-node scripts/tutor/generate-principle-audio.mjs               # sintetiza los 5 audios (voz local Piper es_MX-claude-high)
+node scripts/tutor/generate-principle-audio.mjs               # sintetiza los 5 audios con la voz masculina del tutor (Piper es_MX-ald-medium)
 node scripts/tutor/generate-principle-audio.mjs --only respeto
 node scripts/tutor/generate-principle-audio.mjs --mouth-only  # recalcula solo la boca con los .ogg existentes
 ```
+La **voz masculina** es `es_MX-ald-medium` (licencia Unlicense, instalada en `%LOCALAPPDATA%ontana-ttsoices`), con el tono bajado un 6 % (`PITCH` en el script).
+Es propia del tutor: no cambia la voz de los dictados (`config.json`). Tono medido (F0 mediano): 134–148 Hz; la voz anterior, `es_MX-claude-high`, daba 193 Hz.
+Si falta la voz, descárgala de https://huggingface.co/rhasspy/piper-voices (carpeta `es/es_MX/ald/medium`: `.onnx`, `.onnx.json` y `MODEL_CARD`).
+
 Salida: `public/tutor/audio/<id>.ogg` y `src/tutor/principle-audio.generated.ts`. Además del audio calcula la **línea de boca**:
 un bit cada 25 ms (1 = suena la voz) a partir del volumen real. El reproductor (`src/tutor/speaker.ts`) mira en qué punto va el
 audio en cada fotograma y elige el cuadro: el gesto según la coreografía y la boca abierta/cerrada según esa línea. Por eso la

@@ -1206,3 +1206,13 @@ header { position: relative; }
   .header-account { position: static; transform: none; width: 100%; justify-content: center; }
   .header-account-name { text-align: center; }
 }
+
+/* Aviso de continuidad: bienvenida completada → seguir al aula de formación. */
+.welcome-continue { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-bottom: 22px; padding: 18px 24px; border: 1px solid #d4af3766; border-left: 5px solid var(--red); border-radius: 18px; background: linear-gradient(110deg, #fffdf6, #f8efd9); box-shadow: 0 10px 28px #1f2a370d; }
+.welcome-continue[hidden] { display: none; }
+.welcome-continue p { margin: 0; color: var(--navy); font-size: 16px; line-height: 1.5; }
+.welcome-continue strong { color: var(--red); }
+.welcome-continue-link { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 12px 24px; border-radius: 14px; background: linear-gradient(110deg, #74112e, #a02447); color: #fff; font-weight: 700; font-size: 16px; text-decoration: none; box-shadow: 0 8px 18px #74112e26; transition: transform .18s ease, box-shadow .18s ease; }
+.welcome-continue-link:hover { transform: translateY(-2px); box-shadow: 0 12px 24px #74112e33; }
+.welcome-continue-link:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+@media (max-width: 640px) { .welcome-continue { padding: 16px 18px; } .welcome-continue-link { width: 100%; justify-content: center; } }

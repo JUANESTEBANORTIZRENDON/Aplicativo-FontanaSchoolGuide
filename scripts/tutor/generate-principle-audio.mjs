@@ -1,4 +1,4 @@
-// Genera la voz de cada principio con la voz local del proyecto (Piper es_MX-claude-high, ver server/scripts/tts)
+// Genera la voz de cada principio con una voz local de Piper (ver server/scripts/tts para instalar voces)
 // y calcula una «línea de boca»: un bit cada 25 ms (1 = hay voz) a partir del volumen real del audio, para que el
 // tutor abra y cierre la boca exactamente cuando suena la voz.
 //   node scripts/tutor/generate-principle-audio.mjs [--only <id>]
@@ -11,23 +11,34 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 
 const run = promisify(execFile);
+// Voz masculina del tutor: es_MX-ald-medium (licencia Unlicense). Es propia del tutor: NO cambia la voz global de los dictados
+// (config.json). Medición de F0 mediano con la misma frase: es_MX-claude-high ≈ 193 Hz (voz femenina), es_MX-ald-medium ≈ 158 Hz.
+const TUTOR_VOICE = process.argv.includes('--voice') ? process.argv[process.argv.indexOf('--voice') + 1] : 'es_MX-ald-medium';
+// Bajar un poco el tono refuerza el timbre masculino (1 = sin cambio). Se aplica con asetrate + atempo: el tono baja y la duración se conserva.
+const PITCH = 0.94;
 const STEP_MS = 25;
 const mouthOnly = process.argv.includes('--mouth-only'); // recalcula la boca con los .ogg existentes
 const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
 const configPath = path.join(process.env.LOCALAPPDATA ?? os.homedir(), 'fontana-tts', 'config.json');
 if (!existsSync(configPath)) throw new Error(`Falta ${configPath}: ejecuta server/scripts/tts/setup-tts.ps1.`);
 const config = JSON.parse(readFileSync(configPath, 'utf8').replace(/^﻿/, ''));
-if (config.engine !== 'piper') throw new Error('Este script usa Piper (motor configurado: ' + config.engine + ').');
+const voiceDir = path.join(path.dirname(configPath), 'voices', TUTOR_VOICE);
+const modelPath = path.join(voiceDir, `${TUTOR_VOICE}.onnx`);
+if (!existsSync(modelPath)) throw new Error(`Falta la voz ${TUTOR_VOICE} en ${voiceDir}. Descárgala de https://huggingface.co/rhasspy/piper-voices (carpeta es/es_MX) o con server/scripts/tts/setup-tts.ps1.`);
+const voiceInfo = JSON.parse(readFileSync(`${modelPath}.json`, 'utf8'));
+const voiceLicense = /License:\s*(.+)/i.exec(existsSync(path.join(voiceDir, 'MODEL_CARD')) ? readFileSync(path.join(voiceDir, 'MODEL_CARD'), 'utf8') : '')?.[1]?.trim() ?? 'ver MODEL_CARD';
 const content = JSON.parse(readFileSync('src/tutor/principles.json', 'utf8'));
 mkdirSync('public/tutor/audio', { recursive: true });
 const work = path.join(os.tmpdir(), 'fontana-tutor-voz'); mkdirSync(work, { recursive: true });
 
 async function synthesize(text, wav) {
   const textFile = `${wav}.txt`; writeFileSync(textFile, text, 'utf8'); // el texto va por archivo, nunca en la línea de comandos
-  try { await run(config.python, ['-m', 'piper', '-m', config.modelPath, '-i', textFile, '-f', wav, '--length-scale', '1.08', '--sentence-silence', '0.45'], { maxBuffer: 32 * 1024 * 1024 }); }
+  try { await run(config.python, ['-m', 'piper', '-m', modelPath, '-i', textFile, '-f', wav, '--length-scale', '1.08', '--sentence-silence', '0.45'], { maxBuffer: 32 * 1024 * 1024 }); }
   finally { rmSync(textFile, { force: true }); }
 }
-const toOgg = (wav, ogg) => run(config.ffmpeg, ['-y', '-hide_banner', '-loglevel', 'error', '-i', wav, '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11', '-ac', '1', '-ar', '48000', '-c:a', 'libopus', '-b:a', '48k', ogg]);
+const sampleRate = voiceInfo.audio?.sample_rate ?? 22050;
+const pitchFilter = PITCH === 1 ? '' : `asetrate=${Math.round(sampleRate * PITCH)},aresample=48000,atempo=${(1 / PITCH).toFixed(5)},`;
+const toOgg = (wav, ogg) => run(config.ffmpeg, ['-y', '-hide_banner', '-loglevel', 'error', '-i', wav, '-af', `${pitchFilter}loudnorm=I=-16:TP=-1.5:LRA=11`, '-ac', '1', '-ar', '48000', '-c:a', 'libopus', '-b:a', '48k', ogg]);
 async function durationMs(ogg) { const { stdout } = await run(config.ffprobe, ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', ogg]); return Math.round(Number(stdout.trim()) * 1000); }
 
 // Línea de boca desde el audio decodificado (16 kHz, 16 bits). La energía se mide cada 25 ms y la boca se abre cuando
@@ -58,4 +69,4 @@ for (const item of content.items) {
 // con --only se conservan las demás entradas ya generadas
 let previous = {};
 if ((only || mouthOnly) && existsSync('src/tutor/principle-audio.generated.ts')) { const m = /export const PRINCIPLE_AUDIO = (\{[\s\S]*?\}) as const;/.exec(readFileSync('src/tutor/principle-audio.generated.ts', 'utf8')); if (m) previous = JSON.parse(m[1]); }
-writeFileSync('src/tutor/principle-audio.generated.ts', `// Generado por scripts/tutor/generate-principle-audio.mjs: no editar a mano.\n// Voz: Piper ${config.voice} (licencia ${config.license}). «mouth»: un bit cada ${STEP_MS} ms (1 = suena la voz).\nexport const PRINCIPLE_AUDIO_STEP_MS = ${STEP_MS};\nexport const PRINCIPLE_AUDIO = ${JSON.stringify({ ...previous, ...entries }, null, 1)} as const;\n`);
+writeFileSync('src/tutor/principle-audio.generated.ts', `// Generado por scripts/tutor/generate-principle-audio.mjs: no editar a mano.\n// Voz: Piper ${TUTOR_VOICE} (licencia ${voiceLicense}), tono x${PITCH}. «mouth»: un bit cada ${STEP_MS} ms (1 = suena la voz).\nexport const PRINCIPLE_AUDIO_STEP_MS = ${STEP_MS};\nexport const PRINCIPLE_AUDIO = ${JSON.stringify({ ...previous, ...entries }, null, 1)} as const;\n`);
