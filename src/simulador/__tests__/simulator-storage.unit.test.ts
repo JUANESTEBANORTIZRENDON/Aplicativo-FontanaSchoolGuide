@@ -96,9 +96,12 @@ describe('store', () => {
 
   it('pausas y llamadas simuladas', () => {
     const store = createSimulatorStore(createSimulatorStorage(undefined, memoryBackend()));
-    store.setConnection('en-pausa', 'Almuerzo');
-    expect(store.get().pauses[0]).toMatchObject({ reason: 'Almuerzo' });
-    store.setConnection('desconectado');
+    store.setConnection('en-pausa', 'ALMUERZO');
+    expect(store.get().pauses[0]).toMatchObject({ reason: 'ALMUERZO' });
+    expect(store.get().connection).toBe('en-pausa');
+    // «Continuar» cierra la pausa y vuelve a CONECTADO.
+    store.setConnection('conectado');
+    expect(store.get().connection).toBe('conectado');
     expect(store.get().pauses[0]?.endedAt).toBeDefined();
 
     store.startCall('cli-001');

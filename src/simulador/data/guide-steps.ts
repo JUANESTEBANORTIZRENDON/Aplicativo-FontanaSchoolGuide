@@ -9,7 +9,7 @@ export interface GuideStep {
   title: string;
   text: string;
   /** Botón extra al final del paso (p. ej. lanzar la demostración de búsqueda por cédula). */
-  action?: { label: string; run: 'demo-cedula' };
+  action?: { label: string; run: 'demo-cedula' | 'demo-pausa' };
 }
 
 export const GUIDE_STEPS: Record<GuideView, GuideStep[]> = {
@@ -46,16 +46,21 @@ export const GUIDE_STEPS: Record<GuideView, GuideStep[]> = {
       text: 'Si aquí aparece «Extensión inválida», avisa a tu supervisor antes de empezar: sin una extensión válida no puedes llamar.',
     },
     {
+      target: 'comun.avatar',
+      title: 'Tu avatar',
+      text: 'En tu foto (arriba a la derecha) está el menú del asesor: «Mi Perfil» vuelve a esta pantalla, «Pausa» inicia una pausa y «Logout» cierra la sesión.',
+    },
+    {
       target: 'carteras.listado',
       title: 'Campañas',
-      text: 'Cada tarjeta es una campaña (cartera) que tienes asignada. Pulsa «Marketing» para entrar a sus clientes.',
+      text: 'Cada tarjeta es una campaña (cartera) que tienes asignada. En la práctica las campañas tienen nombres ficticios. Pulsa «Aurora» para entrar a sus clientes.',
     },
   ],
   clientes: [
     {
       target: 'comun.barra-lateral',
       title: 'Menú lateral',
-      text: 'La barra azul tiene los accesos del aplicativo: inicio, campañas, clientes, llamadas, compromisos, productividad, pausas y reportes. Con ☰ se despliega con los nombres.',
+      text: 'Con ☰ se despliega el menú con tu foto y tu nombre. Nosotros solo usamos cuatro opciones: «Main» (tu perfil y tus campañas), «Dashboard» (las cifras de la campaña), «Productividad» (tus gestiones por día) y «Clientes» (donde gestionas). «Adm. Pausas» es una opción adicional que no es de nuestro uso: ignórala.',
     },
     {
       target: 'comun.reloj',
@@ -65,12 +70,18 @@ export const GUIDE_STEPS: Record<GuideView, GuideStep[]> = {
     {
       target: 'comun.estado-conexion',
       title: 'Extensión y estado',
-      text: 'Tu extensión y tu estado. CONECTADO significa que puedes hacer y recibir llamadas. Pulsa para pasar a pausa (descanso, almuerzo, capacitación): cada pausa queda registrada, así que úsala siempre que te levantes.',
+      text: 'Tu extensión y tu estado: CONECTADO significa que puedes hacer y recibir llamadas; EN PAUSA, que no te entran llamadas. Durante una llamada aquí aparece «En llamada» con el botón «Colgar».',
     },
     {
       target: 'clientes.herramientas',
       title: 'Herramientas',
       text: 'Lista de tareas (tus agendamientos), campana de avisos (promesas que vencen hoy y clientes sin gestión), pagos ($) y la lupa para buscar a un cliente.',
+    },
+    {
+      target: 'comun.avatar',
+      title: 'Pausas (almuerzo, break, baño…)',
+      text: 'Cada vez que te levantes del puesto haz una pausa: 1) si estás en llamada, termínala primero con «Colgar» y guarda la gestión; 2) pulsa tu avatar y elige «Pausa»; 3) selecciona el tipo (BREAK AM, ALMUERZO, BREAK PM, BAÑO, CAPACITACIÓN…) y pulsa «Enviar»; 4) al volver pulsa «Continuar». Nunca dejes el puesto sin pausar.',
+      action: { label: 'Ver cómo se hace una pausa', run: 'demo-pausa' },
     },
     {
       target: 'clientes.pestanas',

@@ -142,7 +142,7 @@ function template(ctx: SimContext, portfolio: Portfolio, range: RangeKey): strin
 
 export function renderPortfolioDashboardPage(ctx: SimContext, container: HTMLElement, portfolio: Portfolio): Cleanup {
   ctx.setTitle('Panel', portfolio);
-  const shell = mountAppShell(ctx, container, { portfolio, active: 'inicio', topbar: 'cartera', rail: true });
+  const shell = mountAppShell(ctx, container, { portfolio, active: 'dashboard', topbar: 'cartera', rail: true });
   shell.main.innerHTML = `
     <div class="sim-page">
       <h1 class="sim-visually-hidden">Panel de ${esc(portfolio.name)}</h1>

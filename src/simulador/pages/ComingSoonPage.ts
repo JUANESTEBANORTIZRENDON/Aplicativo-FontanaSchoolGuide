@@ -28,12 +28,12 @@ const MODULES: Record<ModuleKey, { title: string; icon: string; text: string }> 
   productividad: {
     title: 'Productividad',
     icon: 'ChartColumn',
-    text: 'Los informes detallados de productividad llegarán en una fase posterior. Este es el resumen del mes actual.',
+    text: 'Productividad muestra cuántas gestiones haces por día y con qué resultado. Revísala para saber cómo vas frente a tu meta. Este es el resumen del mes actual.',
   },
   pausas: {
-    title: 'Pausas',
-    icon: 'CirclePause',
-    text: 'La administración de pausas llegará en una fase posterior. Aquí ves las pausas que registraste desde el estado de conexión.',
+    title: 'Adm. Pausas',
+    icon: 'MessageCircle',
+    text: 'Esta opción es adicional y NO la usamos en nuestra operación: puedes ignorarla. Las pausas se hacen desde tu avatar (arriba a la derecha) → Pausa. Abajo ves, solo como referencia, las pausas de tu práctica.',
   },
   reportes: {
     title: 'Reportes',
@@ -117,20 +117,20 @@ function dataTemplate(ctx: SimContext, portfolio: Portfolio, module: ModuleKey):
 export function renderComingSoonPage(ctx: SimContext, container: HTMLElement, portfolio: Portfolio, module: ModuleKey): Cleanup {
   const meta = MODULES[module];
   ctx.setTitle(meta.title, portfolio);
-  const shell = mountAppShell(ctx, container, { portfolio, active: module as NavKey, topbar: 'cartera', rail: true });
+  const shell = mountAppShell(ctx, container, { portfolio, active: module === 'productividad' || module === 'pausas' ? (module as NavKey) : null, topbar: 'cartera', rail: true });
 
   const render = (): void => {
     const data = dataTemplate(ctx, portfolio, module);
     shell.main.innerHTML = `
       <div class="sim-page">
         <div class="sim-page-head sim-page-head--end">
-          ${breadcrumbTemplate([{ label: 'Panel', href: ctx.href(`/cartera/${portfolio.id}/panel`) }, { label: meta.title }])}
+          ${breadcrumbTemplate([{ label: 'Dashboard', href: ctx.href(`/cartera/${portfolio.id}/panel`) }, { label: meta.title }])}
         </div>
         <section class="sim-card sim-coming-soon">
           ${icon(meta.icon, 'sim-coming-soon__icon')}
-          <h1 class="sim-card__title">${esc(meta.title)} · Módulo en preparación</h1>
+          <h1 class="sim-card__title">${esc(meta.title)}${module === 'productividad' || module === 'pausas' ? '' : ' · Módulo en preparación'}</h1>
           <p>${esc(meta.text)}</p>
-          <a class="sim-btn sim-btn--primary" href="${esc(ctx.href(`/cartera/${portfolio.id}/panel`))}">${icon('House')} Volver al inicio de la cartera</a>
+          <a class="sim-btn sim-btn--primary" href="${esc(ctx.href(`/cartera/${portfolio.id}/panel`))}">${icon('House')} Volver al Dashboard</a>
         </section>
         ${data ? `<section class="sim-card" aria-label="Datos de solo lectura"><h2 class="sim-card__title">Solo lectura</h2>${data}</section>` : ''}
       </div>`;

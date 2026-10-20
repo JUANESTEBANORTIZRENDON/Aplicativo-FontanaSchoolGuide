@@ -11,7 +11,7 @@ import type { Cleanup } from '../utils/dom';
 export function renderPortfolioSelectionPage(ctx: SimContext, container: HTMLElement): Cleanup {
   ctx.setTitle('Dashboard');
   ctx.store.setActivePortfolio(null);
-  const shell = mountAppShell(ctx, container, { portfolio: null, active: 'carteras', topbar: 'perfil', rail: false });
+  const shell = mountAppShell(ctx, container, { portfolio: null, active: 'main', topbar: 'perfil', rail: false });
 
   shell.main.innerHTML = `
     <div class="sim-page sim-page--profile">

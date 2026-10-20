@@ -9,6 +9,7 @@ import './styles/control-next.css';
 
 import { openConfirm } from './components/ConfirmDialog';
 import { mountGuide } from './components/GuideTour';
+import { mountPauseScreen } from './components/PauseFlow';
 import { createToaster } from './components/Toast';
 import type { MountOptions, SimContext } from './context';
 import { BRAND_NAME } from './data/catalogs';
@@ -93,6 +94,7 @@ export function mountSimulator(root: HTMLElement, options: MountOptions = {}): (
 
   const router = createRouter(ctx, view);
   const stopRouter = router.start();
+  const stopPause = mountPauseScreen(ctx);
   const stopGuide = mountGuide(ctx);
 
   // Avisa a Fontana School (si el simulador está dentro de su iframe) cada vez que se guarda una gestión.
@@ -114,6 +116,7 @@ export function mountSimulator(root: HTMLElement, options: MountOptions = {}): (
     clearInterval(sessionTimer);
     stopNotify();
     stopGuide();
+    stopPause();
     stopRouter();
     toaster.destroy();
     simRoot.remove();

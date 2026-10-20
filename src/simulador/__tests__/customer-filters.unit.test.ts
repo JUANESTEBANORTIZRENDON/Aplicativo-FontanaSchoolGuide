@@ -10,7 +10,7 @@ import type { CustomerView } from '../types/simulator';
 
 function view(partial: Partial<CustomerView> & { id: string; name: string }): CustomerView {
   return {
-    portfolioId: 'marketing',
+    portfolioId: 'aurora',
     document: '1000000001',
     phone: '300 555 0101',
     email: 'x@ejemplo.test',

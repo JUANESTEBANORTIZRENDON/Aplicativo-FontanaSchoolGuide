@@ -18,12 +18,12 @@ const LAST_NAMES = [
   'Castro', 'Vargas', 'Rojas', 'Moreno', 'Muñoz', 'Díaz', 'Suárez', 'Mejía', 'Cárdenas', 'Quintero',
 ];
 
-const PORTFOLIO_SIZES: Record<string, number> = { marketing: 12, 'marketing-propia': 11, orion: 11 };
+const PORTFOLIO_SIZES: Record<string, number> = { aurora: 12, 'aurora-propia': 11, andes: 11 };
 
 const MORA_RANGES: Record<string, [number, number]> = {
-  marketing: [5, 60],
-  'marketing-propia': [20, 130],
-  orion: [60, 360],
+  aurora: [5, 60],
+  'aurora-propia': [20, 130],
+  andes: [60, 360],
 };
 
 const NOTES: Record<ResultCode, string[]> = {
@@ -139,10 +139,10 @@ export function generateCustomers(now: Date, seed = 20261016): SeedCustomers {
       const obligations: Obligation[] = [];
       for (let k = 0; k < obligationCount; k += 1) {
         const days = rng.int(moraMin, moraMax);
-        const base = portfolio.id === 'orion' ? rng.int(3_000, 15_000) : rng.int(300, 8_000);
+        const base = portfolio.id === 'andes' ? rng.int(3_000, 15_000) : rng.int(300, 8_000);
         const status = rng.chance(0.08)
           ? 'pagada'
-          : portfolio.id === 'orion' && days > 200 && rng.chance(0.5)
+          : portfolio.id === 'andes' && days > 200 && rng.chance(0.5)
             ? 'escalada'
             : 'pendiente';
         obligations.push({

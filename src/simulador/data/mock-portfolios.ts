@@ -1,10 +1,13 @@
 import type { Portfolio } from '../types/simulator';
 
-/** Campañas (carteras) de práctica. Imitan el aspecto de las tarjetas de Control Next; los clientes son ficticios. */
+/**
+ * Campañas (carteras) de práctica con nombres FICTICIOS: imitan el aspecto de las tarjetas de Control Next, pero no
+ * muestran las empresas reales de la operación. Los clientes también son ficticios.
+ */
 export const PORTFOLIOS: Portfolio[] = [
   {
-    id: 'marketing',
-    name: 'Marketing',
+    id: 'aurora',
+    name: 'Aurora',
     description: 'Campaña principal de la práctica: clientes con mora temprana. Ideal para tus primeras gestiones.',
     accent: '#111827',
     logo: 'palabra',
@@ -12,8 +15,8 @@ export const PORTFOLIOS: Portfolio[] = [
     products: ['Crédito de consumo', 'Tarjeta de crédito'],
   },
   {
-    id: 'marketing-propia',
-    name: 'Marketing Propia',
+    id: 'aurora-propia',
+    name: 'Aurora Propia',
     description: 'Cartera propia: compras a plazos y seguimiento de promesas de pago.',
     accent: '#111827',
     logo: 'propia',
@@ -21,11 +24,11 @@ export const PORTFOLIOS: Portfolio[] = [
     products: ['Compra a plazos', 'Tarjeta de crédito'],
   },
   {
-    id: 'orion',
-    name: 'Orión',
+    id: 'andes',
+    name: 'Andes',
     description: 'Créditos con mora avanzada y casos escalados.',
     accent: '#1e3a8a',
-    logo: 'constelacion',
+    logo: 'imagen',
     practiceStatus: 'Nivel avanzado',
     products: ['Crédito de libranza', 'Crédito de consumo'],
   },

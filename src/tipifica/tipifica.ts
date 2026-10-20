@@ -6,10 +6,12 @@ import { api, escapar } from '../http';
 
 const SECTIONS: { title: string; text: string }[] = [
   { title: 'Dashboard y campañas', text: 'Tu perfil (nombre, cédula, extensión, teléfono) y las campañas que tienes asignadas. Cada tarjeta es una cartera: al pulsarla entras a sus clientes.' },
-  { title: 'Encabezado', text: 'Reloj con la hora de Bogotá, tu extensión y tu estado (CONECTADO o en pausa), la lista de tareas, los avisos, los pagos, la lupa de búsqueda y tu avatar.' },
+  { title: 'Encabezado', text: 'Reloj con la hora de Bogotá, tu extensión y tu estado (CONECTADO o EN PAUSA), la lista de tareas, los avisos, los pagos, la lupa de búsqueda y tu avatar (Mi Perfil, Pausa, Logout).' },
+  { title: 'Menú lateral', text: 'Solo usamos cuatro opciones: Main (tu perfil y campañas), Dashboard (cifras de la campaña), Productividad y Clientes. «Adm. Pausas» es una opción adicional que no es de nuestro uso: ignórala.' },
   { title: 'Clientes y filtros', text: 'Filtra por fechas de promesa y de gestión, ciudad, asesor, mejor y último perfil. La tabla muestra identificación, nombre, perfiles, asesor, fecha de gestión y promesas.' },
   { title: 'Estado de Gestión de Cartera', text: 'El semáforo: cian sin gestión, amarillo menos de 5 días sin gestión, rojo más de 5 días y verde gestionado hoy. Pulsa un color para filtrar.' },
   { title: 'Buscar por cédula', text: 'La lupa abre el panel «Buscar». Escribes la cédula, pulsas Buscar, Control Next confirma campaña, nombre e identificación y con OK abres la ficha.' },
+  { title: 'Pausas', text: 'Si estás en llamada, termínala primero y guarda la gestión. Luego avatar → Pausa → elige el tipo (BREAK AM, ALMUERZO, BAÑO…) → Enviar. Al volver pulsa Continuar.' },
   { title: 'Ficha del cliente (G.C)', text: 'Información personal, datos de la obligación (valor vencido, intereses, saldo total, honorarios), el registro de la gestión y el histórico completo.' },
 ];
 
@@ -24,6 +26,7 @@ const BUTTONS: { name: string; text: string }[] = [
   { name: 'Buzón', text: 'Registra al instante que la llamada cayó a buzón de voz.' },
   { name: 'Cancelar', text: 'Limpia el formulario de la gestión sin guardar.' },
   { name: 'Guardar', text: 'Registra la gestión con su tipificación. Si no guardas, la llamada no existió.' },
+  { name: 'Pausa / Continuar', text: 'Pausa (en tu avatar) detiene tus llamadas mientras te levantas; Continuar te deja otra vez CONECTADO.' },
   { name: 'Micrófono / Audio', text: 'Las llamadas se graban y se escuchan desde el histórico.' },
 ];
 
@@ -69,6 +72,7 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
         <div class="tipifica-screen__controls" role="toolbar" aria-label="Controles de la pantalla de práctica">
           <button type="button" class="tipifica-ctl" data-tip="guia">Guía de esta pantalla</button>
           <button type="button" class="tipifica-ctl" data-tip="demo">Ver cómo se ingresa una cédula</button>
+          <button type="button" class="tipifica-ctl" data-tip="pausa">Ver cómo se hace una pausa</button>
           <span class="tipifica-count" aria-live="polite" id="tipifica-count"></span>
           <button type="button" class="tipifica-ctl tipifica-ctl--icon" data-tip="reload" aria-label="Volver a cargar la pantalla" title="Volver a cargar">↻</button>
           <button type="button" class="tipifica-ctl tipifica-ctl--full" data-tip="full" aria-pressed="false">${FULL_ICON}<span>Pantalla completa</span></button>
@@ -150,6 +154,7 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
     if (action === 'full') void toggleFull();
     else if (action === 'guia') send('tipifica:guia');
     else if (action === 'demo') send('tipifica:demo');
+    else if (action === 'pausa') send('tipifica:pausa');
     else if (action === 'reload') frame.contentWindow?.location.reload();
   });
 }

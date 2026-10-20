@@ -12,7 +12,7 @@ import { esc } from '../utils/format';
 
 export function renderHelpPage(ctx: SimContext, container: HTMLElement, portfolio: Portfolio): Cleanup {
   ctx.setTitle('Ayuda', portfolio);
-  const shell = mountAppShell(ctx, container, { portfolio, active: 'ayuda', topbar: 'cartera', rail: true });
+  const shell = mountAppShell(ctx, container, { portfolio, active: null, topbar: 'cartera', rail: true });
   const base = `/cartera/${portfolio.id}`;
 
   shell.main.innerHTML = `

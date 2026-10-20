@@ -144,7 +144,7 @@ export function mountGuide(ctx: SimContext): Cleanup {
     title.textContent = step.title;
     text.textContent = step.text;
     extra.innerHTML = step.action
-      ? `<button type="button" class="sim-btn sim-btn--success sim-guide__action" data-guide="action">${icon('Search')} ${esc(step.action.label)}</button>`
+      ? `<button type="button" class="sim-btn sim-btn--success sim-guide__action" data-guide="action">${icon(step.action.run === 'demo-pausa' ? 'CirclePause' : 'Search')} ${esc(step.action.label)}</button>`
       : '';
     hydrateIcons(extra);
     count.textContent = `${index + 1} de ${steps.length}`;
@@ -265,6 +265,72 @@ export function mountGuide(ctx: SimContext): Cleanup {
     }
   };
 
+  /** Espera hasta que `done()` sea verdadero (el asesor hace el paso), recolocando la burbuja. */
+  const until = async (done: () => boolean, ms = 180_000): Promise<void> => {
+    const started = Date.now();
+    while (Date.now() - started < ms) {
+      await pause(250);
+      if (done()) return;
+      place();
+    }
+  };
+
+  /** Demostración de la pausa: avatar → Pausa → tipo de pausa → Enviar → Continuar. */
+  const runPauseDemo = async (): Promise<void> => {
+    if (demoRunning) return;
+    if (!ctx.store.hasValidSession()) {
+      ctx.toast('Primero inicia sesión en el simulador.', 'warning');
+      return;
+    }
+    demoRunning = true;
+    demoCancelled = false;
+    stop();
+    try {
+      if (ctx.store.get().connection === 'en-pausa') {
+        bubble('pausa.continuar', 'Ya estás en pausa', 'Pulsa «Continuar» para volver a quedar CONECTADO y luego repite la demostración.');
+        await until(() => ctx.store.get().connection !== 'en-pausa');
+        return;
+      }
+      if (ctx.store.get().activeCall) {
+        bubble('comun.estado-conexion', '1. Primero termina la llamada', 'No se puede pausar con una llamada en curso. Pulsa «Colgar», guarda la gestión y después haz la pausa.');
+        await until(() => !ctx.store.get().activeCall);
+      }
+      const menu = (): HTMLElement | null => document.querySelector<HTMLElement>('#sim-avatar-menu');
+      bubble('comun.avatar', 'Pulsa tu avatar', 'Arriba a la derecha, en tu foto, está el menú del asesor: Mi Perfil, Pausa y Logout.');
+      await pause(1700);
+      if (menu()?.hidden) document.querySelector<HTMLElement>('[data-popover-toggle="sim-avatar-menu"]')?.click();
+      await pause(500);
+      bubble('comun.pausa', 'Pulsa «Pausa»', 'Úsala siempre que te levantes del puesto: almuerzo, break, baño, capacitación o retroalimentación.');
+      await pause(1900);
+      document.querySelector<HTMLElement>('[data-sim-guide="comun.pausa"]')?.click();
+      await pause(500);
+      const select = document.querySelector<HTMLSelectElement>('#sim-pause-select');
+      if (!select) return;
+      bubble('pausa.tipo', 'Elige el tipo de pausa', 'En «Seleccione un pausa» escoge la que corresponde: BREAK AM, ALMUERZO, BREAK PM, BAÑO, CAPACITACIÓN…');
+      await pause(1500);
+      select.value = 'ALMUERZO';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      await pause(1000);
+      bubble('pausa.ventana', 'Pulsa «Enviar»', 'Con «Enviar» inicia la pausa y queda registrada con su hora. «Cancelar» cierra la ventana sin pausar. Pulsa «Enviar» para continuar.');
+      await until(() => !document.querySelector('[data-sim-guide="pausa.ventana"]'));
+      await pause(400);
+      if (ctx.store.get().connection !== 'en-pausa') {
+        stop();
+        ctx.toast('No se inició la pausa. Puedes repetir la demostración cuando quieras.', 'info');
+        return;
+      }
+      bubble('pausa.continuar', 'Al volver, pulsa «Continuar»', 'Mientras estás en pausa no te entran llamadas y el tiempo corre. Cuando regreses a tu puesto pulsa «Continuar» para quedar CONECTADO.');
+      await until(() => ctx.store.get().connection !== 'en-pausa');
+      stop();
+      ctx.toast('¡Bien! Así se hace una pausa: terminar la llamada → avatar → Pausa → tipo → Enviar → Continuar.', 'success');
+    } catch {
+      stop();
+    } finally {
+      layer.classList.remove('is-demo');
+      demoRunning = false;
+    }
+  };
+
   const onRoute = (): void => {
     if (demoRunning) return;
     stop();
@@ -296,7 +362,10 @@ export function mountGuide(ctx: SimContext): Cleanup {
           stop();
         }
         else go(1);
-      } else if (action === 'action') void runDemo();
+      } else if (action === 'action') {
+        if (steps[index]?.action?.run === 'demo-pausa') void runPauseDemo();
+        else void runDemo();
+      }
     }),
     on(document, 'keydown', (event) => {
       if (index < 0) return;
@@ -309,6 +378,7 @@ export function mountGuide(ctx: SimContext): Cleanup {
       const type = (event.data as { type?: string } | null)?.type;
       if (type === 'tipifica:guia') start(true);
       else if (type === 'tipifica:demo') void runDemo();
+      else if (type === 'tipifica:pausa') void runPauseDemo();
     }),
   ]);
 }

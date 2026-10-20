@@ -176,7 +176,7 @@ export function createSimulatorStore(storage: SimulatorStorage) {
       set((s) => {
         let pauses = s.pauses.some((p) => !p.endedAt) ? closeOpenPause(s.pauses) : s.pauses;
         if (connection === 'en-pausa') {
-          pauses = [...pauses, { id: newId('pau'), reason: reason ?? 'Descanso', startedAt: new Date().toISOString() }];
+          pauses = [...pauses, { id: newId('pau'), reason: reason ?? 'BREAK AM', startedAt: new Date().toISOString() }];
         }
         return { connection, pauses };
       });

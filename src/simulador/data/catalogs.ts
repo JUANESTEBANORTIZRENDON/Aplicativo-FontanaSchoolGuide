@@ -177,7 +177,16 @@ export const SORT_FIELDS: { code: SortField; label: string }[] = [
   { code: 'promesas', label: 'Total promesas' },
 ];
 
-export const PAUSE_REASONS: PauseReason[] = ['Descanso', 'Almuerzo', 'Capacitación'];
+export const PAUSE_REASONS: PauseReason[] = [
+  'Almuerzo Teletrabajo',
+  'BREAK AM',
+  'ALMUERZO',
+  'BREAK PM',
+  'BAÑO',
+  'CAPACITACIÓN',
+  'RETROALIMENTACION',
+  'PAUSA ACTIVAS',
+];
 
 /** Duración de la sesión ficticia (igual que Fontana School). */
 export const SESSION_HOURS = 8;

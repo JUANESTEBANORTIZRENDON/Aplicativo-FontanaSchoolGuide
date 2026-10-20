@@ -3,7 +3,7 @@
 export type PortfolioId = string;
 
 /** Estilo de la tarjeta de campaña: nombre en letra grande, «PROPIA» sobre el nombre o imagen de constelación. */
-export type LogoShape = 'palabra' | 'propia' | 'constelacion';
+export type LogoShape = 'palabra' | 'propia' | 'imagen';
 
 export interface Portfolio {
   id: PortfolioId;
@@ -102,7 +102,16 @@ export interface CallRecord {
   simulatedByUser: boolean;
 }
 
-export type PauseReason = 'Descanso' | 'Almuerzo' | 'Capacitación';
+/** Tipos de pausa de Control Next (en el orden del selector). */
+export type PauseReason =
+  | 'Almuerzo Teletrabajo'
+  | 'BREAK AM'
+  | 'ALMUERZO'
+  | 'BREAK PM'
+  | 'BAÑO'
+  | 'CAPACITACIÓN'
+  | 'RETROALIMENTACION'
+  | 'PAUSA ACTIVAS';
 
 export interface PauseRecord {
   id: string;

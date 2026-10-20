@@ -23,7 +23,7 @@ describe('computeDashboardMetrics', () => {
   const metrics = (extra: Management[] = []) =>
     computeDashboardMetrics({
       views: buildCustomerViews(
-        dataset.customers.filter((c) => c.portfolioId === 'marketing'),
+        dataset.customers.filter((c) => c.portfolioId === 'aurora'),
         [...dataset.managements, ...extra],
         now,
       ),
@@ -48,7 +48,7 @@ describe('computeDashboardMetrics', () => {
 
   it('registrar una promesa hoy actualiza compromisos, proyección y productividad', () => {
     const before = metrics();
-    const customer = dataset.customers.find((c) => c.portfolioId === 'marketing')!;
+    const customer = dataset.customers.find((c) => c.portfolioId === 'aurora')!;
     const promise: Management = {
       id: 'nueva',
       customerId: customer.id,

@@ -9,7 +9,7 @@ const now = new Date(2026, 9, 16, 11, 0);
 
 const customer: Customer = {
   id: 'c1',
-  portfolioId: 'marketing',
+  portfolioId: 'aurora',
   document: '1000123456',
   name: 'Ana Prueba',
   phone: '300 555 0101',

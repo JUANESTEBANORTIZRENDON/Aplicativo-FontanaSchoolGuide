@@ -10,23 +10,28 @@ import { connectionBadgeTemplate, mountConnectionBadge } from './ConnectionBadge
 import { hydrateIcons, icon } from './icons';
 import { liveClockTemplate, mountLiveClock } from './LiveClock';
 import { advisorsIllustration, schoolLogo } from './Logo';
+import { requestPause } from './PauseFlow';
 
 export type TopbarVariant = 'perfil' | 'cartera' | 'clientes';
 
-function avatarMenuTemplate(portfolio: Portfolio | null, ctx: SimContext): string {
+function avatarMenuTemplate(ctx: SimContext): string {
   return `
     <div class="sim-dropdown">
       <button type="button" class="sim-avatar-img" data-popover-toggle="sim-avatar-menu"
         aria-expanded="false" aria-controls="sim-avatar-menu" aria-label="Menú del asesor" data-sim-guide="comun.avatar">
         ${advisorsIllustration(42)}
       </button>
-      <div class="sim-popover sim-popover--right" id="sim-avatar-menu" hidden>
-        <p class="sim-popover__title">${esc(displayAdvisor().firstName)} ${esc(displayAdvisor().lastNames)}</p>
-        <p class="sim-popover__subtitle">${esc(PRACTICE_ADVISOR.username)}</p>
-        <ul class="sim-popover__list">
-          ${portfolio ? `<li><a href="${esc(ctx.href(`/cartera/${portfolio.id}/ayuda`))}">${icon('CircleQuestionMark')} Ir a Ayuda</a></li>` : ''}
-          <li><button type="button" data-action="reset">${icon('RotateCcw')} Restablecer práctica</button></li>
-          <li><button type="button" data-action="logout">${icon('LogOut')} Salir del simulador</button></li>
+      <div class="sim-popover sim-popover--right sim-user-menu" id="sim-avatar-menu" hidden>
+        <div class="sim-user-menu__head">
+          ${advisorsIllustration(96)}
+          <p class="sim-user-menu__name">${esc(displayAdvisor().firstName)} ${esc(displayAdvisor().lastNames)}</p>
+          <p class="sim-user-menu__mail">${esc(PRACTICE_ADVISOR.email)}</p>
+        </div>
+        <ul class="sim-popover__list sim-user-menu__list">
+          <li><a href="${esc(ctx.href('/carteras'))}">${icon('UserRound')} Mi Perfil</a></li>
+          <li><button type="button" data-action="pause" data-sim-guide="comun.pausa">${icon('CirclePause')} Pausa</button></li>
+          <li class="sim-user-menu__sep"><button type="button" data-action="logout">${icon('Power')} Logout</button></li>
+          <li><button type="button" data-action="reset" class="sim-user-menu__extra">${icon('RotateCcw')} Restablecer práctica</button></li>
         </ul>
       </div>
     </div>`;
@@ -55,7 +60,7 @@ export function topNavbarTemplate(ctx: SimContext, variant: TopbarVariant, portf
           ${icon('Menu')}
         </button>
         ${liveClockTemplate('plain')}
-        <div class="sim-topbar__tools">${avatarMenuTemplate(null, ctx)}</div>
+        <div class="sim-topbar__tools">${avatarMenuTemplate(ctx)}</div>
       </header>`;
   }
 
@@ -87,7 +92,7 @@ export function topNavbarTemplate(ctx: SimContext, variant: TopbarVariant, portf
       ${connectionBadgeTemplate()}
       <div class="sim-topbar__tools">
         ${tools}
-        ${avatarMenuTemplate(portfolio, ctx)}
+        ${avatarMenuTemplate(ctx)}
       </div>
     </header>`;
 }
@@ -137,6 +142,11 @@ export function mountTopNavbar(
   handlers: { onSearch?: () => void } = {},
 ): Cleanup {
   const header = qs(scope, '.sim-topbar');
+  const closeMenus = (): void => {
+    const menu = header.querySelector<HTMLElement>('#sim-avatar-menu');
+    if (menu) menu.hidden = true;
+    header.querySelector('[data-popover-toggle="sim-avatar-menu"]')?.setAttribute('aria-expanded', 'false');
+  };
   const cleanups: Cleanup[] = [
     mountLiveClock(header),
     mountPopovers(header, (id) => {
@@ -155,6 +165,10 @@ export function mountTopNavbar(
       else if (action === 'payments') ctx.toast('Pagos: consulta de pagos aplicados a la cartera. En la práctica se ven en la ficha de cada cliente (botón Pagos).', 'info');
       else if (action === 'focus-search') handlers.onSearch?.();
       else if (action === 'reset') void ctx.requestReset();
+      else if (action === 'pause') {
+        closeMenus();
+        void requestPause(ctx);
+      }
       else if (action === 'logout') ctx.logout();
     }),
   ];

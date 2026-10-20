@@ -68,6 +68,7 @@ import {
   Image,
   MessageCircle,
   BookOpenText,
+  LayoutGrid,
   createElement,
   type IconNode,
 } from 'lucide';
@@ -140,6 +141,7 @@ const ICONS = {
   Image,
   MessageCircle,
   BookOpenText,
+  LayoutGrid,
 } satisfies Record<string, IconNode>;
 
 export type IconName = keyof typeof ICONS;

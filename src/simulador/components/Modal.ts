@@ -7,7 +7,7 @@ import { hydrateIcons } from './icons';
 export interface ModalAction {
   label: string;
   value: string;
-  kind?: 'primary' | 'ghost' | 'danger';
+  kind?: 'primary' | 'ghost' | 'danger' | 'secondary';
 }
 
 export interface ModalOptions {
@@ -18,6 +18,8 @@ export interface ModalOptions {
   wide?: boolean;
   /** Marca para la guía de la demostración. */
   guide?: string;
+  /** Lee un valor del contenido (p. ej. un select): el resultado llega como `valor-del-botón:valor-leído`. */
+  read?: (dialog: HTMLElement) => string;
 }
 
 /** Abre la ventana y resuelve con el `value` del botón pulsado (null si se cierra con Esc o clic fuera). */
@@ -50,7 +52,10 @@ export function openModal(root: HTMLElement, options: ModalOptions): Promise<str
       trapFocus(dialog),
       on(overlay, 'click', (e) => {
         const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-modal-value]');
-        if (btn) close(btn.dataset.modalValue ?? null);
+        if (btn) {
+          const value = btn.dataset.modalValue ?? null;
+          close(value && value !== 'cancel' && options.read ? `${value}:${options.read(dialog)}` : value);
+        }
         else if (e.target === overlay) close(null);
       }),
       on(overlay, 'keydown', (e) => {

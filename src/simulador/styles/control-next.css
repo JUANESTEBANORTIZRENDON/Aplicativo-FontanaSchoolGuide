@@ -402,3 +402,59 @@
   .sim-guide__fab { left: 12px; }
   .sim-root .sim-topbar__brand { width: auto; }
 }
+
+/* ---------- Menú lateral desplegado (como en Control Next) ---------- */
+.sim-root .sim-sidebar[data-open='true'] { width: 216px; background: #3366ff; box-shadow: 6px 0 24px rgb(0 0 0 / 0.25); }
+.sim-root .sim-sidebar[data-open='true'] .sim-sidebar__header { min-height: 64px; background: #e3e5e8; }
+.sim-root .sim-sidebar__portfolio { font-size: 15px; font-weight: 700; color: #111; }
+.sim-root .sim-sidebar[data-open='true'] .sim-sidebar__user { gap: 6px; padding: 0 12px 18px; margin-top: -26px; }
+.sim-sidebar__photo .sim-advisors { width: 120px; filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.25)); }
+.sim-root .sim-sidebar__user-name {
+  font-family: 'Courier New', Consolas, monospace;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  color: #fff;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+}
+.sim-root .sim-sidebar[data-open='true'] .sim-sidebar__link { min-height: 40px; padding: 0 18px; font-weight: 500; font-size: 15px; gap: 16px; }
+.sim-root .sim-sidebar__link.is-active { background: rgb(255 255 255 / 0.16); box-shadow: inset 4px 0 0 #fff; }
+.sim-root .sim-sidebar__link[data-nav='pausas'] { opacity: 0.8; }
+
+/* ---------- Menú del avatar (Mi Perfil · Pausa · Logout) ---------- */
+.sim-root .sim-user-menu { width: 250px; padding: 0; overflow: hidden; gap: 0; border: 0; border-radius: 4px; }
+.sim-user-menu__head { display: grid; gap: 2px; padding: 18px 16px 16px; background: #42a5f5; color: #fff; }
+.sim-user-menu__head .sim-advisors { width: 96px; }
+.sim-user-menu__name { margin-top: 10px; font-size: 18px; font-weight: 500; line-height: 1.25; }
+.sim-user-menu__mail { font-size: 12.5px; font-weight: 700; }
+.sim-user-menu__list { padding: 12px 10px; }
+.sim-user-menu__list a,
+.sim-user-menu__list button { color: #555 !important; font-size: 15px; }
+.sim-user-menu__sep { margin-top: 6px; padding-top: 6px; border-top: 1px solid #e6e8eb; }
+.sim-user-menu__extra { font-size: 12.5px !important; color: #8a8f98 !important; }
+
+/* ---------- Pausa ---------- */
+.sim-root .sim-modal .sim-pause-select { margin-top: 4px; border-color: #80bdff; box-shadow: 0 0 0 3px rgb(0 123 255 / 0.25); }
+.sim-pause-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: radial-gradient(ellipse at 50% 30%, rgb(31 92 242 / 0.92), rgb(10 22 60 / 0.96));
+}
+.sim-pause-screen[hidden] { display: none; }
+.sim-pause-card { display: grid; justify-items: center; gap: 10px; width: min(460px, 100%); padding: 32px 28px; border-radius: 16px; background: #fff; box-shadow: 0 24px 60px rgb(0 0 0 / 0.35); text-align: center; }
+.sim-pause-card__icon { font-size: 54px; color: #f2b705; }
+.sim-pause-card__kicker { font-size: 12px; font-weight: 800; letter-spacing: 0.12em; color: #6b7280; }
+.sim-pause-card__title { font-size: 26px; font-weight: 800; color: #14213d; }
+.sim-pause-card__time { font-family: var(--sim-font-mono); font-size: 40px; font-weight: 700; color: #1f2328; font-variant-numeric: tabular-nums; }
+.sim-pause-card__text { color: #4b5563; font-size: 14.5px; line-height: 1.5; }
+.sim-pause-card__go { min-height: 46px; padding: 10px 28px; font-size: 16px; }
+.sim-root .sim-conn--en-pausa .sim-conn__state { background: #fff3cd; border-color: #e6c766; }
+
+/* El contenido recibe el foco al navegar (lector de pantalla); no necesita contorno visible. */
+.sim-root .sim-main:focus,
+.sim-root .sim-main:focus-visible { outline: none; }
