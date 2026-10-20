@@ -29,6 +29,17 @@ adminRouter.post('/users/:id/reset-password', validate({ params: idParams, body:
 adminRouter.post('/users/:id/reset-course', validate({ params: idParams, body: reasonBody }), users.resetCourse);
 adminRouter.put('/users/:id/password', validate({ params: idParams, body: setPasswordBody }), users.setPassword);
 adminRouter.get('/advisors/:id/progress', validate({ params: idParams }), training.advisorProgress);
+// Solo la cuenta de pruebas (el servicio lo exige): marcar un módulo como completado o vaciarlo.
+adminRouter.put(
+  '/advisors/:userId/modules/:moduleId/test-completion',
+  validate({ params: z.object({ userId: z.uuid(), moduleId: z.uuid() }).strict(), body: z.object({ completed: z.boolean() }).strict() }),
+  users.setTestModuleCompletion,
+);
+adminRouter.put(
+  '/advisors/:userId/welcome/test-completion',
+  validate({ params: z.object({ userId: z.uuid() }).strict(), body: z.object({ completed: z.boolean() }).strict() }),
+  users.setTestWelcomeCompletion,
+);
 adminRouter.get('/advisors/:id/collections-exams', validate({ params: idParams, query: z.object({ cursor: z.uuid().optional() }).strict() }), async (request, response) => {
   response.json({ data: await advisorCollectionsHistory(validParams<{ id: string }>(request).id, validQuery<{ cursor?: string }>(request).cursor) });
 });

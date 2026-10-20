@@ -3,6 +3,7 @@ import { Role, UserStatus } from '../domain/enums.js';
 import { validBody, validParams, validQuery } from '../middleware/validate.js';
 import type { ActionContext } from '../services/audit.service.js';
 import * as courseResetService from '../services/course-reset.service.js';
+import * as testProgressService from '../services/test-progress.service.js';
 import * as userService from '../services/user.service.js';
 import type { ChangeStatusBody, CreateUserBody, ListUsersQuery, ResetPasswordBody, SetPasswordBody, UpdateUserBody } from '../validators/user.validator.js';
 
@@ -40,6 +41,19 @@ export async function setPassword(request: Request, response: Response): Promise
   const { id } = validParams<{ id: string }>(request);
   const body = validBody<SetPasswordBody>(request);
   response.json({ data: await userService.setPassword(id, body.password, body.reason, actionContext(request)) });
+}
+
+// Cuenta de pruebas: marca un módulo como completado o lo vacía.
+export async function setTestModuleCompletion(request: Request, response: Response): Promise<void> {
+  const { userId, moduleId } = validParams<{ userId: string; moduleId: string }>(request);
+  const { completed } = validBody<{ completed: boolean }>(request);
+  response.json({ data: await testProgressService.setModuleCompletion(userId, moduleId, completed, actionContext(request)) });
+}
+
+export async function setTestWelcomeCompletion(request: Request, response: Response): Promise<void> {
+  const { userId } = validParams<{ userId: string }>(request);
+  const { completed } = validBody<{ completed: boolean }>(request);
+  response.json({ data: await testProgressService.setWelcomeCompletion(userId, completed, actionContext(request)) });
 }
 
 export async function resetCourse(request: Request, response: Response): Promise<void> {

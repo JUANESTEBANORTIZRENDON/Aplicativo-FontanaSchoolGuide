@@ -245,6 +245,7 @@ type AdvisorActivity = {
 };
 type AdvisorFile = {
   user: Usuario;
+  welcomeCompleted?: boolean;
   modules: { moduleId: string; slug: string; name: string; order: number; status: string; catalogStatus: string; progressPercent: string; blockedReason: string | null; hasSeal: boolean; lastActivityAt: string | null }[];
   catalog: { moduleId: string; name: string; order: number; activities: AdvisorActivity[] }[];
   activities: { activityId: string; status: string }[];
@@ -323,6 +324,21 @@ async function advisorFileSection(view: HTMLElement, userId: string): Promise<vo
   const whereText = !currentModule ? 'Ruta completada' : escapar(currentModule.name);
   const whereSub = !currentModule ? 'Terminó todos los módulos disponibles.' : currentActivity ? `Actividad: ${escapar(currentActivity.title)}` : escapar(currentModule.blockedReason ?? 'Sin actividades pendientes.');
 
+  // Cuenta de pruebas: interruptor por módulo para darlo por completado o vaciarlo.
+  const testAccount = data.user.numeroDocumento === COURSE_RESET_DOCUMENT;
+  const testToggle = (module: AdvisorFile['modules'][number]): string => {
+    if (!testAccount || module.slug === CERTIFICATE_SLUG) return '';
+    const done = module.status === 'PASSED' || module.hasSeal;
+    return `<button type="button" class="test-toggle${done ? ' is-on' : ''}" role="switch" aria-checked="${done}" data-test-toggle="${module.moduleId}" data-name="${escapar(module.name)}" data-done="${done}"
+      title="${done ? 'Vaciar el módulo para volver a probarlo' : 'Darlo por completado'}"><span class="test-toggle__track" aria-hidden="true"><span></span></span><span class="test-toggle__text">${done ? 'Completado' : 'Vacío'}</span></button>`;
+  };
+
+  const welcomeCard = !testAccount ? '' : `<div class="module-card module-card--flat">
+      <div class="module-flat"><span class="module-order">0</span><span class="module-title"><strong>Bienvenida</strong><small>Historia, método y principios de trabajo</small></span>
+        <button type="button" class="test-toggle${data.welcomeCompleted ? ' is-on' : ''}" role="switch" aria-checked="${Boolean(data.welcomeCompleted)}" data-test-welcome data-done="${Boolean(data.welcomeCompleted)}">
+          <span class="test-toggle__track" aria-hidden="true"><span></span></span><span class="test-toggle__text">${data.welcomeCompleted ? 'Completado' : 'Vacío'}</span></button></div>
+    </div>`;
+
   const moduleCards = modules.map((module) => {
     const activities = [...(catalogOf.get(module.moduleId)?.activities ?? [])].sort((a, b) => a.order - b.order);
     const required = activities.filter((activity) => activity.status === 'ACTIVE' && activity.isRequired);
@@ -335,6 +351,7 @@ async function advisorFileSection(view: HTMLElement, userId: string): Promise<vo
         <span class="module-title"><strong>${escapar(module.name)}</strong>${isCurrent ? ' <em class="tag tag-current">Aquí va</em>' : ''}
           <small>${required.length ? `${done} de ${required.length} actividades aprobadas` : 'Sin actividades obligatorias'}${module.hasSeal ? ' · Sello obtenido' : ''}${module.lastActivityAt ? ` · Último avance ${escapar(formatDate(module.lastActivityAt))}` : ''}</small></span>
         ${moduleVerdict(module)}
+        ${testToggle(module)}
         <span class="module-percent"><span class="bar" role="progressbar" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"><span style="width:${percent}%"></span></span><b>${percent} %</b></span>
       </summary>
       ${module.blockedReason && module.status !== 'PASSED' ? `<p class="module-note">${escapar(module.blockedReason)}</p>` : ''}
@@ -357,8 +374,9 @@ async function advisorFileSection(view: HTMLElement, userId: string): Promise<vo
       <div class="stat"><span>Módulos completados</span><strong>${passedModules} de ${learning.length}</strong><small>Sellos obtenidos</small></div>
     </section>
     <section class="auth-card admin-card"><div class="section-title"><div><h2>Ruta de formación</h2>
-      <p>Módulos en orden. Reactiva la prueba cuando se quede sin intentos o ajusta cuántos intentos tiene en cada actividad.</p></div></div>
-      <div class="module-list">${moduleCards}</div></section>
+      <p>Módulos en orden. Reactiva la prueba cuando se quede sin intentos o ajusta cuántos intentos tiene en cada actividad.</p>
+      ${testAccount ? '<p class="dialog-note"><strong>Cuenta de pruebas:</strong> con el interruptor de cada módulo lo das por <strong>completado</strong> (aprueba sus actividades, emite el sello y desbloquea el siguiente; igual puede abrirlas y hacerlas) o lo dejas <strong>vacío</strong> para probarlo de cero.</p>' : ''}</div></div>
+      <div class="module-list">${welcomeCard}${moduleCards}</div></section>
     <div id="advisor-collections-history"></div>
     ${history('Historial de intentos y notas', `<div class="table-wrap"><table><thead><tr><th>#</th><th>Actividad</th><th>Versión</th><th>Estado</th><th>Nota</th><th>Inicio</th><th>Envío</th><th>Duración</th></tr></thead><tbody>
       ${data.attempts.map((a) => `<tr><td>${a.number}</td><td>${escapar(a.evaluation.activity.title)}</td><td>v${a.evaluation.version}</td><td>${badge(a.status)}</td><td>${escapar(a.score ?? '—')}</td><td>${formatDate(a.startedAt)}</td><td>${formatDate(a.submittedAt)}</td><td>${a.durationSeconds !== null ? `${Math.round(a.durationSeconds / 60)} min` : '—'}</td></tr>`).join('') || empty(8)}
@@ -384,6 +402,30 @@ async function advisorFileSection(view: HTMLElement, userId: string): Promise<vo
   view.addEventListener('click', async (event) => {
     const target = event.target as HTMLElement;
     if (target.closest('[data-reset-course]')) { await resetCourse(data.user, reload); return; }
+    const welcome = target.closest<HTMLButtonElement>('[data-test-welcome]');
+    if (welcome) {
+      const done = welcome.dataset.done === 'true';
+      welcome.disabled = true;
+      await run(() => api(`/admin/advisors/${userId}/welcome/test-completion`, { method: 'PUT', body: JSON.stringify({ completed: !done }) }),
+        done ? 'Bienvenida pendiente: al ingresar la verá de nuevo.' : 'Bienvenida completada: al ingresar va directo al aula.', reload);
+      welcome.disabled = false;
+      return;
+    }
+    const toggle = target.closest<HTMLButtonElement>('[data-test-toggle]');
+    if (toggle) {
+      // Dentro del resumen del módulo: que el clic no abra ni cierre la tarjeta.
+      event.preventDefault();
+      const done = toggle.dataset.done === 'true';
+      if (done) {
+        const ok = await askForm(`Vaciar «${toggle.dataset.name}»`, '<p class="dialog-note dialog-danger">Se borran el avance, los intentos, el sello y las excepciones de este módulo (y los certificados de la cuenta). Los demás módulos no cambian.</p>', { reason: false, submit: 'Vaciar módulo' });
+        if (!ok) return;
+      }
+      toggle.disabled = true;
+      await run(() => api(`/admin/advisors/${userId}/modules/${toggle.dataset.testToggle}/test-completion`, { method: 'PUT', body: JSON.stringify({ completed: !done }) }),
+        done ? 'Módulo vaciado: queda listo para probarlo de cero.' : 'Módulo marcado como completado.', reload);
+      toggle.disabled = false;
+      return;
+    }
     const reactivate = target.closest<HTMLButtonElement>('[data-reactivate]');
     const resetWait = target.closest<HTMLButtonElement>('[data-reset-wait]');
     const limit = target.closest<HTMLButtonElement>('[data-limit]');

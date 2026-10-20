@@ -15,7 +15,7 @@ import { loadSnapshot } from './progress.service.js';
 export async function getAdvisorFile(userId: string, now = new Date()) {
   const user = await findPublicById(prisma, userId);
   if (!user || user.rol !== Role.ADVISOR) throw new NotFoundError('Asesor no encontrado.', 'ADVISOR_NOT_FOUND');
-  const [snapshot, activities, attempts, seals, certificates, overrides, typing, profile, office] = await Promise.all([
+  const [snapshot, activities, attempts, seals, certificates, overrides, typing, profile, office, welcome] = await Promise.all([
     loadSnapshot(prisma, userId, now, { sync: true }),
     activityProgressDetail(userId),
     attemptsDetail(userId),
@@ -25,6 +25,7 @@ export async function getAdvisorFile(userId: string, now = new Date()) {
     typingResultsDetail(userId),
     prisma.advisorProfile.findUnique({ where: { userId } }),
     advisorOffice(userId),
+    prisma.usuario.findUnique({ where: { id: userId }, select: { fechaInduccionCompletada: true } }),
   ]);
   // Intentos usados por actividad (todas las versiones de la evaluación; los cancelados no cuentan).
   const attemptsUsed = new Map<string, number>();
@@ -36,6 +37,8 @@ export async function getAdvisorFile(userId: string, now = new Date()) {
   }
   const auditLog = await latestForEntities([userId, ...overrides.map((item) => item.id), ...certificates.map((item) => item.id)], 30);
   return {
+    // La bienvenida (historia, método y principios) está completa: al ingresar va directo al aula.
+    welcomeCompleted: Boolean(welcome?.fechaInduccionCompletada),
     user,
     profile,
     modules: snapshot.views,
@@ -44,6 +47,8 @@ export async function getAdvisorFile(userId: string, now = new Date()) {
       activities: module.activities.map((activity) => {
         const availability = snapshot.availability.get(activity.id);
         return {
+    // La bienvenida (historia, método y principios) está completa: al ingresar va directo al aula.
+    welcomeCompleted: Boolean(welcome?.fechaInduccionCompletada),
           activityId: activity.id, title: activity.title, type: activity.type, order: activity.order, status: activity.status, isRequired: activity.isRequired,
           hasEvaluation: snapshot.evaluations.has(activity.id),
           attemptsRemaining: availability?.remaining ?? null,
