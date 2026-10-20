@@ -33,7 +33,7 @@ function shell(title: string, subtitle: string, content: string, usuario?: Usuar
   document.body.className = 'auth-screen';
   document.querySelector<HTMLElement>('#app-content')!.innerHTML = `
     <header class="auth-header">
-      <a class="auth-brand" href="/"><img src="/imagenes/fontana-logo.png" alt=""><span>FONTANA <small>SCHOOL</small></span></a>
+      <a class="auth-brand" href="/"><img src="/imagenes/fontana-logo.webp" alt=""><span>FONTANA <small>SCHOOL</small></span></a>
       ${usuario ? `<div class="auth-account"><span>${escapar(usuario.nombreCompleto)}</span><button type="button" id="logout" class="text-button">Cerrar sesión</button></div>` : ''}
     </header>
     <main class="auth-main"><div class="auth-intro"><p class="auth-kicker">FONTANA SCHOOL</p><h1>${title}</h1><p>${subtitle}</p></div>${content}</main>
@@ -49,7 +49,7 @@ function shell(title: string, subtitle: string, content: string, usuario?: Usuar
 function aplicarEstiloAcceso(): void {
   document.body.classList.add('auth-login', 'login-motion');
   document.querySelector('.auth-intro')!.remove();
-  document.querySelector('.auth-brand')!.innerHTML = '<img src="/imagenes/fontana-logo.png" alt="Fontana"><span>Aula de formación</span>';
+  document.querySelector('.auth-brand')!.innerHTML = '<img src="/imagenes/fontana-logo.webp" alt="Fontana"><span>Aula de formación</span>';
 }
 
 function formularioLogin(): void {
@@ -57,7 +57,7 @@ function formularioLogin(): void {
     <div class="login-panel">
     <section class="login-welcome" aria-label="Bienvenida a Fontana">
       <figure class="login-photo">
-        <img src="/imagenes/fontana-school-login.png" alt="Fontana School, identidad dorada sobre fondo vino">
+        <img src="/imagenes/fontana-school-login.webp" alt="Fontana School, identidad dorada sobre fondo vino">
       </figure>
     </section>
     <section class="auth-card narrow login-card" aria-labelledby="login-title">

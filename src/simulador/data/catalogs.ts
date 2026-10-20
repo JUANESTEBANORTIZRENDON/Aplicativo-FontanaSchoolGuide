@@ -96,9 +96,6 @@ export function effectLabel(code: ResultCode): string {
 export const ACTIONS: { code: ManagementAction; label: string }[] = [
   { code: 'hacer-llamada', label: 'Hacer Llamada' },
   { code: 'recibir-llamada', label: 'Recibir Llamada' },
-  { code: 'whatsapp', label: 'Mensaje WhatsApp' },
-  { code: 'correo', label: 'Correo Electrónico' },
-  { code: 'sms', label: 'Mensaje de Texto' },
 ];
 
 export function actionLabel(code: ManagementAction | undefined): string {

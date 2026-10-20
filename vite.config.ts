@@ -8,7 +8,8 @@ export default defineConfig({
   envDir: false,
   // Solo index.html es entrada: las copias de otras ramas (.mergejuan, .mergemain) tienen su propio index.html.
   // simulador/index.html es el clon de Control Next del módulo Tipifica (se muestra en un iframe en /simulador/).
-  optimizeDeps: { entries: ['index.html', 'simulador/index.html'] },
+  // lucide se preempaqueta: si no, el navegador pide cientos de módulos de íconos sueltos en desarrollo.
+  optimizeDeps: { entries: ['index.html', 'simulador/index.html'], include: ['lucide'] },
   build: {
     rollupOptions: {
       input: { main: 'index.html', simulador: 'simulador/index.html' },
@@ -19,6 +20,8 @@ export default defineConfig({
     // en vez de saltar a otro (con otro puerto, cerrar sesión y demás acciones dan «Origen no permitido»).
     port: 5173,
     strictPort: true,
+    // Transforma las entradas al arrancar: la primera carga no espera a que la unidad de red responda archivo por archivo.
+    warmup: { clientFiles: ['./src/main.ts', './src/simulador/main.ts'] },
     proxy: {
       '/api': 'http://127.0.0.1:3000',
     },

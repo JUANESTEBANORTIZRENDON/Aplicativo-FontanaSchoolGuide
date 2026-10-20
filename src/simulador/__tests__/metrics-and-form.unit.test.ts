@@ -38,7 +38,8 @@ describe('computeDashboardMetrics', () => {
 
   it('las cifras salen de los datos y son coherentes', () => {
     const m = metrics();
-    expect(m.customers).toBe(12);
+    // 12 clientes generados + 6 de la prueba de tipificación.
+    expect(m.customers).toBe(18);
     expect(m.managedCustomers).toBeGreaterThan(0);
     expect(m.managedPercent).toBeLessThanOrEqual(100);
     expect(m.capital).toBeGreaterThan(0);

@@ -77,6 +77,9 @@ export interface Management {
   /** Campos de la ficha de Control Next. Las gestiones semilla los derivan del resultado. */
   action?: ManagementAction;
   contact?: ContactType;
+  channel?: 'telefonico' | 'whatsapp' | 'correo';
+  /** Perfil elegido en Control Next («Acuerdo de pago Abono», «No hubo acuerdo»…). */
+  profile?: string;
   reason?: string;
   phone?: string;
   /** Duración de la gestión y de la llamada, en segundos. */
@@ -84,7 +87,7 @@ export interface Management {
   callSec?: number;
 }
 
-export type ManagementAction = 'hacer-llamada' | 'recibir-llamada' | 'whatsapp' | 'correo' | 'sms';
+export type ManagementAction = 'hacer-llamada' | 'recibir-llamada';
 export type ContactType = 'directo' | 'indirecto' | 'sin-contacto';
 
 export interface Payment {

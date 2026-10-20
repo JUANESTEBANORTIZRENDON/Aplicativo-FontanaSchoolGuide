@@ -9,7 +9,7 @@ export interface GuideStep {
   title: string;
   text: string;
   /** Botón extra al final del paso (p. ej. lanzar la demostración de búsqueda por cédula). */
-  action?: { label: string; run: 'demo-cedula' | 'demo-pausa' };
+  action?: { label: string; run: 'demo-cedula' | 'demo-pausa' | 'prueba' };
 }
 
 export const GUIDE_STEPS: Record<GuideView, GuideStep[]> = {
@@ -154,7 +154,7 @@ export const GUIDE_STEPS: Record<GuideView, GuideStep[]> = {
     {
       target: 'ficha.tipificacion',
       title: 'Tipificar la gestión',
-      text: 'Acción (qué hiciste: hacer o recibir llamada, WhatsApp…), Teléfono, Efecto (el resultado: acuerdo de pago, no hubo acuerdo, volver a llamar, no contesta…), Contacto (directo con el titular, indirecto con un tercero o sin contacto) y Motivo N.P. Si hay acuerdo, registra la fecha y el valor del pago.',
+      text: 'Cada campo depende del anterior. 1) Acción: «Hacer Llamada» si marcaste tú o «Recibir Llamada» si te llamaron. 2) Contacto: Directo (el titular), Indirecto (un tercero) o Sin Contacto (solo existe si tú llamaste). 3) Canal: Telefonico, Whatsapp o Correo. 4) Perfil: el resultado; cambia según el contacto (con un tercero nunca hay acuerdo de pago). 5) Motivo No Pago. Si el perfil es un acuerdo pide fecha y valor; si es «Volver a llamar» o «Recordar», cuándo llamar.',
     },
     {
       target: 'ficha.guardar',
@@ -167,8 +167,9 @@ export const GUIDE_STEPS: Record<GuideView, GuideStep[]> = {
       text: 'Todas las gestiones del cliente: fecha y hora, usuario, acción, efecto, contacto, teléfono, el texto de la gestión, los tiempos, el motivo, la promesa y el audio. Léelo siempre antes de llamar para no repetir preguntas ni contradecir a un compañero.',
     },
     {
-      title: 'Tu turno',
-      text: 'Ahora practica: pulsa «Remarcar», escribe la gestión, tipifícala y guárdala. Verás tu registro arriba en el Histórico. Puedes abrir esta guía cuando quieras con el botón «Guía».',
+      title: 'Ahora, tu prueba de tipificación',
+      text: 'Ya conoces la ficha. Ahora te haremos una prueba: escucharás 6 llamadas reales de entrenamiento (titular, tercero, promesa de pago, volver a llamar, pago ya realizado y número equivocado). En cada una verás arriba los checkmarks de lo que debe tener la tipificación; al guardar, el sistema experto revisa lo que elegiste y escribiste y marca qué cumpliste y qué te faltó.',
+      action: { label: 'Iniciar la prueba de tipificación', run: 'prueba' },
     },
   ],
 };

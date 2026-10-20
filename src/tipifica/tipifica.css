@@ -58,3 +58,20 @@ body.tipifica-locked { overflow: hidden; }
   .tipifica-ctl { flex: 1 1 auto; justify-content: center; }
 }
 @media (prefers-reduced-motion: reduce) { .tipifica-ctl { transition: none; } }
+
+/* Lo mínimo de una tipificación (arriba del módulo) */
+.tipifica-minimum { padding: 20px 22px; border: 1px solid #e9dcc0; border-left: 5px solid var(--red); border-radius: 18px; background: linear-gradient(135deg, #fffdf7, #fbf3e2); }
+.tipifica-minimum__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 12px; }
+.tipifica-minimum__head h3 { margin: 0; color: var(--navy); font-size: 20px; }
+.tipifica-minimum__head p { margin: 0; color: var(--muted); font-size: 14px; }
+.tipifica-minimum__list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.tipifica-minimum__list li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid #efe5cf; }
+.tipifica-minimum__list strong { color: var(--navy); font-size: 15px; }
+.tipifica-minimum__list p { margin: 2px 0 0; color: #4b5563; font-size: 13.5px; line-height: 1.45; }
+.tipifica-tick { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: #1e7d4f; color: #fff; font-weight: 900; font-size: 14px; }
+.tipifica-result { margin: 12px 0 0; padding: 10px 14px; border-radius: 10px; background: #fff3cd; color: #6b5300; font-weight: 700; }
+.tipifica-result.is-ok { background: #e3f6ea; color: #1e7d4f; }
+.tipifica-ctl--test { background: linear-gradient(110deg, #1e7d4f, #27a065); border-color: transparent; }
+.tipifica-ctl--test:hover { background: linear-gradient(110deg, #22905b, #2fb373); }
+@media (max-width: 1100px) { .tipifica-minimum__list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .tipifica-minimum__list { grid-template-columns: minmax(0, 1fr); } }

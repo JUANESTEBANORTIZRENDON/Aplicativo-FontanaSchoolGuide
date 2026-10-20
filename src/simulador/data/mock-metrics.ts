@@ -3,6 +3,7 @@
 
 import type { CallRecord, Customer, Dataset, Management, Payment } from '../types/simulator';
 import { addDays, fromDateKey, startOfDay, toDateKey } from '../utils/dates';
+import { EXERCISE_CUSTOMERS, EXERCISE_MANAGEMENTS } from '../domain/expert/exercises';
 import { generateCustomers } from './mock-customers';
 import { createRng } from './random';
 
@@ -47,7 +48,10 @@ function generateCalls(managements: Management[]): CallRecord[] {
 
 /** Genera todos los datos semilla a partir de la fecha actual. */
 export function createDataset(now: Date): Dataset {
-  const { customers, managements } = generateCustomers(now);
+  // Los clientes de la prueba de tipificación viven en la campaña Aurora: también se encuentran con la lupa.
+  const seed = generateCustomers(now);
+  const customers = [...seed.customers, ...EXERCISE_CUSTOMERS];
+  const managements = [...seed.managements, ...EXERCISE_MANAGEMENTS];
   return {
     generatedAt: now,
     customers,

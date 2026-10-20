@@ -9,7 +9,7 @@ export function mostrarPractica(nombre: string, experienced: boolean | null, rou
   const title = experienced === null ? 'Tu ruta de formación' : experienced ? 'Práctica para asesores con experiencia' : 'Práctica para asesores nuevos';
   document.body.className = 'practice-screen';
   document.querySelector<HTMLElement>('#app-content')!.innerHTML = `
-    <header><a class="brand" href="${route}" aria-label="Fontana, módulo de práctica"><span class="brand-image"><img src="/imagenes/fontana-logo.png" alt=""><strong class="brand-name">FONTANA</strong></span></a><span class="header-divider"></span><span class="platform">AULA DE FORMACIÓN</span></header>
+    <header><a class="brand" href="${route}" aria-label="Fontana, módulo de práctica"><span class="brand-image"><img src="/imagenes/fontana-logo.webp" alt=""><strong class="brand-name">FONTANA</strong></span></a><span class="header-divider"></span><span class="platform">AULA DE FORMACIÓN</span></header>
     <main>
       <nav class="learning-path" aria-label="Ruta de aprendizaje"><span class="path-label">Tu camino en <strong>Fontana</strong></span>${pasosCamino('practica', route)}</nav>
       <section class="practice-shell" aria-labelledby="practice-title">

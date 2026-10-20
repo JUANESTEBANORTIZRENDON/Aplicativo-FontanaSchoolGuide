@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
   calls: 'llamadas',
   pauses: 'pausas',
   prefs: 'preferencias',
+  practice: 'prueba-tipificacion',
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

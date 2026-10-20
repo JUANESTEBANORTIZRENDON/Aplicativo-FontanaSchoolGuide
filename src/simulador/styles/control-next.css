@@ -458,3 +458,40 @@
 /* El contenido recibe el foco al navegar (lector de pantalla); no necesita contorno visible. */
 .sim-root .sim-main:focus,
 .sim-root .sim-main:focus-visible { outline: none; }
+
+/* ---------- Tipificación: 4 columnas como en Control Next; los campos aparecen según lo elegido ---------- */
+.sim-root .sim-cn-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.sim-root .sim-cn-grid [hidden] { display: none; }
+@media (max-width: 1199px) { .sim-root .sim-cn-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767px) { .sim-root .sim-cn-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- Prueba de tipificación ---------- */
+.sim-practice { display: grid; gap: 14px; border-top: 4px solid #c62828; }
+.sim-practice__head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+.sim-practice__kicker { display: inline-flex; align-items: center; gap: 6px; color: #c62828; font-size: 12.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.sim-practice__title { margin-top: 4px; font-size: 22px; font-weight: 800; color: #14213d; }
+.sim-practice__brief { margin-top: 4px; color: #4b5563; font-size: 14.5px; }
+.sim-practice__steps { display: flex; gap: 6px; list-style: none; padding: 0; align-self: center; }
+.sim-practice__step { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 2px solid #d5d9df; color: #6b7280; font-weight: 800; font-size: 13px; }
+.sim-practice__step.is-current { border-color: #1f5cf2; color: #1f5cf2; box-shadow: 0 0 0 3px rgb(31 92 242 / 0.18); }
+.sim-practice__step.is-ok { border-color: #1e7d4f; background: #1e7d4f; color: #fff; }
+.sim-practice__step.is-bad { border-color: #d63a3a; color: #d63a3a; }
+.sim-practice__audio { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 14px; border-radius: 10px; background: #f1f5ff; color: #1d3fa8; font-weight: 700; }
+.sim-practice__audio audio { flex: 1 1 320px; min-width: 0; height: 40px; }
+.sim-practice__subtitle { margin-bottom: 8px; font-weight: 800; color: #14213d; }
+.sim-check-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 18px; list-style: none; padding: 0; }
+.sim-check-item { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 10px; border: 1px solid #e3e5e8; border-radius: 8px; background: #fff; }
+.sim-check-item small { display: block; margin-top: 2px; font-weight: 400; color: #4b5563; font-size: 13px; }
+.sim-check-item strong { font-size: 14px; }
+.sim-check-item__box { display: grid; place-items: center; width: 24px; height: 24px; border: 2px solid #9aa3ad; border-radius: 5px; font-weight: 900; font-size: 15px; }
+.sim-check-item.is-ok { border-color: #a7dcbf; background: #f0faf4; }
+.sim-check-item.is-ok .sim-check-item__box { border-color: #1e7d4f; background: #1e7d4f; color: #fff; }
+.sim-check-item.is-bad { border-color: #f1b3b3; background: #fff5f5; }
+.sim-check-item.is-bad .sim-check-item__box { border-color: #d63a3a; background: #d63a3a; color: #fff; }
+.sim-practice__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.sim-practice__score { font-size: 14.5px; color: #374151; }
+.sim-practice__score .is-ok { color: #1e7d4f; }
+.sim-practice__score .is-bad { color: #b42323; }
+.sim-practice__actions { display: flex; gap: 8px; }
+.sim-practice__summary { font-size: 16px; margin-bottom: 8px; }
+@media (max-width: 767px) { .sim-check-list { grid-template-columns: minmax(0, 1fr); } }

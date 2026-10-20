@@ -50,7 +50,7 @@ export function mountSlider(root: HTMLElement, options: SliderOptions): void {
   function card(): string {
     const slide = slides[index]!;
     return `<article class="fontana-concept-card fontana-concept-card--active" role="group" aria-roledescription="diapositiva" aria-label="${index + 1} de ${slides.length}">
-      <div class="fontana-concept-brand"><img src="/imagenes/fontana-logo.png" alt="" draggable="false" width="38" height="38"><span>FONTANA<small>SCHOOL</small></span><span class="fontana-concept-number">0${index + 1}</span></div>
+      <div class="fontana-concept-brand"><img src="/imagenes/fontana-logo.webp" alt="" draggable="false" width="38" height="38"><span>FONTANA<small>SCHOOL</small></span><span class="fontana-concept-number">0${index + 1}</span></div>
       ${index === 0 ? `<p class="fontana-concept-notice" role="note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 10 18H2zM12 9v5M12 17h.01"/></svg><span>${options.notice}</span></p>` : ''}
       <div class="fontana-concept-icon">${slide.icon}</div>
       <h3 id="concepts-slide-title" tabindex="-1">${escapar(slide.title)}</h3>

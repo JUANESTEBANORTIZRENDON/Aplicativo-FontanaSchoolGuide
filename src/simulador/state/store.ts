@@ -15,6 +15,20 @@ import type {
   Session,
 } from '../types/simulator';
 
+/** Resultado de un ejercicio de la prueba de tipificación. */
+export interface PracticeResult {
+  score: number;
+  approved: boolean;
+  attempts: number;
+}
+
+export interface PracticeState {
+  active: boolean;
+  results: Record<string, PracticeResult>;
+}
+
+const EMPTY_PRACTICE: PracticeState = { active: false, results: {} };
+
 export interface Prefs {
   dashboardRange: RangeKey;
 }
@@ -33,6 +47,7 @@ export interface SimState {
   /** Ficha abierta por campaña (pestaña «G.C - cédula»). No se persiste. */
   openCustomers: Record<string, string>;
   prefs: Prefs;
+  practice: PracticeState;
 }
 
 type Listener = (state: SimState, previous: SimState) => void;
@@ -65,6 +80,7 @@ function initialState(storage: SimulatorStorage): SimState {
     tablePage: {},
     openCustomers: {},
     prefs: { ...DEFAULT_PREFS, ...storage.read<Partial<Prefs>>(STORAGE_KEYS.prefs, {}) },
+    practice: storage.read<PracticeState>(STORAGE_KEYS.practice, EMPTY_PRACTICE),
   };
 }
 
@@ -85,6 +101,7 @@ export function createSimulatorStore(storage: SimulatorStorage) {
     if (next.calls !== prev.calls) storage.write(STORAGE_KEYS.calls, next.calls);
     if (next.pauses !== prev.pauses) storage.write(STORAGE_KEYS.pauses, next.pauses);
     if (next.prefs !== prev.prefs) storage.write(STORAGE_KEYS.prefs, next.prefs);
+    if (next.practice !== prev.practice) storage.write(STORAGE_KEYS.practice, next.practice);
   };
 
   const set = (patch: Partial<SimState> | ((s: SimState) => Partial<SimState>)): void => {
@@ -203,6 +220,27 @@ export function createSimulatorStore(storage: SimulatorStorage) {
       });
     },
 
+    /** Empieza (o retoma) la prueba de tipificación. */
+    startPractice(restart = false): void {
+      set((s) => ({ practice: { active: true, results: restart ? {} : s.practice.results } }));
+    },
+
+    endPractice(): void {
+      set((s) => ({ practice: { ...s.practice, active: false } }));
+    },
+
+    /** Guarda el mejor puntaje del ejercicio y cuenta el intento. */
+    recordPractice(exerciseId: string, score: number, approved: boolean): PracticeResult {
+      const prev = state.practice.results[exerciseId];
+      const result: PracticeResult = {
+        score: Math.max(score, prev?.score ?? 0),
+        approved: approved || !!prev?.approved,
+        attempts: (prev?.attempts ?? 0) + 1,
+      };
+      set((s) => ({ practice: { ...s.practice, results: { ...s.practice.results, [exerciseId]: result } } }));
+      return result;
+    },
+
     setRange(range: RangeKey): void {
       set((s) => ({ prefs: { ...s.prefs, dashboardRange: range } }));
     },
@@ -222,6 +260,7 @@ export function createSimulatorStore(storage: SimulatorStorage) {
         tablePage: {},
         openCustomers: {},
         prefs: { ...DEFAULT_PREFS },
+        practice: EMPTY_PRACTICE,
       });
       // clearAll también borró la sesión; se vuelve a guardar para no sacar al usuario.
       if (session) storage.write(STORAGE_KEYS.session, session);

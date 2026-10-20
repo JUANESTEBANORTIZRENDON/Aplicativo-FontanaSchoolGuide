@@ -1,5 +1,6 @@
 import './tipifica.css';
 import { api, escapar } from '../http';
+import { TYPIFICATION_MINIMUM } from '../simulador/domain/expert/minimum';
 
 // Módulo 04 «Tipifica»: el clon de práctica de Control Next se muestra en una pantalla dentro de la página
 // (iframe /simulador/), con pantalla completa como un video para que la práctica sea inmersiva.
@@ -31,12 +32,12 @@ const BUTTONS: { name: string; text: string }[] = [
 ];
 
 const TERMS: [string, string][] = [
-  ['Acción', 'Qué hiciste: hacer o recibir llamada, WhatsApp, correo o SMS.'],
-  ['Efecto', 'El resultado de la gestión: acuerdo de pago, no hubo acuerdo, volver a llamar, no contesta…'],
-  ['Contacto', 'Con quién hablaste: directo (titular), indirecto (un tercero) o sin contacto.'],
-  ['Motivo N.P.', 'Motivo de no pago o lo que queda por confirmar (p. ej. «NO CUENTA CON EL DINERO», «CONFIRMAR PAGO»).'],
-  ['TT', 'Titular de la obligación. En la gestión se escribe «3001234567 // TT INDICA QUE…».'],
-  ['Mejor / Último perfil', 'El mejor resultado logrado con el cliente y el resultado de su última gestión.'],
+  ['Acción', '«Hacer Llamada» si marcaste tú; «Recibir Llamada» si el cliente te llamó.'],
+  ['Contacto', 'Depende de la acción: Directo (titular), Indirecto (un tercero) o Sin Contacto. Si te llamaron no existe «Sin Contacto».'],
+  ['Canal', 'Telefonico, Whatsapp o Correo.'],
+  ['Perfil', 'Depende del contacto. Con el titular: acuerdo de pago total o abono, recordar, volver a llamar, no hubo acuerdo, PQR, paz y salvo… Con un tercero nunca hay acuerdo de pago.'],
+  ['Motivo No Pago', 'Por qué no ha pagado o qué queda por confirmar: confirmar pago, con recibo, no cuenta con el dinero, ocupado, tercero encargado…'],
+  ['TT', 'Titular de la obligación. La gestión se escribe «3001234567 // TT INDICA QUE…».'],
 ];
 
 const FULL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
@@ -61,15 +62,27 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
         <p class="tipifica-lead"><strong>Control Next</strong> es el aplicativo de gestión de cobranzas con el que trabajarás cada día: ahí ves tus campañas, buscas a cada cliente, registras lo que pasó en la llamada (<em>la tipificación</em>) y consultas su histórico. Aquí tienes una copia de práctica: los clientes son ficticios y nada de lo que hagas sale de tu navegador.</p>
       </header>
 
+      <section class="tipifica-minimum" aria-labelledby="tipifica-minimum-title">
+        <div class="tipifica-minimum__head">
+          <h3 id="tipifica-minimum-title">Lo mínimo que debe tener una tipificación</h3>
+          <p>La prueba de tipificación revisa estos puntos en cada llamada.</p>
+        </div>
+        <ol class="tipifica-minimum__list">
+          ${TYPIFICATION_MINIMUM.map((m) => `<li><span class="tipifica-tick" aria-hidden="true">✓</span><div><strong>${escapar(m.title)}</strong><p>${escapar(m.text)}</p></div></li>`).join('')}
+        </ol>
+        <p class="tipifica-result" id="tipifica-result" aria-live="polite" hidden></p>
+      </section>
+
       <div class="tipifica-screen" id="tipifica-screen">
         <div class="tipifica-screen__bar" aria-hidden="true">
           <span class="tipifica-dots"><i></i><i></i><i></i></span>
           <span class="tipifica-url">controlnext · práctica</span>
         </div>
         <div class="tipifica-screen__frame">
-          <iframe id="tipifica-frame" title="Control Next (práctica)" src="${escapar(src)}" allow="fullscreen"></iframe>
+          <iframe id="tipifica-frame" title="Control Next (práctica)" src="${escapar(src)}" allow="fullscreen" loading="lazy"></iframe>
         </div>
         <div class="tipifica-screen__controls" role="toolbar" aria-label="Controles de la pantalla de práctica">
+          <button type="button" class="tipifica-ctl tipifica-ctl--test" data-tip="prueba">Iniciar prueba de tipificación</button>
           <button type="button" class="tipifica-ctl" data-tip="guia">Guía de esta pantalla</button>
           <button type="button" class="tipifica-ctl" data-tip="demo">Ver cómo se ingresa una cédula</button>
           <button type="button" class="tipifica-ctl" data-tip="pausa">Ver cómo se hace una pausa</button>
@@ -95,7 +108,7 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
         <section class="tipifica-block" aria-labelledby="tipifica-terms">
           <h3 id="tipifica-terms">Cómo se tipifica</h3>
           <dl class="tipifica-dl">${TERMS.map(([t, d]) => `<div><dt>${escapar(t)}</dt><dd>${escapar(d)}</dd></div>`).join('')}</dl>
-          <p class="tipifica-note">Los efectos y motivos de esta práctica son una propuesta de entrenamiento: tu supervisor te confirmará el catálogo oficial de la operación.</p>
+          <p class="tipifica-note">Los perfiles y motivos con titular son los de Control Next; los de contacto con tercero y sin contacto son una propuesta de entrenamiento que tu supervisor confirmará.</p>
         </section>
       </div>
 
@@ -106,6 +119,7 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
   const frame = container.querySelector<HTMLIFrameElement>('#tipifica-frame')!;
   const fullBtn = container.querySelector<HTMLButtonElement>('[data-tip="full"]')!;
   const counter = container.querySelector<HTMLElement>('#tipifica-count')!;
+  const resultBox = container.querySelector<HTMLElement>('#tipifica-result')!;
 
   const send = (type: string): void => {
     frame.contentWindow?.postMessage({ type }, location.origin);
@@ -143,7 +157,13 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
   // Cada gestión guardada en el clon llega aquí: se muestra cuántas lleva el asesor en esta práctica.
   window.addEventListener('message', (event) => {
     if (event.origin !== location.origin || event.source !== frame.contentWindow) return;
-    const data = event.data as { type?: string; total?: number } | null;
+    const data = event.data as { type?: string; total?: number; approved?: number; average?: number } | null;
+    // Resultado de la prueba de tipificación (lo envía el clon al terminar los 6 ejercicios).
+    if (data?.type === 'tipifica:prueba' && typeof data.approved === 'number' && typeof data.total === 'number') {
+      resultBox.hidden = false;
+      resultBox.classList.toggle('is-ok', data.approved === data.total);
+      resultBox.textContent = `Tu prueba de tipificación: ${data.approved} de ${data.total} llamadas correctas · puntaje promedio ${data.average ?? 0} %.`;
+    }
     if (data?.type === 'tipifica:gestion' && typeof data.total === 'number') {
       counter.textContent = `${data.total} ${data.total === 1 ? 'gestión guardada' : 'gestiones guardadas'} en tu práctica`;
     }
@@ -155,6 +175,7 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
     else if (action === 'guia') send('tipifica:guia');
     else if (action === 'demo') send('tipifica:demo');
     else if (action === 'pausa') send('tipifica:pausa');
+    else if (action === 'prueba') send('tipifica:prueba');
     else if (action === 'reload') frame.contentWindow?.location.reload();
   });
 }

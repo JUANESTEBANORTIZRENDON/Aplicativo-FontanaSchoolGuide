@@ -13,7 +13,7 @@ export type SealOptions = {
   autoCloseMs?: number;
 };
 
-const LOGO = '/imagenes/fontana-logo.png';
+const LOGO = '/imagenes/fontana-logo.webp';
 
 // Evita que el logo aparezca de golpe en medio de la animación.
 function preloadLogo(): Promise<void> {

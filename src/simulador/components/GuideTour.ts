@@ -8,6 +8,7 @@ import { PORTFOLIOS } from '../data/mock-portfolios';
 import { parseHash } from '../router';
 import { combine, on, prefersReducedMotion, qs, type Cleanup } from '../utils/dom';
 import { esc } from '../utils/format';
+import { startPractice } from './customer-file/PracticePanel';
 import { hydrateIcons, icon } from './icons';
 
 const SEEN_KEY = 'control-next:guia-vista:';
@@ -144,7 +145,7 @@ export function mountGuide(ctx: SimContext): Cleanup {
     title.textContent = step.title;
     text.textContent = step.text;
     extra.innerHTML = step.action
-      ? `<button type="button" class="sim-btn sim-btn--success sim-guide__action" data-guide="action">${icon(step.action.run === 'demo-pausa' ? 'CirclePause' : 'Search')} ${esc(step.action.label)}</button>`
+      ? `<button type="button" class="sim-btn sim-btn--success sim-guide__action" data-guide="action">${icon(step.action.run === 'demo-pausa' ? 'CirclePause' : step.action.run === 'prueba' ? 'Headphones' : 'Search')} ${esc(step.action.label)}</button>`
       : '';
     hydrateIcons(extra);
     count.textContent = `${index + 1} de ${steps.length}`;
@@ -363,8 +364,13 @@ export function mountGuide(ctx: SimContext): Cleanup {
         }
         else go(1);
       } else if (action === 'action') {
-        if (steps[index]?.action?.run === 'demo-pausa') void runPauseDemo();
-        else void runDemo();
+        const run = steps[index]?.action?.run;
+        if (run === 'demo-pausa') void runPauseDemo();
+        else if (run === 'prueba') {
+          stop();
+          if (ctx.store.hasValidSession()) startPractice(ctx);
+          else ctx.toast('Primero inicia sesión en el simulador.', 'warning');
+        } else void runDemo();
       }
     }),
     on(document, 'keydown', (event) => {
@@ -379,6 +385,11 @@ export function mountGuide(ctx: SimContext): Cleanup {
       if (type === 'tipifica:guia') start(true);
       else if (type === 'tipifica:demo') void runDemo();
       else if (type === 'tipifica:pausa') void runPauseDemo();
+      else if (type === 'tipifica:prueba') {
+        stop();
+        if (ctx.store.hasValidSession()) startPractice(ctx);
+        else ctx.toast('Primero inicia sesión en el simulador (credenciales de práctica) y vuelve a pulsar «Iniciar prueba».', 'warning');
+      }
     }),
   ]);
 }

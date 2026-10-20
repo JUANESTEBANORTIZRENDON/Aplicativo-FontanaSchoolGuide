@@ -92,7 +92,7 @@ body.auth-login {
   justify-content: center;
   border-top: 3px solid #d4af37;
   border-bottom: 1px solid #70112c;
-  background-image: linear-gradient(90deg, #11182780, #49001320, #1f2a3760), url('/imagenes/fontana-school-login.png');
+  background-image: linear-gradient(90deg, #11182780, #49001320, #1f2a3760), url('/imagenes/fontana-school-login.webp');
   background-size: cover, max(100vw, 1200px) auto;
   background-position: center, center bottom;
   box-shadow: inset 0 1px 0 #fff4d85c, 0 8px 24px #70112c20;

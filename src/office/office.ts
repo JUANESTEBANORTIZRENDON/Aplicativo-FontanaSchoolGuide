@@ -96,7 +96,7 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
   document.body.className = 'practice-screen office-screen';
   const root = document.querySelector<HTMLElement>('#app-content')!;
   root.innerHTML = `
-    <header><a class="brand" href="${escapar(backHref)}" aria-label="Fontana, volver a tu ruta de formación"><span class="brand-image"><img src="/imagenes/fontana-logo.png" alt=""><strong class="brand-name">FONTANA</strong></span></a><span class="header-divider"></span><span class="platform">AULA DE FORMACIÓN</span></header>
+    <header><a class="brand" href="${escapar(backHref)}" aria-label="Fontana, volver a tu ruta de formación"><span class="brand-image"><img src="/imagenes/fontana-logo.webp" alt=""><strong class="brand-name">FONTANA</strong></span></a><span class="header-divider"></span><span class="platform">AULA DE FORMACIÓN</span></header>
     <main class="office-main">
       <div class="office-progress-bar"><a class="office-progress-link" href="${escapar(backHref)}">Ver mi progreso del aula <span aria-hidden="true">→</span></a></div>
       <nav class="office-steps" aria-label="Secciones del módulo"></nav>
