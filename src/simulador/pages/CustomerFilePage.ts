@@ -5,7 +5,7 @@
 import { mountAppShell } from '../components/AppShell';
 import { campaignHeadTemplate, handleCampaignHeadClick } from '../components/CampaignHead';
 import { showDemographics, showPayments, showReferences } from '../components/customer-file/modals';
-import { mountPracticePanel, type PracticePanel } from '../components/customer-file/PracticePanel';
+import { callCardTemplate, mountPracticePanel, type PracticePanel } from '../components/customer-file/PracticePanel';
 import {
   agreementsTemplate,
   dataTemplate,
@@ -77,6 +77,7 @@ function pageTemplate(ctx: SimContext, portfolio: Portfolio, v: CustomerView, in
           <button type="button" class="sim-mic" data-action="mic" aria-label="Grabación de la llamada" data-sim-guide="ficha.mic">${icon('Mic')}</button>
         </div>
         <div data-gpanel="gestion" data-form-slot></div>
+        <div data-expert-result aria-live="polite"></div>
         <div data-gpanel="acuerdos" hidden data-region="agreements">${agreementsTemplate(v)}</div>
       </section>
       <section class="sim-card" data-sim-guide="ficha.historico" aria-labelledby="sim-hist-title">
@@ -132,7 +133,14 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
   if (exercise) for (const el of form.element.querySelectorAll('[min], [max]')) (el.removeAttribute('min'), el.removeAttribute('max'));
 
   let practice: PracticePanel | null = null;
-  if (exercise) practice = mountPracticePanel(qs(shell.main, '[data-practice-slot]'), ctx, exercise, { onRetry: () => form.reset() });
+  if (exercise) {
+    // En la prueba, la información del deudor se cambia por la llamada que hay que tipificar.
+    const info = qs(shell.main, '.sim-file__info');
+    info.classList.add('is-call');
+    info.innerHTML = callCardTemplate(exercise, initial);
+    hydrateIcons(info);
+    practice = mountPracticePanel(qs(shell.main, '[data-practice-slot]'), ctx, exercise, { onRetry: () => form.reset(), resultSlot: qs(shell.main, '[data-expert-result]') });
+  }
 
   const historyRegion = qs(shell.main, '[data-region="history"]');
   const sizeSelect = qs<HTMLSelectElement>(shell.main, '[data-hist-size]');
@@ -186,7 +194,7 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
     if (exercise && practice) {
       // El sistema experto compara la tipificación con lo que pasó en la llamada del audio.
       practice.showEvaluation(evaluate(exercise.rules, draft, EXERCISE_REFERENCE_DATE));
-      ctx.toast('Gestión guardada. Revisa arriba el resultado del sistema experto.', 'info');
+      ctx.toast('Gestión guardada. El resultado del sistema experto está debajo del formulario.', 'info');
     } else {
       ctx.toast(`Gestión guardada: ${draft.profile.toUpperCase()}. Quedó en el Histórico.`, 'success');
     }
@@ -262,9 +270,12 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
     ctx.store.subscribe((s, prev) => {
       if (s.managements !== prev.managements) {
         const v = current();
-        const info = qs(shell.main, '[data-region="info"]');
-        info.innerHTML = infoTemplate(v);
-        hydrateIcons(info);
+        // En la prueba esa zona muestra la llamada: no se reemplaza.
+        const info = shell.main.querySelector<HTMLElement>('[data-region="info"]');
+        if (info) {
+          info.innerHTML = infoTemplate(v);
+          hydrateIcons(info);
+        }
         qs(shell.main, '[data-region="agreements"]').innerHTML = agreementsTemplate(v);
         renderHistory();
       }
