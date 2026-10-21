@@ -13,6 +13,6 @@ export const TYPIFICATION_MINIMUM: MinimumItem[] = [
   { title: 'Perfil', text: 'El resultado real de la llamada: acuerdo de pago (total o abono), volver a llamar, no hubo acuerdo, paz y salvo…' },
   { title: 'Motivo No Pago', text: 'Por qué no ha pagado o qué queda por confirmar: no cuenta con el dinero, confirmar pago, con recibo, tercero encargado…' },
   { title: 'Teléfono', text: 'El número al que llamaste o desde el que te llamaron.' },
-  { title: 'Gestión escrita', text: 'Empieza con «teléfono //», dice quién contestó (TT o el tercero y su parentesco), qué se habló y cómo quedó: fecha y valor del acuerdo o cuándo volver a llamar.' },
+  { title: 'Gestión escrita', text: 'Dice quién contestó (TT o el tercero y su parentesco), qué se habló y cómo quedó: fecha y valor del acuerdo o cuándo volver a llamar. Se acostumbra empezar con «teléfono //».' },
   { title: 'Con un tercero', text: 'Nunca se le dan valores ni se negocia la deuda: solo se deja el mensaje para que el titular se comunique.' },
 ];

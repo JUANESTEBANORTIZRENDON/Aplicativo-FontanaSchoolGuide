@@ -139,7 +139,7 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
     info.classList.add('is-call');
     info.innerHTML = callCardTemplate(exercise, initial);
     hydrateIcons(info);
-    practice = mountPracticePanel(qs(shell.main, '[data-practice-slot]'), ctx, exercise, { onRetry: () => form.reset(), resultSlot: qs(shell.main, '[data-expert-result]') });
+    practice = mountPracticePanel(qs(shell.main, '[data-practice-slot]'), ctx, exercise, { onRetry: () => form.showErrors({}), resultSlot: qs(shell.main, '[data-expert-result]') });
   }
 
   const historyRegion = qs(shell.main, '[data-region="history"]');
@@ -195,9 +195,10 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
       // El sistema experto compara la tipificación con lo que pasó en la llamada del audio.
       practice.showEvaluation(evaluate(exercise.rules, draft, EXERCISE_REFERENCE_DATE));
       ctx.toast('Gestión guardada. El resultado del sistema experto está debajo del formulario.', 'info');
-    } else {
-      ctx.toast(`Gestión guardada: ${draft.profile.toUpperCase()}. Quedó en el Histórico.`, 'success');
+      // En la prueba se conserva lo escrito para revisarlo contra los checkmarks y corregirlo si hace falta.
+      return;
     }
+    ctx.toast(`Gestión guardada: ${draft.profile.toUpperCase()}. Quedó en el Histórico.`, 'success');
     form.reset();
   }
 

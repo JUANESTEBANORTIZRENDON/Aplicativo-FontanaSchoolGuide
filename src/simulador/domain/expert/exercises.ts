@@ -14,7 +14,6 @@ import {
   noteDate,
   noteMentions,
   noteMinWords,
-  noteStartsWithPhone,
   noteTime,
   phoneIs,
   profileIn,
@@ -59,7 +58,6 @@ const outboundCall = (phone: string): Rule[] => [
   actionIs('hacer-llamada', 'La asesora es quien marca al cliente («Lo estoy llamando…»).'),
   channelIs('telefonico'),
   phoneIs(phone),
-  noteStartsWithPhone(),
 ];
 
 export const EXERCISES: Exercise[] = [
@@ -77,7 +75,6 @@ export const EXERCISES: Exercise[] = [
       reasonIn(['No cuenta con el dinero', 'Disminución de ingresos'], 'Dice que ha tenido gastos y no ha podido ponerse al día.'),
       noteMentions('nota-quien', 'La gestión dice quién contestó', HOLDER_TERMS, 'Escribe quién contestó: «TT» o «titular».'),
       noteMentions('nota-motivo', 'La gestión explica por qué no paga', ['gastos', 'no cuenta', 'no tiene', 'no ha podido', 'no puede', 'dinero', 'revisar', 'cuentas'], 'Escribe el motivo: tuvo gastos y no puede comprometerse con una fecha.'),
-      noteMentions('nota-cierre', 'La gestión dice cómo quedó', ['canales', 'se comunica', 'comunicarse', 'comunicara', 'llamara', 'sin fecha', 'no se compromete', 'no da fecha', 'consultar'], 'Escribe cómo quedó: no da fecha y se comunicará por los canales oficiales.'),
       noteMinWords(12),
     ],
   },
