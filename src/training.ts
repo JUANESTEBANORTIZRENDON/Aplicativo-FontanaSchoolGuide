@@ -1,5 +1,4 @@
 import './styles.css';
-import { stages } from './content';
 import { api } from './http';
 import { showAppLoading } from './loading';
 import type { PrinciplesPanel } from './tutor/principles-panel';
@@ -11,7 +10,7 @@ function element<T extends HTMLElement>(selector: string): T {
   return result;
 }
 
-// NAVEGACIÓN ENTRE HISTORIA Y MÉTODO
+// NAVEGACIÓN ENTRE HISTORIA Y PRINCIPIOS
 // La ruta permanece visible; su alto determina el espacio al desplazar el contenido.
 const learningPath = element('.learning-path');
 const pathResizeObserver = new ResizeObserver(() => {
@@ -19,9 +18,8 @@ const pathResizeObserver = new ResizeObserver(() => {
 });
 pathResizeObserver.observe(learningPath);
 const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-const methodTab = element<HTMLButtonElement>('#method-tab');
 const principlesTab = element<HTMLButtonElement>('#principles-tab');
-let methodUnlocked = false;
+let principlesUnlocked = false;
 // PRINCIPIOS DE TRABAJO: el tutor (con voz) se carga solo al abrir la pestaña y se silencia al salir de ella.
 let principles: PrinciplesPanel | null = null;
 let principlesVisible = false;
@@ -32,13 +30,13 @@ async function showPrinciples(): Promise<void> {
   }
   if (principlesVisible) principles.show(); else principles.hide();
 }
-// El método se habilita al terminar Nuestra historia; los principios, al terminar el método (etapa 05).
+// Los principios se habilitan al terminar Nuestra historia.
 function unlockTab(tab: HTMLButtonElement): void {
   tab.disabled = false;
   tab.removeAttribute('title');
 }
 function selectTab(index: number): void {
-  if (!tabs[index] || tabs[index].disabled || (tabs[index] === methodTab && !methodUnlocked)) return;
+  if (!tabs[index] || tabs[index].disabled) return;
   tabs.forEach((tab, position) => {
     const selected = index === position;
     tab.setAttribute('aria-selected', String(selected));
@@ -69,11 +67,10 @@ tabs.forEach((tab, index) => {
   });
 });
 // El avance se guarda la primera vez que se termina cada parte; si falla, se reintenta al volver a terminarla.
-const savedProgress = { historia: false, metodo: false };
-function saveProgress(paso: 'historia' | 'metodo'): void {
+const savedProgress = { historia: false };
+function saveProgress(paso: 'historia'): void {
   if (savedProgress[paso]) return;
   savedProgress[paso] = true;
-  if (paso === 'metodo') savedProgress.historia = true;
   api('/auth/induccion/avance', { method: 'POST', body: JSON.stringify({ paso }) }).catch(() => {
     savedProgress[paso] = false;
   });
@@ -128,45 +125,36 @@ storyCards.forEach((card, index) => {
 // Finalizar permite abrir el aviso de nuevo si el usuario lo cierra.
 finishStory.addEventListener('click', () => {
   if (openedStories.size !== storyCards.length) return;
-  // Al repasar, el método ya está desbloqueado y se abre directamente.
-  if (methodUnlocked) { exploreMethod(); return; }
+  // Al repasar, los principios ya están desbloqueados y se abren directamente.
+  if (principlesUnlocked) { explorePrinciples(); return; }
   storyCompleted = true;
   saveProgress('historia');
-  finishStory.textContent = 'Continuar al método →';
+  finishStory.textContent = 'Continuar a los principios →';
   completionDialog.showModal();
 });
 element('#close-completion').addEventListener('click', () => completionDialog.close());
 completionDialog.addEventListener('close', () => {
-  if (!methodUnlocked) finishStory.focus({ preventScroll: true });
+  if (!principlesUnlocked) finishStory.focus({ preventScroll: true });
 });
 
 // El botón del aviso abre el recorrido conservando el avance entre etapas.
-function exploreMethod(): void {
+function explorePrinciples(): void {
   if (!storyCompleted) return;
-  methodUnlocked = true;
+  principlesUnlocked = true;
   if (completionDialog.open) completionDialog.close();
-  unlockTab(methodTab);
-  selectTab(tabs.indexOf(methodTab));
+  unlockTab(principlesTab);
+  selectTab(tabs.indexOf(principlesTab));
   focusContent();
 }
-element('#completion-go-method').addEventListener('click', exploreMethod);
+element('#completion-go-principles').addEventListener('click', explorePrinciples);
 
-// ETAPAS DEL MÉTODO DE TRABAJO
-const stepButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-step]')];
-const previous = element<HTMLButtonElement>('#previous');
-const next = element<HTMLButtonElement>('#next');
+// CONFIRMACIÓN DE LECTURA Y ACCESO AL AULA
 const readingConfirmation = element<HTMLLabelElement>('#reading-confirmation');
 const companyRead = element<HTMLInputElement>('#company-read');
 const experienceSection = element('#experience-section');
 const experienceFields = element<HTMLFieldSetElement>('#experience-fields');
 const experienceForm = element<HTMLFormElement>('#experience-form');
 const experienceResult = element('#experience-result');
-let currentStage = 0;
-// Solo «Siguiente etapa» habilita una etapa nueva; las visitadas permiten repaso.
-let highestUnlockedStage = 0;
-// Recorrido: Nuestra historia → Método de trabajo → Principios de trabajo → aula. La confirmación de lectura y el acceso
-// al aula quedan al final de los principios, cuando se revisaron los cinco.
-const toPrinciples = element<HTMLButtonElement>('#to-principles');
 const principlesProgress = element('#principles-progress');
 let principlesReviewed = false;
 // Con la inducción ya terminada (repaso) los principios no vuelven a bloquear el acceso.
@@ -187,44 +175,6 @@ function updatePrinciplesProgress({ reviewed, total }: { reviewed: number; total
     : `Revisa los cinco principios para continuar. Llevas ${reviewed} de ${total}.`;
   updateExperienceAccess();
 }
-function showStage(index: number): void {
-  const stage = stages[index];
-  if (!stage || index > highestUnlockedStage) return;
-  currentStage = index;
-  stepButtons.forEach((button, position) => {
-    button.classList.toggle('is-active', index === position);
-    button.setAttribute('aria-pressed', String(index === position));
-    button.disabled = position > highestUnlockedStage;
-    button.title = button.disabled ? 'Avanza con «Siguiente etapa» para habilitar este paso.' : '';
-  });
-  element('#detail-count').textContent = `ETAPA ${String(index + 1).padStart(2, '0')} DE ${String(stages.length).padStart(2, '0')}`;
-  element('#detail-title').textContent = stage.title;
-  element('#detail-text').textContent = stage.description;
-  element('#detail-note').textContent = stage.note;
-  previous.disabled = index === 0;
-  const lastStage = index === stages.length - 1;
-  next.hidden = lastStage;
-  toPrinciples.hidden = !lastStage;
-  updateExperienceAccess();
-}
-stepButtons.forEach((button, index) => button.addEventListener('click', () => showStage(index)));
-previous.addEventListener('click', () => showStage(currentStage - 1));
-next.addEventListener('click', () => {
-  const destination = currentStage + 1;
-  if (destination >= stages.length) return;
-  highestUnlockedStage = Math.max(highestUnlockedStage, destination);
-  if (highestUnlockedStage === stages.length - 1) { saveProgress('metodo'); unlockTab(principlesTab); }
-  showStage(destination);
-});
-// Al terminar el método se pasa a los principios de trabajo (todavía no al aula).
-toPrinciples.addEventListener('click', () => {
-  if (highestUnlockedStage !== stages.length - 1) return;
-  unlockTab(principlesTab);
-  selectTab(tabs.indexOf(principlesTab));
-  focusContent();
-});
-showStage(0);
-
 // Al terminar la inducción inicial se abre la ruta de formación; la experiencia se pregunta en el módulo 02.
 companyRead.addEventListener('change', () => {
   if (!companyRead.checked) {
@@ -270,22 +220,15 @@ experienceForm.addEventListener('submit', async (event: SubmitEvent) => {
 // Al volver, lo que el asesor ya completó queda desbloqueado: los bloqueos solo aplican la primera vez.
 export function restoreProgress(progress: { historia: boolean; metodo: boolean; completada: boolean }): void {
   const historia = progress.historia || progress.metodo || progress.completada;
-  const metodo = progress.metodo || progress.completada;
   if (historia) {
     savedProgress.historia = true;
     storyCards.forEach((_, index) => openStory(index));
     highestUnlockedStory = storyCards.length - 1;
     document.querySelectorAll<HTMLButtonElement>('.story-next:not(#finish-story)').forEach((button) => { button.hidden = true; });
     storyCompleted = true;
-    methodUnlocked = true;
-    finishStory.textContent = 'Continuar al método →';
-    unlockTab(methodTab);
-  }
-  if (metodo) {
+    principlesUnlocked = true;
+    finishStory.textContent = 'Continuar a los principios →';
     unlockTab(principlesTab);
-    savedProgress.metodo = true;
-    highestUnlockedStage = stages.length - 1;
-    showStage(currentStage);
   }
   if (progress.completada) {
     // Inducción ya terminada: se puede repasar con la confirmación marcada.

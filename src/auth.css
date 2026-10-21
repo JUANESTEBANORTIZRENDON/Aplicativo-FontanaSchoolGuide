@@ -102,9 +102,13 @@ body.auth-login {
 .auth-login .auth-brand img { width: 54px; height: 54px; filter: drop-shadow(0 3px 4px #30081245); }
 .auth-login .auth-main { max-width: 1220px; min-height: calc(100svh - 88px); padding: 44px 32px; display: grid; align-content: center; }
 .login-panel { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); border: 1px solid #d4af3740; border-radius: 26px; background: #fffaf0; box-shadow: 0 18px 55px #70112c12; overflow: hidden; }
-.login-welcome { position: relative; display: grid; place-items: center; overflow: hidden; background: #490013; }
-.login-photo { position: absolute; inset: 0; margin: 0; }
-.login-photo > img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.login-welcome { position: relative; display: grid; place-items: center; overflow: hidden; background: radial-gradient(ellipse at 50% 35%, #850021, #540014 75%, #490013); }
+.login-photo { position: relative; width: 100%; margin: 0; padding: 30px clamp(24px, 4vw, 54px) 38px; display: grid; justify-items: center; align-content: center; gap: 10px; }
+.login-photo > img { display: block; width: min(100%, 350px); height: auto; object-fit: contain; object-position: center; mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 5%, #000 94%, transparent); mask-composite: intersect; }
+.login-wordmark { display: grid; justify-items: center; gap: 8px; color: #f6dfa0; text-align: center; text-shadow: 0 2px 10px #21000b70; }
+.login-wordmark strong { font: 700 clamp(30px, 3.6vw, 48px)/1.1 'Manrope', sans-serif; letter-spacing: .13em; padding-left: .13em; }
+.login-wordmark span { display: flex; align-items: center; gap: 16px; font: 600 15px/1.4 'Manrope', sans-serif; letter-spacing: .4em; padding-left: .4em; }
+.login-wordmark span::before, .login-wordmark span::after { content: ''; width: 36px; height: 1px; background: #d4af37; }
 .auth-login .login-card { position: relative; width: 100%; max-width: none; margin: 0; padding: 34px; border: 0; border-radius: 0; color: #f7efdf; background: radial-gradient(ellipse at 100% 0%, #6382a43b, transparent 65%), radial-gradient(ellipse at 0% 100%, #8b153826, transparent 60%), linear-gradient(145deg, #243548, #1f2a37 55%, #16212e); box-shadow: inset 1px 0 0 #d4af3730; }
 .login-card h1 { margin: 0 0 26px; font: italic 600 32px/1.2 Georgia, 'Times New Roman', serif; color: #f4d98c; }
 .auth-login .role-tabs { padding: 5px; border: 1px solid #d4af3738; background: #11182755; border-radius: 13px; margin-bottom: 24px; }
@@ -166,8 +170,10 @@ body.auth-login {
   .auth-login .auth-main { max-width: 570px; padding: 28px 20px 20px; }
   .login-panel { grid-template-columns: minmax(0, 1fr); border-radius: 22px; }
   .auth-login .auth-main { min-height: calc(100svh - 78px); }
-  .login-photo { position: static; width: 100%; }
-  .login-photo > img { height: auto; }
+  .login-photo { padding: 24px 32px 28px; gap: 4px; }
+  .login-photo > img { width: min(66%, 240px); }
+  .login-wordmark strong { font-size: 30px; }
+  .login-wordmark span { font-size: 12px; }
   .auth-login .auth-header { height: 78px; }
   .auth-login .auth-brand { font-size: 20px; }
   .auth-login .login-card { padding: 26px 22px; }
@@ -202,7 +208,7 @@ body.auth-login {
 }
 .auth-login.login-motion .auth-main::before { animation: login-ambient 8s ease-in-out infinite alternate; }
 .auth-login.login-motion .login-panel { animation: login-arrival .65s ease-out both; }
-.auth-login.login-motion .login-photo img { animation: login-breathe 9s ease-in-out infinite alternate; }
+.auth-login.login-motion .login-photo img { animation: none; }
 .auth-login.login-motion .login-welcome::before { animation: login-dust 5s ease-in-out infinite alternate; }
 .auth-login.login-motion .login-welcome::after { animation: login-reflection 4.8s linear infinite; }
 .auth-login .login-panel::after { content: ''; position: absolute; inset: 0; border: 1px solid #d4af3790; border-radius: inherit; box-shadow: inset 0 0 20px #d4af3720; pointer-events: none; }
@@ -282,3 +288,26 @@ body.auth-login {
 /* Acceso del asesor: solo documento. El campo de contraseña pertenece a la administración. */
 .password-field[hidden], .login-access-note[hidden] { display: none !important; }
 .login-access-note { margin: 0; padding: 10px 12px; border: 1px solid #e3d3a4; border-radius: 10px; background: #fff8e6; color: #5a4310; font-size: 13px; line-height: 1.5; }
+
+/* La identidad del antiguo encabezado vive ahora dentro del acceso. */
+.auth-login-entry .auth-main { min-height: 100svh; }
+.auth-login-entry { font-family: 'Segoe UI', Arial, sans-serif; }
+.auth-login-entry .login-card h1 { font: 600 clamp(27px, 2.8vw, 34px)/1.25 'Segoe UI', Arial, sans-serif; letter-spacing: -.025em; }
+.auth-login-entry .auth-form label { font-size: 14px; font-weight: 600; line-height: 1.5; }
+.auth-login-entry .role-tab, .auth-login-entry .primary-action { font-size: 14px; font-weight: 600; }
+.auth-login-entry .login-access-note { font-size: 14px; line-height: 1.6; }
+.auth-login-entry .login-welcome { min-height: 320px; padding: 40px 24px; background: radial-gradient(ellipse at 50% 0%, #750522, transparent 70%), linear-gradient(120deg, #2a101d, #4f0016 55%, #211d2b); }
+.auth-login-entry .login-welcome { isolation: isolate; }
+.auth-login-entry .login-brand-curves { position: absolute; inset: 0; z-index: 0; display: block; width: 100%; height: 100%; pointer-events: none; }
+.login-brand-curves path { vector-effect: non-scaling-stroke; stroke-width: 1.2px; }
+.login-brand-curves .login-curve-faint { opacity: .35; stroke-width: .7px; }
+.login-brand-curves .login-curve-ribbon { fill: #a6193c; opacity: .16; }
+.login-aula-brand { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; max-width: 100%; color: #fff3d2; text-align: center; }
+.login-aula-brand img { width: clamp(170px, 20vw, 240px); max-width: 100%; height: auto; aspect-ratio: 1; object-fit: contain; filter: drop-shadow(0 8px 18px #18020b80); }
+.login-aula-brand span { font: 600 clamp(27px, 2.8vw, 36px)/1.3 'Segoe UI', Arial, sans-serif; letter-spacing: -.02em; text-wrap: balance; }
+@media(max-width:760px) {
+  .auth-login-entry .auth-main { min-height: 100svh; }
+  .auth-login-entry .login-welcome { min-height: 180px; padding: 30px 20px; }
+  .login-aula-brand { gap: 14px; }
+  .login-aula-brand img { width: 150px; }
+}

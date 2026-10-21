@@ -56,9 +56,28 @@ function formularioLogin(): void {
   shell('', '', `
     <div class="login-panel">
     <section class="login-welcome" aria-label="Bienvenida a Fontana">
-      <figure class="login-photo">
-        <img src="/imagenes/fontana-school-login.webp" alt="Fontana School, identidad dorada sobre fondo vino">
-      </figure>
+      <svg class="login-brand-curves" viewBox="0 0 680 480" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="login-curve-gold" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#d4af37" stop-opacity=".08"/>
+            <stop offset=".4" stop-color="#f4d98c" stop-opacity=".75"/>
+            <stop offset=".7" stop-color="#d4af37" stop-opacity=".5"/>
+            <stop offset="1" stop-color="#f4d98c" stop-opacity=".08"/>
+          </linearGradient>
+        </defs>
+        <path class="login-curve-ribbon" d="M-80 310 Q300 600 760 295 L760 334 Q300 615-80 338Z"/>
+        <g fill="none" stroke="url(#login-curve-gold)">
+          <path d="M-80-65 Q340 270 760-65"/>
+          <path class="login-curve-faint" d="M-80-52 Q340 290 760-52"/>
+          <path d="M-80 310 Q300 600 760 295"/>
+          <path class="login-curve-faint" d="M-80 338 Q300 615 760 334"/>
+          <path d="M-80 354 Q360 650 760 345"/>
+        </g>
+      </svg>
+      <div class="login-aula-brand">
+        <img src="/imagenes/fontana-logo.webp" alt="Fontana" width="220" height="220">
+        <span>Aula De Formación</span>
+      </div>
     </section>
     <section class="auth-card narrow login-card" aria-labelledby="login-title">
       <h1 id="login-title">Inicia tu sesión</h1>
@@ -84,6 +103,8 @@ function formularioLogin(): void {
       </form>
     </section></div>`);
   aplicarEstiloAcceso();
+  document.body.classList.add('auth-login-entry');
+  document.querySelector('.auth-header')!.remove();
   const form = document.querySelector<HTMLFormElement>('#login-form')!;
   const passwordInput = form.elements.namedItem('password') as HTMLInputElement;
   const passwordToggle = form.querySelector<HTMLButtonElement>('.password-toggle')!;
