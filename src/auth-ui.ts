@@ -307,7 +307,7 @@ export async function iniciarInterfaz(): Promise<void> {
   }
   if (practiceRoute && !reviewing) {
     const { mostrarPractica } = await import('./practice');
-    mostrarPractica(usuario.nombreCompleto, usuario.tieneExperienciaCobranzasDigitales, route);
+    mostrarPractica(usuario.nombreCompleto, route);
     const { mountLearningPath } = await import('./advisor/advisor');
     await mountLearningPath();
     await revealApp();
