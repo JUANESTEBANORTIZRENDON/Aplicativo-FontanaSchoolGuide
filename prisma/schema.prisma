@@ -24,8 +24,8 @@ model Usuario {
   tipoSangre                         String?   @map("tipo_sangre") @db.VarChar(3)
   tallaCamisa                        String?   @map("talla_camisa") @db.VarChar(5)
   direccionResidencia                String?   @map("direccion_residencia") @db.VarChar(250)
-  nombreContactoEmergencia            String?   @map("nombre_contacto_emergencia") @db.VarChar(150)
-  numeroContactoEmergencia            String?   @map("numero_contacto_emergencia") @db.VarChar(30)
+  nombreContactoEmergencia           String?   @map("nombre_contacto_emergencia") @db.VarChar(150)
+  numeroContactoEmergencia           String?   @map("numero_contacto_emergencia") @db.VarChar(30)
   banco                              String?   @db.VarChar(50)
   otroBanco                          String?   @map("otro_banco") @db.VarChar(100)
   numeroCuenta                       String?   @map("numero_cuenta") @db.VarChar(30)
@@ -54,25 +54,31 @@ model Usuario {
   creador                            Usuario?  @relation("UsuarioCreador", fields: [creadoPor], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "fk_usuarios_creado_por")
   creados                            Usuario[] @relation("UsuarioCreador")
 
-  perfilAsesor          AdvisorProfile?
-  progresoModulos       UserModuleProgress[]
-  progresoActividad     UserActivityProgress[]
-  intentos              Attempt[]
-  resultadosTyping      TypingResult[]
-  resultadosSimulador   SimulatorResult[]
-  sellos                Seal[]
-  certificados          Certificate[]
-  excepciones           UserActivityOverride[] @relation("ExcepcionUsuario")
-  excepcionesCreadas    UserActivityOverride[] @relation("ExcepcionCreador")
-  limitesIntento        UserAttemptLimit[]     @relation("LimiteIntentoUsuario")
-  limitesIntentoCreados UserAttemptLimit[]     @relation("LimiteIntentoCreador")
-  auditoria             AdminAuditLog[]
-  seccionesVistas       ActivitySectionView[]
-  configsOfimatica      OfficeModuleConfig[]
-  bloquesCobranzas      CollectionsBlockProgress[]
-  textosMecanografia    TypingText[]
-  actividadesExcel      ExcelActivity[]
-  ejerciciosDictado     DictationExercise[]
+  perfilAsesor             AdvisorProfile?
+  progresoModulos          UserModuleProgress[]
+  progresoActividad        UserActivityProgress[]
+  intentos                 Attempt[]
+  resultadosTyping         TypingResult[]
+  resultadosSimulador      SimulatorResult[]
+  sellos                   Seal[]
+  certificados             Certificate[]
+  excepciones              UserActivityOverride[]      @relation("ExcepcionUsuario")
+  excepcionesCreadas       UserActivityOverride[]      @relation("ExcepcionCreador")
+  limitesIntento           UserAttemptLimit[]          @relation("LimiteIntentoUsuario")
+  limitesIntentoCreados    UserAttemptLimit[]          @relation("LimiteIntentoCreador")
+  auditoria                AdminAuditLog[]
+  seccionesVistas          ActivitySectionView[]
+  configsOfimatica         OfficeModuleConfig[]
+  bloquesCobranzas         CollectionsBlockProgress[]
+  textosMecanografia       TypingText[]
+  actividadesExcel         ExcelActivity[]
+  ejerciciosDictado        DictationExercise[]
+  solicitudesReactivacion  ReactivationRequest[]       @relation("ReactivacionUsuario")
+  reactivacionesDecididas  ReactivationRequest[]       @relation("ReactivacionDecisor")
+  decisionesCertificacion  CertificationDecision[]     @relation("CertificacionUsuario")
+  certificacionesDecididas CertificationDecision[]     @relation("CertificacionDecisor")
+  resumenesFormacion       TrainingCompletionSummary[] @relation("ResumenUsuario")
+  resumenesAprobados       TrainingCompletionSummary[] @relation("ResumenAprobador")
 
   @@index([estado], map: "idx_usuarios_estado")
   @@index([rol], map: "idx_usuarios_rol")
@@ -191,6 +197,21 @@ enum WebhookStatus {
   @@schema("induccion")
 }
 
+enum ReactivationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@schema("induccion")
+}
+
+enum CertificationDecisionType {
+  APPROVED
+  RETURNED
+
+  @@schema("induccion")
+}
+
 enum ExperienceLevel {
   NONE
   BASIC
@@ -215,21 +236,21 @@ model AdvisorProfile {
 }
 
 model TrainingModule {
-  id            String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  slug          String               @unique @db.VarChar(80)
-  name          String               @db.VarChar(150)
-  description   String?
-  order         Int                  @unique @map("order")
-  status        CatalogStatus        @default(DRAFT)
-  isRequired    Boolean              @default(true) @map("is_required")
-  route         String               @db.VarChar(200)
-  createdAt     DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
-  activities    Activity[]
-  prerequisites ModulePrerequisite[] @relation("ModuloDependiente")
-  dependents    ModulePrerequisite[] @relation("ModuloRequisito")
-  progress      UserModuleProgress[]
-  seals         Seal[]
+  id               String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug             String                     @unique @db.VarChar(80)
+  name             String                     @db.VarChar(150)
+  description      String?
+  order            Int                        @unique @map("order")
+  status           CatalogStatus              @default(DRAFT)
+  isRequired       Boolean                    @default(true) @map("is_required")
+  route            String                     @db.VarChar(200)
+  createdAt        DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  activities       Activity[]
+  prerequisites    ModulePrerequisite[]       @relation("ModuloDependiente")
+  dependents       ModulePrerequisite[]       @relation("ModuloRequisito")
+  progress         UserModuleProgress[]
+  seals            Seal[]
   bloquesCobranzas CollectionsBlockProgress[]
 
   @@map("modulos_formacion")
@@ -237,16 +258,16 @@ model TrainingModule {
 }
 
 model CollectionsBlockProgress {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
-  moduleId       String   @map("module_id") @db.Uuid
-  blockKey       String   @map("block_key") @db.VarChar(30)
-  contentVersion Int      @map("content_version")
-  attempts       Int      @default(0)
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  moduleId       String         @map("module_id") @db.Uuid
+  blockKey       String         @map("block_key") @db.VarChar(30)
+  contentVersion Int            @map("content_version")
+  attempts       Int            @default(0)
   answers        Json
-  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user           Usuario @relation(fields: [userId], references: [id], onDelete: Restrict)
+  completedAt    DateTime?      @map("completed_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user           Usuario        @relation(fields: [userId], references: [id], onDelete: Restrict)
   module         TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Restrict)
 
   @@unique([userId, moduleId, blockKey, contentVersion], map: "uq_cobranzas_bloque_usuario_version")
@@ -268,23 +289,24 @@ model ModulePrerequisite {
 }
 
 model Activity {
-  id            String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  moduleId      String                 @map("module_id") @db.Uuid
-  type          ActivityType
-  order         Int                    @map("order")
-  status        CatalogStatus          @default(DRAFT)
-  title         String                 @db.VarChar(150)
-  isRequired    Boolean                @default(true) @map("is_required")
-  route         String?                @db.VarChar(200)
-  version       Int                    @default(1)
-  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
-  module        TrainingModule         @relation(fields: [moduleId], references: [id], onDelete: Restrict)
-  evaluations   Evaluation[]
-  progress      UserActivityProgress[]
-  overrides     UserActivityOverride[]
-  attemptLimits UserAttemptLimit[]
-  sectionViews  ActivitySectionView[]
+  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  moduleId             String                 @map("module_id") @db.Uuid
+  type                 ActivityType
+  order                Int                    @map("order")
+  status               CatalogStatus          @default(DRAFT)
+  title                String                 @db.VarChar(150)
+  isRequired           Boolean                @default(true) @map("is_required")
+  route                String?                @db.VarChar(200)
+  version              Int                    @default(1)
+  createdAt            DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  module               TrainingModule         @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+  evaluations          Evaluation[]
+  progress             UserActivityProgress[]
+  overrides            UserActivityOverride[]
+  attemptLimits        UserAttemptLimit[]
+  sectionViews         ActivitySectionView[]
+  reactivationRequests ReactivationRequest[]
 
   @@unique([moduleId, order])
   @@index([moduleId, status])
@@ -336,17 +358,20 @@ model UserActivityProgress {
 
 // Una configuración evaluable nueva crea otra versión; una versión con intentos nunca se edita.
 model Evaluation {
-  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  activityId   String        @map("activity_id") @db.Uuid
-  version      Int
-  title        String?       @db.VarChar(150)
-  minimumScore Decimal       @map("minimum_score") @db.Decimal(5, 2)
-  maxAttempts  Int           @map("max_attempts")
-  waitMinutes  Int           @default(0) @map("wait_minutes")
-  status       CatalogStatus @default(DRAFT)
-  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  activity     Activity      @relation(fields: [activityId], references: [id], onDelete: Restrict)
-  attempts     Attempt[]
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  activityId     String        @map("activity_id") @db.Uuid
+  version        Int
+  title          String?       @db.VarChar(150)
+  minimumScore   Decimal       @map("minimum_score") @db.Decimal(5, 2)
+  maxAttempts    Int           @map("max_attempts")
+  waitMinutes    Int           @default(0) @map("wait_minutes")
+  // Examen general: cuántas preguntas se sortean del banco y qué versión del banco se usa.
+  questionCount  Int?          @map("question_count")
+  contentVersion Int?          @map("content_version")
+  status         CatalogStatus @default(DRAFT)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  activity       Activity      @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  attempts       Attempt[]
 
   @@unique([activityId, version])
   @@index([activityId, status])
@@ -355,28 +380,29 @@ model Evaluation {
 }
 
 model Attempt {
-  id                  String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId              String                  @map("user_id") @db.Uuid
-  evaluationId        String                  @map("evaluation_id") @db.Uuid
-  number              Int
-  score               Decimal?                @db.Decimal(5, 2)
-  status              AttemptStatus           @default(IN_PROGRESS)
-  startedAt           DateTime                @default(now()) @map("started_at") @db.Timestamptz(6)
-  submittedAt         DateTime?               @map("submitted_at") @db.Timestamptz(6)
-  durationSeconds     Int?                    @map("duration_seconds")
-  overrideId          String?                 @map("override_id") @db.Uuid
-  createdAt           DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  user                Usuario                 @relation(fields: [userId], references: [id], onDelete: Restrict)
-  evaluation          Evaluation              @relation(fields: [evaluationId], references: [id], onDelete: Restrict)
-  override            UserActivityOverride?   @relation(fields: [overrideId], references: [id], onDelete: Restrict)
-  answers             AttemptAnswer[]
-  typingResults       TypingResult[]
-  simulatorResults    SimulatorResult[]
-  typificationResults TypificationResult[]
-  seals               Seal[]
-  typingInternal      TypingAttemptResult?
-  excelResult         ExcelAttemptResult?
-  dictationResult     DictationAttemptResult?
+  id                   String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String                  @map("user_id") @db.Uuid
+  evaluationId         String                  @map("evaluation_id") @db.Uuid
+  number               Int
+  score                Decimal?                @db.Decimal(5, 2)
+  status               AttemptStatus           @default(IN_PROGRESS)
+  startedAt            DateTime                @default(now()) @map("started_at") @db.Timestamptz(6)
+  submittedAt          DateTime?               @map("submitted_at") @db.Timestamptz(6)
+  durationSeconds      Int?                    @map("duration_seconds")
+  overrideId           String?                 @map("override_id") @db.Uuid
+  createdAt            DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  user                 Usuario                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  evaluation           Evaluation              @relation(fields: [evaluationId], references: [id], onDelete: Restrict)
+  override             UserActivityOverride?   @relation(fields: [overrideId], references: [id], onDelete: Restrict)
+  answers              AttemptAnswer[]
+  typingResults        TypingResult[]
+  simulatorResults     SimulatorResult[]
+  typificationResults  TypificationResult[]
+  seals                Seal[]
+  typingInternal       TypingAttemptResult?
+  excelResult          ExcelAttemptResult?
+  dictationResult      DictationAttemptResult?
+  reactivationRequests ReactivationRequest[]
 
   @@unique([userId, evaluationId, number])
   @@index([userId, evaluationId, createdAt])
@@ -393,6 +419,8 @@ model AttemptAnswer {
   optionId     String?  @map("option_id") @db.VarChar(100)
   isCorrect    Boolean? @map("is_correct")
   awardedScore Decimal? @map("awarded_score") @db.Decimal(5, 2)
+  // Orden de la pregunta dentro del intento (examen general: preguntas sorteadas del banco).
+  position     Int?
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   attempt      Attempt  @relation(fields: [attemptId], references: [id], onDelete: Restrict)
 
@@ -435,15 +463,24 @@ model SimulatorResult {
   @@schema("induccion")
 }
 
+// Ejercicio oficial de Tipifica: category = perfil, subcategory = motivo no pago, observation = gestión escrita.
+// fields guarda los campos del formulario y checks el resultado compacto de cada regla ({ id, ok }).
 model TypificationResult {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  attemptId      String   @map("attempt_id") @db.Uuid
-  catalogVersion String   @map("catalog_version") @db.VarChar(50)
-  category       String   @db.VarChar(100)
-  subcategory    String?  @db.VarChar(100)
-  observation    String?
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  attempt        Attempt  @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attemptId       String   @map("attempt_id") @db.Uuid
+  catalogVersion  String   @map("catalog_version") @db.VarChar(50)
+  category        String   @db.VarChar(100)
+  subcategory     String?  @db.VarChar(100)
+  observation     String?
+  exerciseKey     String?  @map("exercise_key") @db.VarChar(40)
+  scenarioVersion Int?     @map("scenario_version")
+  rulesVersion    Int?     @map("rules_version")
+  fields          Json?
+  metCount        Int?     @map("met_count")
+  unmetCount      Int?     @map("unmet_count")
+  checks          Json?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  attempt         Attempt  @relation(fields: [attemptId], references: [id], onDelete: Restrict)
 
   @@index([attemptId])
   @@map("resultados_tipificacion")
@@ -470,21 +507,26 @@ model Seal {
   @@schema("induccion")
 }
 
+// Un solo certificado ACTIVE por usuario: índice único parcial uq_certificados_activo (SQL manual).
 model Certificate {
-  id                    String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId                String            @map("user_id") @db.Uuid
-  code                  String            @unique @db.VarChar(40)
-  status                CertificateStatus @default(ACTIVE)
-  issuedAt              DateTime          @default(now()) @map("issued_at") @db.Timestamptz(6)
-  revokedAt             DateTime?         @map("revoked_at") @db.Timestamptz(6)
-  revokeReason          String?           @map("revoke_reason")
-  fileUrl               String?           @map("file_url")
-  previousCertificateId String?           @unique @map("previous_certificate_id") @db.Uuid
-  createdAt             DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt             DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user                  Usuario           @relation(fields: [userId], references: [id], onDelete: Restrict)
-  previousCertificate   Certificate?      @relation("Reemision", fields: [previousCertificateId], references: [id], onDelete: Restrict)
-  nextCertificate       Certificate?      @relation("Reemision")
+  id                    String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                String                     @map("user_id") @db.Uuid
+  code                  String                     @unique @db.VarChar(40)
+  status                CertificateStatus          @default(ACTIVE)
+  issuedAt              DateTime                   @default(now()) @map("issued_at") @db.Timestamptz(6)
+  revokedAt             DateTime?                  @map("revoked_at") @db.Timestamptz(6)
+  revokeReason          String?                    @map("revoke_reason")
+  fileUrl               String?                    @map("file_url")
+  // Primera vez que el asesor vio la felicitación de su certificación (no se repite en cada ingreso).
+  celebratedAt          DateTime?                  @map("celebrated_at") @db.Timestamptz(6)
+  previousCertificateId String?                    @unique @map("previous_certificate_id") @db.Uuid
+  createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user                  Usuario                    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  previousCertificate   Certificate?               @relation("Reemision", fields: [previousCertificateId], references: [id], onDelete: Restrict)
+  nextCertificate       Certificate?               @relation("Reemision")
+  decision              CertificationDecision?
+  summary               TrainingCompletionSummary?
 
   @@index([userId, status])
   @@map("certificados")
@@ -493,23 +535,24 @@ model Certificate {
 
 // Vigente = revokedAt IS NULL AND (expiresAt IS NULL OR expiresAt > now()).
 model UserActivityOverride {
-  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId         String         @map("user_id") @db.Uuid
-  activityId     String         @map("activity_id") @db.Uuid
-  action         OverrideAction
-  extraAttempts  Int            @default(0) @map("extra_attempts")
-  reason         String
-  expiresAt      DateTime?      @map("expires_at") @db.Timestamptz(6)
-  revokedAt      DateTime?      @map("revoked_at") @db.Timestamptz(6)
-  revokeReason   String?        @map("revoke_reason")
-  consumedAt     DateTime?      @map("consumed_at") @db.Timestamptz(6)
-  createdById    String         @map("created_by_id") @db.Uuid
-  idempotencyKey String         @unique @map("idempotency_key") @db.VarChar(100)
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  user           Usuario        @relation("ExcepcionUsuario", fields: [userId], references: [id], onDelete: Restrict)
-  activity       Activity       @relation(fields: [activityId], references: [id], onDelete: Restrict)
-  createdBy      Usuario        @relation("ExcepcionCreador", fields: [createdById], references: [id], onDelete: Restrict)
-  attempts       Attempt[]
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String               @map("user_id") @db.Uuid
+  activityId          String               @map("activity_id") @db.Uuid
+  action              OverrideAction
+  extraAttempts       Int                  @default(0) @map("extra_attempts")
+  reason              String
+  expiresAt           DateTime?            @map("expires_at") @db.Timestamptz(6)
+  revokedAt           DateTime?            @map("revoked_at") @db.Timestamptz(6)
+  revokeReason        String?              @map("revoke_reason")
+  consumedAt          DateTime?            @map("consumed_at") @db.Timestamptz(6)
+  createdById         String               @map("created_by_id") @db.Uuid
+  idempotencyKey      String               @unique @map("idempotency_key") @db.VarChar(100)
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  user                Usuario              @relation("ExcepcionUsuario", fields: [userId], references: [id], onDelete: Restrict)
+  activity            Activity             @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  createdBy           Usuario              @relation("ExcepcionCreador", fields: [createdById], references: [id], onDelete: Restrict)
+  attempts            Attempt[]
+  reactivationRequest ReactivationRequest?
 
   @@index([userId, activityId, revokedAt, expiresAt])
   @@index([createdById, createdAt])
@@ -557,6 +600,88 @@ model AdminAuditLog {
   @@index([entityType, entityId, createdAt])
   @@index([action, createdAt])
   @@map("auditoria_admin")
+  @@schema("induccion")
+}
+
+// Solicitud del asesor para volver a presentar una evaluación oficial no aprobada. Una sola PENDING por asesor y
+// actividad (índice único parcial uq_reactivacion_pendiente, SQL manual). Aprobarla crea la excepción REACTIVATE.
+model ReactivationRequest {
+  id             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String                @map("user_id") @db.Uuid
+  activityId     String                @map("activity_id") @db.Uuid
+  attemptId      String?               @map("attempt_id") @db.Uuid
+  status         ReactivationStatus    @default(PENDING)
+  advisorNote    String?               @map("advisor_note") @db.VarChar(500)
+  decisionReason String?               @map("decision_reason")
+  decidedById    String?               @map("decided_by_id") @db.Uuid
+  decidedAt      DateTime?             @map("decided_at") @db.Timestamptz(6)
+  overrideId     String?               @unique @map("override_id") @db.Uuid
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  user           Usuario               @relation("ReactivacionUsuario", fields: [userId], references: [id], onDelete: Restrict)
+  activity       Activity              @relation(fields: [activityId], references: [id], onDelete: Restrict)
+  attempt        Attempt?              @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  decidedBy      Usuario?              @relation("ReactivacionDecisor", fields: [decidedById], references: [id], onDelete: Restrict)
+  override       UserActivityOverride? @relation(fields: [overrideId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([userId, activityId, createdAt])
+  @@map("solicitudes_reactivacion")
+  @@schema("induccion")
+}
+
+// Decisión del administrador sobre la certificación de un asesor. Solo inserción.
+// RETURNED señala en activityIds las actividades que requieren intervención (sin borrar resultados).
+model CertificationDecision {
+  id            String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String                    @map("user_id") @db.Uuid
+  decision      CertificationDecisionType
+  reason        String?
+  activityIds   String[]                  @default([]) @map("activity_ids")
+  certificateId String?                   @unique @map("certificate_id") @db.Uuid
+  decidedById   String                    @map("decided_by_id") @db.Uuid
+  createdAt     DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  user          Usuario                   @relation("CertificacionUsuario", fields: [userId], references: [id], onDelete: Restrict)
+  decidedBy     Usuario                   @relation("CertificacionDecisor", fields: [decidedById], references: [id], onDelete: Restrict)
+  certificate   Certificate?              @relation(fields: [certificateId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([decision, createdAt])
+  @@map("decisiones_certificacion")
+  @@schema("induccion")
+}
+
+// Resumen compacto de un ciclo formativo certificado: una fila por asesor y ciclo. Solo indicadores y referencias;
+// los intentos, respuestas, auditoría y certificados originales se conservan.
+model TrainingCompletionSummary {
+  id                 String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String      @map("user_id") @db.Uuid
+  cycle              Int         @default(1)
+  trainingProfile    String      @map("training_profile") @db.VarChar(20)
+  planVersion        Int         @map("plan_version")
+  status             String      @default("CERTIFICADO") @db.VarChar(20)
+  startedAt          DateTime?   @map("started_at") @db.Timestamptz(6)
+  completedAt        DateTime?   @map("completed_at") @db.Timestamptz(6)
+  certifiedAt        DateTime    @map("certified_at") @db.Timestamptz(6)
+  approvedById       String      @map("approved_by_id") @db.Uuid
+  certificateId      String      @unique @map("certificate_id") @db.Uuid
+  certificateCode    String      @map("certificate_code") @db.VarChar(40)
+  // [{ slug, name, completedAt }] y [{ key, title, score, passed, attempts }]
+  modules            Json
+  activityScores     Json        @map("activity_scores")
+  typificationPassed Int         @map("typification_passed")
+  typificationTotal  Int         @map("typification_total")
+  finalExamScore     Decimal?    @map("final_exam_score") @db.Decimal(5, 2)
+  diagnosticScore    Decimal?    @map("diagnostic_score") @db.Decimal(5, 2)
+  totalAttempts      Int         @map("total_attempts")
+  reactivations      Int
+  createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  user               Usuario     @relation("ResumenUsuario", fields: [userId], references: [id], onDelete: Restrict)
+  approvedBy         Usuario     @relation("ResumenAprobador", fields: [approvedById], references: [id], onDelete: Restrict)
+  certificate        Certificate @relation(fields: [certificateId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, cycle])
+  @@index([certifiedAt(sort: Desc)])
+  @@map("resumen_formacion")
   @@schema("induccion")
 }
 

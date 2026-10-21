@@ -36,7 +36,7 @@ export async function setActivityStatus(id: string, status: 'ACTIVE' | 'INACTIVE
   });
 }
 
-export type EvaluationInput = { minimumScore: number | string; maxAttempts: number; waitMinutes: number; title?: string; reason?: string };
+export type EvaluationInput = { minimumScore: number | string; maxAttempts: number; waitMinutes: number; title?: string; reason?: string; questionCount?: number; contentVersion?: number };
 
 // Toda configuración nueva es una versión nueva; las anteriores se archivan y nunca se editan.
 export async function createEvaluationVersion(activityId: string, input: EvaluationInput, context: ActionContext | null, db?: Db) {
@@ -53,6 +53,7 @@ export async function createEvaluationVersion(activityId: string, input: Evaluat
     const evaluation = await createEvaluation(tx, {
       activityId, version, title: input.title ?? null, status: 'ACTIVE',
       minimumScore: new Prisma.Decimal(input.minimumScore), maxAttempts: input.maxAttempts, waitMinutes: input.waitMinutes,
+      questionCount: input.questionCount ?? null, contentVersion: input.contentVersion ?? null,
     });
     if (context) await audit(tx, context, { action: 'EVALUATION_VERSION_CREATED', entityType: 'Evaluation', entityId: evaluation.id, after: { ...evaluation }, reason: input.reason });
     return evaluation;

@@ -2,9 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { COLLECTIONS_KEYS } from '../domain/collections.js';
 import { COLLECTIONS_EXAM, EXAM_SECTIONS, EXAM_DRAFT_KEY, EXAM_KEY } from '../domain/collections-exam.js';
 
-// Repositorio en memoria: comprueba el protocolo de guardado sin abrir ni alterar
-// la base de desarrollo. Las pruebas de integración cubren la API con PostgreSQL.
-const memory = vi.hoisted(() => ({ rows: [] as any[], experienced: false, legacy: false, moduleProgress: null as any }));
+// Repositorio en memoria: comprueba el protocolo de guardado del examen diagnóstico sin abrir ni alterar
+// la base de desarrollo. Las pruebas de integración (evaluation-flow) cubren el intento real con PostgreSQL.
+const memory = vi.hoisted(() => ({
+  rows: [] as any[], experienced: true, legacy: false, moduleProgress: null as any,
+  availability: { passed: false, openAttemptId: null as string | null, canStart: true, remaining: 1, nextNumber: 1, exhausted: false },
+}));
 vi.mock('../config/prisma.js', () => {
   const db: any = {
     usuario: { findUnique: async () => ({ rol: 'asesor', estado: 'activo', debeCompletarDatos: false, tieneExperienciaCobranzasDigitales: memory.experienced }) },
@@ -31,6 +34,7 @@ vi.mock('../config/prisma.js', () => {
         const row = { id: data.blockKey, ...structuredClone(data) }; memory.rows.push(row); return row;
       },
     },
+    reactivationRequest: { findFirst: async () => null },
     userModuleProgress: { findUnique: async () => memory.moduleProgress },
     userActivityProgress: { findUnique: async () => null },
   };
@@ -40,15 +44,31 @@ vi.mock('../config/prisma.js', () => {
 vi.mock('../services/progress.service.js', () => ({
   completeModule: vi.fn(async () => { memory.moduleProgress = { ...memory.moduleProgress, status: 'PASSED', percent: 100 }; }),
   loadSnapshot: async () => ({
-    views: [{ slug: 'induccion-cobranzas', moduleId: 'module', enabled: true, status: memory.legacy ? 'PASSED' : 'IN_PROGRESS' }],
-    modules: [{ id: 'module', activities: [{ id: 'exam-activity', isRequired: true, status: 'ACTIVE' }] }],
+    views: [{ slug: 'induccion-cobranzas', moduleId: 'module', enabled: true, hasSeal: memory.legacy, status: memory.legacy ? 'PASSED' : 'IN_PROGRESS' }],
+    modules: [{ id: 'module', activities: [{ id: 'theory', type: 'LESSON', isRequired: true, status: 'ACTIVE' }, { id: 'diagnostic', type: 'QUIZ', isRequired: false, status: 'ACTIVE' }] }],
+    availability: new Map([['diagnostic', memory.availability]]),
+    certification: { status: 'EN_FORMACION', reason: null },
+  }),
+}));
+// El intento oficial: un solo intento; startAttemptTx retoma el abierto.
+vi.mock('../services/attempt.service.js', () => ({
+  startAttemptTx: vi.fn(async () => {
+    if (!memory.availability.openAttemptId) {
+      if (!memory.availability.canStart) throw Object.assign(new Error('Sin intentos'), { code: 'NO_ATTEMPTS_LEFT' });
+      memory.availability = { ...memory.availability, openAttemptId: `attempt-${memory.availability.nextNumber}`, canStart: false, remaining: 0, nextNumber: memory.availability.nextNumber + 1 };
+    }
+    return { attempt: { id: memory.availability.openAttemptId }, resumed: false };
+  }),
+  submitAttemptTx: vi.fn(async (_tx: unknown, _user: string, _attempt: string, input: { passed: boolean }) => {
+    memory.availability = { ...memory.availability, openAttemptId: null, passed: input.passed, exhausted: !input.passed };
   }),
 }));
 vi.mock('../repositories/progress.repository.js', () => ({
   upsertActivityProgress: vi.fn(),
   upsertModuleProgress: async (_db: unknown, _user: string, _module: string, data: any) => { memory.moduleProgress = data; },
 }));
-import { collectionsState, startCollectionsExam, saveCollectionsExamSection, submitCollectionsExam } from '../services/collections.service.js';
+import { collectionsState, completeCollectionsBlock, startCollectionsExam, saveCollectionsExamSection, submitCollectionsExam } from '../services/collections.service.js';
+import { submitAttemptTx } from '../services/attempt.service.js';
 import { completeModule } from '../services/progress.service.js';
 
 const goodAnswers = () => Object.fromEntries(COLLECTIONS_EXAM.map((q) => [q.key, q.kind === 'text' ? q.example : q.options.find((o) => o.correct)!.id]));
@@ -57,15 +77,20 @@ async function saveAll(answers: Record<string, string>) {
   for (const section of EXAM_SECTIONS) await saveCollectionsExamSection('user', section.key, Object.fromEntries(section.questions.map((q) => [q.key, answers[q.key]!])));
 }
 beforeEach(() => {
-  memory.rows = COLLECTIONS_KEYS.map((blockKey) => ({ id: blockKey, blockKey, attempts: 0, answers: {}, completedAt: new Date() }));
-  memory.experienced = false; memory.legacy = false; memory.moduleProgress = null; vi.clearAllMocks();
+  memory.rows = [];
+  memory.experienced = true; memory.legacy = false; memory.moduleProgress = null;
+  memory.availability = { passed: false, openAttemptId: null, canStart: true, remaining: 1, nextNumber: 1, exhausted: false };
+  vi.clearAllMocks();
 });
 
-describe('persistencia del examen por secciones', () => {
-  it('exige teoría y bloquea saltos, sin consumir intentos al iniciar', async () => {
-    memory.rows = [];
-    await expect(startCollectionsExam('user')).rejects.toMatchObject({ code: 'THEORY_REQUIRED' });
+describe('examen diagnóstico por secciones', () => {
+  it('es solo del asesor con experiencia, va antes de la teoría y bloquea saltos', async () => {
+    memory.experienced = false;
+    await expect(startCollectionsExam('user')).rejects.toMatchObject({ code: 'DIAGNOSTIC_NOT_APPLICABLE' });
+    expect((await collectionsState('user')).diagnosticFirst).toBe(false);
     memory.experienced = true;
+    expect((await collectionsState('user')).diagnosticFirst).toBe(true);
+    await expect(completeCollectionsBlock('user', 'conceptos')).rejects.toMatchObject({ code: 'EXAM_FIRST' });
     const draft = await startCollectionsExam('user');
     expect(draft).toMatchObject({ sectionIndex: 0, answers: {} });
     const section = EXAM_SECTIONS[1]!; const answers = goodAnswers();
@@ -84,7 +109,6 @@ describe('persistencia del examen por secciones', () => {
     await expect(saveCollectionsExamSection('user', 'inicio', { ...answers, 'inicio-accion': 'identificar' })).rejects.toMatchObject({ code: 'PREVIOUS_SECTION_REQUIRED' });
     const state = await collectionsState('user');
     expect(state.exam.draft).toEqual(draft); expect(state.exam.lastResult).toBeNull();
-    expect(state.completedCount).toBe(5); expect(state.percent).toBe(80);
   });
 
   it('impide calificar un intento incompleto o alterar las respuestas guardadas', async () => {
@@ -95,53 +119,54 @@ describe('persistencia del examen por secciones', () => {
     expect(memory.rows.find((r) => r.blockKey === EXAM_KEY)).toBeUndefined();
   });
 
-  it('guarda respuestas, versión y resultado en el historial y no duplica el envío final', async () => {
+  it('guarda el resultado en el historial, registra el intento oficial una vez y abre la teoría', async () => {
     const answers = goodAnswers();
     answers['negociacion-descuento'] = 'aprobar'; // 92 puntos, pero error crítico.
     await saveAll(answers);
-    expect((await collectionsState('user')).exam.lastResult).toBeNull();
     const first = await submitCollectionsExam('user', answers);
     expect(first.result).toMatchObject({ score: 92, passed: false, verdict: 'Requiere refuerzo' });
     expect(first.state.exam.draft).toBeNull();
-    expect(first.state.percent).toBe(80);
-    expect(memory.rows.find((r) => r.blockKey === 'examen-intento-1').answers).toMatchObject({ version: 2, answers, result: first.result });
+    expect(first.state.diagnosticFirst).toBe(false);
+    expect(first.state.blocks[0]!.enabled).toBe(true);
+    expect(memory.rows.find((r) => r.blockKey === 'examen-intento-1').answers).toMatchObject({ version: 2, answers, result: first.result, attemptId: 'attempt-1' });
     const savedCoaching = memory.rows.find((r) => r.blockKey === 'examen-intento-1').answers.coaching;
     expect(savedCoaching.improvements.find((item: any) => item.key === 'negociacion-descuento')).toMatchObject({ priority: 'critical' });
-    expect(savedCoaching.strengths.some((item: any) => item.key === 'negociacion-descuento')).toBe(false);
     expect(memory.rows.find((r) => r.blockKey === EXAM_DRAFT_KEY).answers.status).toBe('submitted');
     const retry = await submitCollectionsExam('user', answers);
     expect(retry.result).toEqual(first.result); expect(retry.state.exam.attempts).toBe(1);
+    expect(submitAttemptTx).toHaveBeenCalledTimes(1);
+    // Un intento: sin autorización no se abre otro.
+    await expect(startCollectionsExam('user')).rejects.toMatchObject({ code: 'NO_ATTEMPTS_LEFT' });
     expect(completeModule).not.toHaveBeenCalled();
   });
 
-  it('completa el módulo al aprobar, conserva la aprobación y archiva un segundo intento distinto', async () => {
+  it('aprobar el diagnóstico no completa el módulo: lo completa la teoría', async () => {
     await saveAll(goodAnswers());
     const passed = await submitCollectionsExam('user', goodAnswers());
-    expect(passed.state).toMatchObject({ complete: true, percent: 100, completedCount: 5 });
-    expect(completeModule).toHaveBeenCalledTimes(1);
-    const bad = { ...goodAnswers(), 'inicio-accion': 'saldo' };
-    await saveAll(bad);
-    const second = await submitCollectionsExam('user', bad);
-    expect(second.result.passed).toBe(false);
-    expect(second.state.complete).toBe(true);
-    expect(second.state.exam.attempts).toBe(2);
-    expect(memory.rows.filter((r) => r.blockKey.startsWith('examen-intento-'))).toHaveLength(2);
+    expect(passed.result.passed).toBe(true);
+    expect(passed.state.complete).toBe(false);
+    expect(completeModule).not.toHaveBeenCalled();
+    for (const key of COLLECTIONS_KEYS) await completeCollectionsBlock('user', key);
     expect(completeModule).toHaveBeenCalledTimes(1);
   });
 
-  it('conserva aprobaciones y teoría históricas sin recalificar respuestas del examen anterior', async () => {
+  it('conserva aprobaciones históricas sin recalificar respuestas del examen anterior', async () => {
     memory.legacy = true;
+    memory.availability = { ...memory.availability, passed: true, canStart: false };
     memory.rows.push({ id: EXAM_KEY, blockKey: EXAM_KEY, completedAt: new Date(), attempts: 1, answers: { reporte: 'reportado' } });
     const state = await collectionsState('user');
     expect(state.exam).toMatchObject({ passed: true, lastResult: null, draft: null });
-    expect(state.completedCount).toBe(5);
+    expect(state.complete).toBe(true);
+    expect(state.blocks.every((block) => block.enabled)).toBe(true);
   });
 
   it('no reutiliza números de intento tras reiniciar el progreso conservando el historial', async () => {
     await saveAll(goodAnswers());
     await submitCollectionsExam('user', goodAnswers());
     const archive = memory.rows.filter((row) => row.blockKey.startsWith('examen-intento-'));
-    memory.rows = [...COLLECTIONS_KEYS.map((blockKey) => ({ id: blockKey, blockKey, attempts: 0, answers: {}, completedAt: new Date() })), ...archive];
+    // Reinicio del curso: se borra el avance pero el historial del examen se conserva; el cupo vuelve a uno.
+    memory.rows = [...archive];
+    memory.availability = { passed: false, openAttemptId: null, canStart: true, remaining: 1, nextNumber: 1, exhausted: false };
     await saveAll(goodAnswers());
     await submitCollectionsExam('user', goodAnswers());
     expect(memory.rows.filter((row) => row.blockKey.startsWith('examen-intento-')).map((row) => row.blockKey)).toEqual(['examen-intento-1', 'examen-intento-2']);

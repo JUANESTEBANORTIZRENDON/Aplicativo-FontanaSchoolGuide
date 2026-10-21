@@ -50,7 +50,11 @@ export async function setModuleCompletion(userId: string, moduleId: string, comp
     // Vaciar: primero lo que apunta a los intentos (sellos, resultados), luego los intentos y el resto del avance.
     const attemptIds = (await tx.attempt.findMany({ where: { userId, evaluation: { activityId: { in: activityIds } } }, select: { id: true } })).map((r) => r.id);
     const byAttempt = { attemptId: { in: attemptIds } };
-    // Sin este sello el certificado deja de ser válido: se retiran los certificados de la cuenta de pruebas.
+    // Sin este sello el certificado deja de ser válido: se retiran los certificados de la cuenta de pruebas,
+    // junto con sus decisiones y resúmenes, y las solicitudes de reactivación de este módulo.
+    await tx.reactivationRequest.deleteMany({ where: { userId, activityId: { in: activityIds } } });
+    await tx.trainingCompletionSummary.deleteMany({ where: { userId } });
+    await tx.certificationDecision.deleteMany({ where: { userId } });
     await tx.certificate.updateMany({ where: { userId }, data: { previousCertificateId: null } });
     const certificates = (await tx.certificate.deleteMany({ where: { userId } })).count;
     const seals = (await tx.seal.deleteMany({ where: { userId, moduleId } })).count;

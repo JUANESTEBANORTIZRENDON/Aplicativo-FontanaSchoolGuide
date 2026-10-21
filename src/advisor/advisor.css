@@ -41,3 +41,10 @@
 .exp-steps em { color: #778398; font-weight: 500; }
 .exp-note { color: #657184 !important; font-size: 13px; }
 @media (max-width: 600px) { .exp-options { grid-template-columns: 1fr; } }
+
+/* Estado de la certificación sobre la ruta */
+.training-route-cert { margin: 0 0 16px; padding: 14px 18px; border-radius: 14px; border: 1px solid #f0dca0; background: #fffaf0; }
+.training-route-cert strong { display: block; color: var(--red, #8b1538); }
+.training-route-cert p { margin: 4px 0 0; }
+.training-route-cert a { display: inline-block; margin-top: 8px; font-weight: 700; color: var(--red, #8b1538); }
+.training-route-cert[data-status="CERTIFICADO"] { border-color: #bfe5cc; background: #eef8f1; }

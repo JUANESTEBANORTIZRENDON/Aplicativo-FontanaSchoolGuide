@@ -1,11 +1,10 @@
 import { Prisma, type Evaluation, type ProgressStatus } from '@prisma/client';
-import { env } from '../config/env.js';
 import { prisma, type Db } from '../config/prisma.js';
 import { CERTIFICATE_MODULE_SLUG } from '../domain/enums.js';
 import { ForbiddenError, NotFoundError } from '../domain/errors.js';
 import {
-  computeAvailability, computeModuleViews, initialStatus, percentOf,
-  type Availability, type ModuleInput, type ModuleView, type OverrideLite,
+  certificationStatusOf, computeAvailability, computeModuleViews, initialStatus, percentOf,
+  type Availability, type CertificationState, type ModuleInput, type ModuleView, type OverrideLite,
 } from '../domain/progress.js';
 import { activeEvaluations, listVisibleModules, type CatalogModule } from '../repositories/catalog.repository.js';
 import {
@@ -37,7 +36,21 @@ export type TrainingSnapshot = {
   evaluations: Awaited<ReturnType<typeof activeEvaluations>>;
   // Cupo de intentos fijado para este asesor por actividad; sin entrada rige el de la evaluación.
   attemptLimits: Map<string, number>;
+  certification: CertificationState;
+  activeCertificateId: string | null;
 };
+
+// Certificado activo, última decisión del administrador y fecha del último avance (intento enviado o sello).
+async function loadCertificationFacts(db: Db, userId: string) {
+  const [certificate, decision, attempt, seal] = await Promise.all([
+    db.certificate.findFirst({ where: { userId, status: 'ACTIVE' }, select: { id: true } }),
+    db.certificationDecision.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' }, select: { decision: true, reason: true, createdAt: true } }),
+    db.attempt.findFirst({ where: { userId, submittedAt: { not: null } }, orderBy: { submittedAt: 'desc' }, select: { submittedAt: true } }),
+    db.seal.findFirst({ where: { userId, status: 'ACTIVE' }, orderBy: { issuedAt: 'desc' }, select: { issuedAt: true } }),
+  ]);
+  const times = [attempt?.submittedAt, seal?.issuedAt].filter((value): value is Date => Boolean(value)).map((value) => value.getTime());
+  return { certificateId: certificate?.id ?? null, decision, lastProgressAt: times.length ? new Date(Math.max(...times)) : null };
+}
 
 // Datos crudos del estado de formación de un usuario, con las fechas ya convertidas.
 type RawState = {
@@ -114,6 +127,15 @@ export async function loadSnapshot(db: Db, userId: string, now = new Date(), opt
     state = await loadRaw(db, userId);
   }
   const { modules, moduleProgress, activityProgress, seals, overrides, evaluations, attempts, attemptLimits } = state;
+  const facts = await loadCertificationFacts(db, userId);
+  const sealedModuleIds = new Set(seals.map((seal) => seal.moduleId));
+  const certificateModule = modules.find((module) => module.slug === CERTIFICATE_MODULE_SLUG);
+  const certification = certificationStatusOf({
+    requirementsMet: Boolean(certificateModule?.prerequisites.length) && certificateModule!.prerequisites.every((edge) => sealedModuleIds.has(edge.prerequisite.id)),
+    hasActiveCertificate: Boolean(facts.certificateId),
+    lastDecision: facts.decision,
+    lastProgressAt: facts.lastProgressAt,
+  });
   const availability = new Map<string, Availability>();
   for (const [activityId, evaluation] of evaluations) {
     availability.set(activityId, computeAvailability(
@@ -126,9 +148,10 @@ export async function loadSnapshot(db: Db, userId: string, now = new Date(), opt
   const views = computeModuleViews(modules.map(toModuleInput), {
     moduleProgress: new Map(moduleProgress.map((row) => [row.moduleId, { status: row.status, lastActivityAt: row.lastActivityAt, percent: row.percent }])),
     activityProgress: new Map(activityProgress.map((row) => [row.activityId, { status: row.status }])),
-    sealedModuleIds: new Set(seals.map((seal) => seal.moduleId)),
+    sealedModuleIds,
     overrides,
     availability,
+    certification,
   }, now);
   if (options.sync && !options.healed) {
     // Módulo completo sin sello: pasa cuando se archiva una actividad obligatoria después de que el asesor
@@ -149,7 +172,7 @@ export async function loadSnapshot(db: Db, userId: string, now = new Date(), opt
       await db.userModuleProgress.updateMany({ where: { userId, moduleId: view.moduleId, status: { not: 'PASSED' } }, data: { status: view.status } });
     }
   }
-  return { modules, views, overrides, availability, evaluations, attemptLimits };
+  return { modules, views, overrides, availability, evaluations, attemptLimits, certification, activeCertificateId: facts.certificateId };
 }
 
 export async function computeModuleState(userId: string, db: Db = prisma, options: { sync?: boolean } = {}): Promise<ModuleView[]> {
@@ -193,7 +216,9 @@ export async function getAdvisorSummary(userId: string) {
     modulesTotal: learning.length,
     seals: seals.map((seal) => ({ moduleSlug: seal.module.slug, moduleName: seal.module.name, issuedAt: seal.issuedAt.toISOString() })),
     lastActivityAt: last,
-    certificateAvailable: snapshot.views.some((view) => view.slug === CERTIFICATE_MODULE_SLUG && view.enabled),
+    certificateAvailable: Boolean(snapshot.activeCertificateId),
+    certificationStatus: snapshot.certification.status,
+    certificationReason: snapshot.certification.reason,
   };
 }
 
@@ -225,9 +250,7 @@ export async function completeModule(db: Db, userId: string, moduleId: string, e
       unlocked.push(dependent.slug);
     }
   }
-  if (env.CERTIFICATES_ENABLED) {
-    const { issueIfEligible } = await import('./certificate.service.js');
-    await issueIfEligible(db, userId);
-  }
+  // Ya no se emite el certificado al completar los sellos: lo emite la aprobación del administrador
+  // (certification.service). Así lo exige la validación final.
   return { sealIssued, unlocked };
 }

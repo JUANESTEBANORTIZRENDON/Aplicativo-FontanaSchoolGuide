@@ -1,0 +1,35 @@
+/* Estados de evaluación y aviso de reactivación (asesor). */
+.eval-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.eval-chip--neutral { background: #f1f2f5; color: #4b5060; border-color: #e1e3ea; }
+.eval-chip--info { background: #e8f0fb; color: #1d4f91; border-color: #c9dbf3; }
+.eval-chip--ok { background: #e7f6ec; color: #146c35; border-color: #bfe5cc; }
+.eval-chip--bad { background: #fbeaee; color: #8b1538; border-color: #f0c6d1; }
+.eval-chip--warn { background: #fdf4dc; color: #7a5a00; border-color: #f0dca0; }
+
+.eval-notice {
+  margin: 16px 0;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line, #e5e7ed);
+  background: #fff;
+}
+.eval-notice strong { display: block; font-size: 1.02rem; margin-bottom: 4px; }
+.eval-notice p { margin: 0 0 10px; color: var(--ink, #111827); }
+.eval-notice--bad { border-color: #f0c6d1; background: #fdf5f7; }
+.eval-notice--bad strong { color: var(--red, #8b1538); }
+.eval-notice--warn { border-color: #f0dca0; background: #fffaf0; }
+.eval-notice__note { display: grid; gap: 6px; font-size: 0.86rem; color: var(--muted, #626672); margin-bottom: 10px; }
+.eval-notice__note textarea { font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line, #e5e7ed); resize: vertical; }
+.eval-notice__error { color: var(--red, #8b1538); font-weight: 600; }
+.eval-notice__button { width: auto; }

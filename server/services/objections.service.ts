@@ -24,7 +24,7 @@ async function access(db: Db, userId: string) {
     throw new ForbiddenError('La actividad del módulo no está disponible temporalmente.', 'ACTIVITY_INACTIVE');
   }
   const next = snapshot.views.find((entry) => entry.slug === TYPIFICATION_SLUG);
-  return { view, module, nextRoute: next?.route ?? null, nextName: next?.name ?? null };
+  return { view, module, nextRoute: next?.route ?? null, nextName: next?.name ?? null, reviewMode: snapshot.certification.status === 'CERTIFICADO' };
 }
 
 function progressRows(db: Db, userId: string, moduleId: string) {
@@ -55,7 +55,7 @@ async function saveModuleProgress(db: Db, userId: string, module: Awaited<Return
 }
 
 export async function objectionsState(userId: string) {
-  const { view, nextRoute, nextName } = await access(prisma, userId);
+  const { view, nextRoute, nextName, reviewMode } = await access(prisma, userId);
   const path = pathOf(await progressRows(prisma, userId, view.moduleId), view.status === 'PASSED');
   const blocks = OBJECTIONS_BLOCKS.map((block, index) => ({
     ...block, completed: path.completed.has(block.key) || path.complete,
@@ -63,7 +63,7 @@ export async function objectionsState(userId: string) {
   }));
   const pending = blocks.find((block) => block.enabled && !block.completed);
   return {
-    name: OBJECTIONS_NAME, percent: path.percent, complete: path.complete, completedCount: blocks.filter((block) => block.completed).length,
+    name: OBJECTIONS_NAME, reviewMode, percent: path.percent, complete: path.complete, completedCount: blocks.filter((block) => block.completed).length,
     currentBlock: pending?.key ?? OBJECTIONS_KEYS[0], blocks, nextRoute, nextName,
   };
 }
@@ -72,7 +72,9 @@ export async function objectionsState(userId: string) {
 export async function completeObjectionsBlock(userId: string, key: ObjectionsKey) {
   await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM induccion.usuarios WHERE id = ${userId}::uuid FOR UPDATE`;
-    const { module, view } = await access(tx, userId);
+    const { module, view, reviewMode } = await access(tx, userId);
+    // Modo repaso (asesor certificado): se navega sin cambiar el historial.
+    if (reviewMode) return;
     const rows = await progressRows(tx, userId, module.id);
     const path = pathOf(rows, view.status === 'PASSED');
     if (!OBJECTIONS_KEYS.slice(0, OBJECTIONS_KEYS.indexOf(key)).every((previous) => path.completed.has(previous) || path.complete)) {

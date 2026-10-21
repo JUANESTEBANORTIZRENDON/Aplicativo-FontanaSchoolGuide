@@ -69,9 +69,30 @@ body.tipifica-locked { overflow: hidden; }
 .tipifica-minimum__list strong { color: var(--navy); font-size: 15px; }
 .tipifica-minimum__list p { margin: 2px 0 0; color: #4b5563; font-size: 13.5px; line-height: 1.45; }
 .tipifica-tick { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: #1e7d4f; color: #fff; font-weight: 900; font-size: 14px; }
-.tipifica-result { margin: 12px 0 0; padding: 10px 14px; border-radius: 10px; background: #fff3cd; color: #6b5300; font-weight: 700; }
-.tipifica-result.is-ok { background: #e3f6ea; color: #1e7d4f; }
 .tipifica-ctl--test { background: linear-gradient(110deg, #1e7d4f, #27a065); border-color: transparent; }
 .tipifica-ctl--test:hover { background: linear-gradient(110deg, #22905b, #2fb373); }
 @media (max-width: 1100px) { .tipifica-minimum__list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .tipifica-minimum__list { grid-template-columns: minmax(0, 1fr); } }
+
+/* Estado oficial de los seis ejercicios */
+.tipifica-official { margin: 18px 0; padding: 18px 20px; border-radius: 16px; background: #fff; border: 1px solid var(--line, #e5e7ed); box-shadow: 0 6px 18px rgb(17 24 39 / 6%); }
+.tipifica-official__loading { margin: 0; color: var(--muted, #626672); }
+.tipifica-official__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.tipifica-official__head h3 { margin: 0; font-size: 1.1rem; }
+.tipifica-official__count { font-weight: 700; color: var(--red, #8b1538); }
+.tipifica-official__lead { margin: 8px 0 12px; color: var(--ink, #111827); }
+.tipifica-official__lead.is-ok { padding: 10px 14px; border-radius: 12px; background: #e7f6ec; color: #146c35; }
+.tipifica-official__next { display: inline-flex; width: auto; margin-left: 8px; padding: 8px 14px; }
+.tipifica-official__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.tipifica-official__row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px 12px; padding: 10px 12px; border-radius: 12px; background: #fafbfc; border: 1px solid #eef0f4; }
+.tipifica-official__row[data-status="APROBADO"] { background: #f4fbf6; border-color: #d4eedc; }
+.tipifica-official__row[data-status="NO_APROBADO"] { background: #fdf7f8; border-color: #f3d6de; }
+.tipifica-official__name { display: grid; gap: 2px; min-width: 0; }
+.tipifica-official__name small { color: var(--muted, #626672); }
+.tipifica-official__notice { grid-column: 1 / -1; }
+.tipifica-official__notice .eval-notice { margin: 4px 0 0; }
+@media (max-width: 600px) {
+  .tipifica-official { padding: 14px; }
+  .tipifica-official__row { grid-template-columns: auto 1fr; }
+  .tipifica-official__row .eval-chip { grid-column: 2; justify-self: start; }
+}

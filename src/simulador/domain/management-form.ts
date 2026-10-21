@@ -2,10 +2,10 @@
 
 import type { ResultCode } from '../types/simulator';
 import { addDays, startOfDay, toDateKey } from '../utils/dates';
+import { NOTE_MAX, NOTE_MIN, PROMISE_MAX_DAYS, parseAmount } from '../../../server/domain/tipifica/form-rules.js';
 
-export const NOTE_MIN = 10;
-export const NOTE_MAX = 500;
-export const PROMISE_MAX_DAYS = 30;
+// Los límites y parseAmount se comparten con el servidor, que califica la prueba de tipificación.
+export { NOTE_MAX, NOTE_MIN, PROMISE_MAX_DAYS, parseAmount };
 
 export interface ManagementDraft {
   result: ResultCode | '';
@@ -16,12 +16,6 @@ export interface ManagementDraft {
 }
 
 export type ManagementErrors = Partial<Record<keyof ManagementDraft, string>>;
-
-/** Convierte "1.250.000" o "1250000" en número. */
-export function parseAmount(value: string): number {
-  const digits = value.replace(/[^\d]/g, '');
-  return digits ? Number(digits) : Number.NaN;
-}
 
 export function validateManagement(draft: ManagementDraft, balance: number, now: Date): ManagementErrors {
   const errors: ManagementErrors = {};

@@ -1,5 +1,8 @@
 export const COLLECTIONS_SLUG = 'induccion-cobranzas';
 export const COLLECTIONS_VERSION = 1;
+// Actividades del módulo: la teoría (obligatoria para todos) y el examen diagnóstico del asesor con experiencia.
+export const COLLECTIONS_THEORY_TITLE = 'Teoría de la inducción a las cobranzas';
+export const COLLECTIONS_DIAGNOSTIC_TITLE = 'Examen diagnóstico (asesores con experiencia)';
 export const COLLECTIONS_KEYS = ['conceptos', 'preparacion', 'contacto', 'alternativas', 'seguimiento'] as const;
 export type CollectionsKey = typeof COLLECTIONS_KEYS[number];
 type Option = { id: string; text: string; correct: boolean; feedback: string };

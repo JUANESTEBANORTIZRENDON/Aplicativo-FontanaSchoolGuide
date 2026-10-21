@@ -38,11 +38,12 @@ export const DEFAULT_OFFICE_CONFIG: OfficeConfigValues = {
   typingDurationSeconds: 60,
   typingMinCorrectCpm: 150,
   typingMinAccuracy: 90,
-  typingMaxAttempts: 3,
+  // Política de evaluaciones oficiales: un intento; otra oportunidad la autoriza el administrador.
+  typingMaxAttempts: 1,
   typingStartWindowSeconds: 15,
   typingAttemptTtlMinutes: 10,
   excelMinScore: 80,
-  excelMaxAttempts: 3,
+  excelMaxAttempts: 1,
   dictationMinScore: 85,
   // Un solo intento: el dictado mide la ortografía del asesor; no se repite hasta aprobar.
   dictationMaxAttempts: 1,

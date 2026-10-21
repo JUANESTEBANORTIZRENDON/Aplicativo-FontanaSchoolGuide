@@ -11,7 +11,8 @@
     "server/**/*.ts",
     "prisma/**/*.ts",
     "vitest.config.ts",
-    "vitest.unit.config.ts"
+    "vitest.unit.config.ts",
+    "vitest.evaluation.config.ts"
   ],
   "exclude": []
 }

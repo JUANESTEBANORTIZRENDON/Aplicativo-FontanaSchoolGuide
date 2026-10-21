@@ -3,7 +3,8 @@ import '../practice.css';
 import './office.css';
 import { playSeal } from '../seal-animation';
 import { mountHeaderAccount } from '../header-account';
-import { escapar } from '../http';
+import { api, escapar } from '../http';
+import { bindReactivation, reactivationNotice } from '../reactivation';
 import { ApiError, officeApi, SECTION_KEYS, type Lesson, type ModuleState, type SectionKey } from './api';
 
 // Módulo "Ofimática para tus cobranzas": bienvenida, mecanografía, Excel, ortografía y resultado.
@@ -148,9 +149,20 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
       else if (current === 'excel') await (await import('./excel')).renderExcel(ctx);
       else if (current === 'ortografia') await (await import('./dictation')).renderDictation(ctx);
       else await renderResult(ctx);
+      await noticeIfExhausted();
     } catch (error) {
       showError(view, error);
     }
+  }
+
+  // Sección oficial con el intento agotado sin aprobar: resultado y «Solicitar reactivación».
+  async function noticeIfExhausted(): Promise<void> {
+    const section = state.sections.find((item) => item.key === current);
+    if (section?.status !== 'NO_ATTEMPTS' || !section.activityId) return;
+    const requests = await api<{ data: { status: string; createdAt: string; activity: { id: string } }[] }>('/training/reactivation-requests').then((response) => response.data).catch(() => []);
+    const pending = requests.find((request) => request.activity.id === section.activityId && request.status === 'PENDING');
+    view.insertAdjacentHTML('afterbegin', reactivationNotice({ activityId: section.activityId, status: pending ? 'REACTIVACION_SOLICITADA' : 'NO_APROBADO', requestedAt: pending?.createdAt ?? null, title: `${TITLES[current]}: actividad no aprobada` }));
+    bindReactivation(view, () => { void ctx.reload(); });
   }
 
   function show(section: SectionKey, push: boolean): void {

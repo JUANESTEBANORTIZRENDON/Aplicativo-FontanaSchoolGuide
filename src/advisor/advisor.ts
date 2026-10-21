@@ -28,7 +28,23 @@ const STATUS_LABEL: Record<ModuleView['status'], string> = {
 };
 
 function statusLabel(module: ModuleView): string {
-  return module.actionLabel === 'No disponible' ? 'No disponible' : STATUS_LABEL[module.status];
+  if (module.actionLabel === 'No disponible') return 'No disponible';
+  if (module.actionLabel === 'Repasar') return 'Aprobado · modo repaso';
+  if (module.slug === 'certificado' && module.status === 'IN_PROGRESS') return 'En validación';
+  return STATUS_LABEL[module.status];
+}
+
+type CertificationSummary = { status: 'EN_FORMACION' | 'PENDIENTE_VALIDACION' | 'DEVUELTO' | 'CERTIFICADO'; statusLabel: string; reason: string | null };
+
+// Estado general de la certificación encima de los módulos.
+function certificationBanner(certification: CertificationSummary | null): string {
+  if (!certification || certification.status === 'EN_FORMACION') return '';
+  const text = {
+    CERTIFICADO: '¡Estás certificado! Todos los módulos quedan abiertos en modo repaso: practica cuanto quieras sin cambiar tus resultados oficiales.',
+    PENDIENTE_VALIDACION: 'Completaste la formación y tus evaluaciones. El administrador está validando tu certificación.',
+    DEVUELTO: `Tu certificación fue devuelta para corrección${certification.reason ? `: ${certification.reason}` : '.'}`,
+  }[certification.status];
+  return `<div class="training-route-cert" data-status="${certification.status}"><strong>${escapar(certification.statusLabel)}</strong><p>${escapar(text)}</p>${certification.status === 'CERTIFICADO' ? '<a href="/induccion/certificado">Ver mi certificado →</a>' : ''}</div>`;
 }
 
 function card(module: ModuleView): string {
@@ -64,9 +80,17 @@ export async function mountLearningPath(): Promise<void> {
   section.innerHTML = '<div class="training-route-head"><h2 id="training-route-title">Tu ruta de formación</h2><p>Avanza módulo por módulo. Cada uno se desbloquea al aprobar el anterior.</p></div><p class="training-route-loading">Cargando tus módulos…</p>';
   if (camino) camino.after(section); else main.prepend(section);
   try {
-    const { data } = await api<{ data: ModuleView[] }>('/advisor/modules');
+    const [{ data }, certification] = await Promise.all([
+      api<{ data: ModuleView[] }>('/advisor/modules'),
+      api<{ data: CertificationSummary }>('/advisor/certification').then((response) => response.data).catch(() => null),
+    ]);
     section.querySelector('.training-route-loading')!.remove();
-    section.insertAdjacentHTML('beforeend', `<ol class="path-cards">${data.map(card).join('')}</ol>`);
+    section.insertAdjacentHTML('beforeend', `${certificationBanner(certification)}<ol class="path-cards">${data.map(card).join('')}</ol>`);
+    // La primera vez después de la aprobación, la felicitación con el certificado. No se espera: el aula se
+    // termina de mostrar y la felicitación aparece encima.
+    if (certification?.status === 'CERTIFICADO') {
+      void import('../certification/certificate').then(({ celebrateIfNew }) => celebrateIfNew(location.pathname));
+    }
   } catch (error) {
     section.querySelector('.training-route-loading')!.textContent = (error as Error).message;
   }
@@ -77,17 +101,19 @@ const INDUCTION_SLUG = 'induccion-cobranzas';
 const OBJECTIONS_SLUG = 'simulador-cobranzas';
 // El módulo 04 conserva su slug técnico; su nombre visible es «Tipifica».
 const TIPIFICA_SLUG = 'tipificacion-llamadas';
+const FINAL_EXAM_SLUG = 'examen-general';
+const CERTIFICATE_SLUG = 'certificado';
 
 // Primera pantalla de «Inducción a las cobranzas»: la experiencia define el camino. Quien es nuevo recorre la
-// teoría y luego el examen final; quien tiene experiencia empieza por el mismo examen y, si no lo aprueba, ve la teoría.
+// teoría; quien tiene experiencia presenta primero un examen diagnóstico y después recorre la misma teoría.
 function experienceFormHtml(): string {
   return `<form id="experience-form" class="exp-form">
       <p class="auth-kicker">CONOZCAMOS TU EXPERIENCIA</p>
       <h3>¿Cuál es tu punto de partida?</h3>
       <p>Selecciona la opción que mejor describe tu experiencia en cobranzas digitales.</p>
       <div class="exp-options">
-        <label class="exp-option"><input type="radio" name="experience" value="experienced" required><span><strong>Tengo experiencia</strong><small>Ya he trabajado en cobranzas digitales. Presentarás el examen final: si lo apruebas, pasas al simulador.</small></span></label>
-        <label class="exp-option"><input type="radio" name="experience" value="new" required><span><strong>Soy completamente nuevo</strong><small>Es mi primera experiencia en cobranzas digitales. Verás la teoría paso a paso y luego el examen final.</small></span></label>
+        <label class="exp-option"><input type="radio" name="experience" value="experienced" required><span><strong>Tengo experiencia</strong><small>Ya he trabajado en cobranzas digitales. Presentarás un examen diagnóstico (un intento) y luego la teoría del módulo.</small></span></label>
+        <label class="exp-option"><input type="radio" name="experience" value="new" required><span><strong>Soy completamente nuevo</strong><small>Es mi primera experiencia en cobranzas digitales. Verás la teoría paso a paso, sin examen inicial.</small></span></label>
       </div>
       <p id="experience-error" class="feedback feedback-error" role="alert" hidden></p>
       <button type="submit" class="primary-action">Confirmar respuesta</button>
@@ -103,6 +129,12 @@ export async function renderModulePage(container: HTMLElement, backHref = '/indu
     await mountCollections(container, backHref);
     return;
   }
+  // El certificado tiene su propia página (estado de la validación, certificado y felicitación).
+  if (slug === CERTIFICATE_SLUG) {
+    const { mountCertificatePage } = await import('../certification/certificate');
+    await mountCertificatePage(container, backHref);
+    return;
+  }
   container.innerHTML = '<section class="auth-card narrow module-page"><p>Cargando módulo…</p></section>';
   const page = container.querySelector<HTMLElement>('.module-page')!;
   try {
@@ -111,6 +143,12 @@ export async function renderModulePage(container: HTMLElement, backHref = '/indu
     if (slug === OBJECTIONS_SLUG) {
       const { mountObjections } = await import('../objections/objections');
       await mountObjections(container, backHref);
+      return;
+    }
+    // Módulo 05 «Examen general»: evaluación ABCD de un intento.
+    if (slug === FINAL_EXAM_SLUG) {
+      const { mountFinalExam } = await import('../final-exam/final-exam');
+      await mountFinalExam(container, backHref, data.module.order);
       return;
     }
     // Módulo 04 «Tipifica»: práctica en el clon de Control Next.

@@ -7,6 +7,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import * as officeAdmin from '../controllers/admin-office.controller.js';
 import { adminOfficeRouter } from './admin-office.routes.js';
+import { adminCertificationRouter } from './admin-certification.routes.js';
 import {
   attemptLimitBody, attemptLimitParams, auditQuery, catalogStatusBody, evaluationBody, metricsQuery, moduleMetricsParams, reactivateBody, reactivateParams, reasonBody,
 } from '../validators/admin.validator.js';
@@ -52,6 +53,9 @@ adminRouter.get('/advisors/:id/office', validate({ params: idParams }), officeAd
 // Módulo Ofimática: configuración versionada, contenido, medios
 adminRouter.use('/training/office', adminOfficeRouter);
 
+// Validación y certificaciones: solicitudes de reactivación, certificaciones, resúmenes y examen general.
+adminRouter.use(adminCertificationRouter);
+
 // Catálogo
 adminRouter.get('/modules', training.listModules);
 adminRouter.patch('/modules/:id/status', validate({ params: idParams, body: catalogStatusBody }), training.setModuleStatus);
@@ -63,7 +67,7 @@ adminRouter.post('/advisors/:userId/activities/:activityId/reactivate', validate
 adminRouter.put('/advisors/:userId/activities/:activityId/attempt-limit', validate({ params: attemptLimitParams, body: attemptLimitBody }), training.setAttemptLimit);
 adminRouter.post('/overrides/:id/revoke', validate({ params: idParams, body: reasonBody }), training.revokeOverride);
 
-// Certificados: solo anular y reemitir (la emisión automática depende de CERTIFICATES_ENABLED).
+// Certificados: anular y reemitir. La emisión solo ocurre al aprobar la certificación (ver arriba).
 adminRouter.post('/certificates/:id/revoke', validate({ params: idParams, body: reasonBody }), training.revokeCertificate);
 adminRouter.post('/certificates/:id/reissue', validate({ params: idParams, body: reasonBody }), training.reissueCertificate);
 
