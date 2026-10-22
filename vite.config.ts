@@ -27,7 +27,7 @@ export default defineConfig({
     },
     // Carpetas que no son del frontend: vigilarlas provocaba recargas masivas y reinicios de Vite.
     watch: {
-      ignored: ['**/.mergejuan/**', '**/.mergemain/**', '**/server/**', '**/server-dist/**', '**/prisma/**', '**/dist/**', '**/docs-assets/**', '**/documentacion/**', '**/.env'],
+      ignored: ['**/.local/**', '**/.mergejuan/**', '**/.mergemain/**', '**/server/**', '**/server-dist/**', '**/prisma/**', '**/dist/**', '**/docs-assets/**', '**/documentacion/**', '**/.env'],
     },
   },
 });
