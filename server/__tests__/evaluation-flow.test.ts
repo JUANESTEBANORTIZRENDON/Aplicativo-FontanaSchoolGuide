@@ -274,7 +274,7 @@ describe('examen general y certificación', () => {
       expect(status.missing.join(' ')).toContain('Examen general');
       await expect(approveCertification(userId, null, ctx())).rejects.toMatchObject({ code: 'CERTIFICATE_NOT_ELIGIBLE' });
       const start = await startFinalExam(userId);
-      expect(start.questions).toHaveLength(30);
+      expect(start.questions).toHaveLength(20);
       // Las respuestas correctas nunca viajan al navegador durante el examen.
       expect(JSON.stringify(start.questions)).not.toMatch(/"answer"|explanation/);
       const exam = await passFinalExam(userId);

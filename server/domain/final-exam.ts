@@ -8,7 +8,7 @@ export const FINAL_EXAM_SLUG = 'examen-general';
 export const FINAL_EXAM_NAME = 'Examen general';
 export const FINAL_EXAM_ACTIVITY_TITLE = 'Examen general ABCD';
 // Propuesta inicial; el administrador la cambia creando otra versión de la evaluación.
-export const FINAL_EXAM_DEFAULTS = { questionCount: 30, minimumScore: 80 } as const;
+export const FINAL_EXAM_DEFAULTS = { questionCount: 20, minimumScore: 80 } as const;
 export const FINAL_EXAM_LIMITS = { questionCount: { min: 12, max: FINAL_EXAM_BANK.length }, minimumScore: { min: 50, max: 100 } } as const;
 export const OPTION_LETTERS = ['A', 'B', 'C', 'D'] as const;
 export type OptionLetter = (typeof OPTION_LETTERS)[number];
