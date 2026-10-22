@@ -21,7 +21,7 @@ import { hms, splitDuration, stableHash } from '../domain/control-next';
 import { applyCustomerFilters } from '../domain/customer-filters';
 import { evaluate } from '../domain/expert/engine';
 import { EXERCISE_REFERENCE_DATE, findExercise } from '../domain/expert/exercises';
-import { isEmbedded, isOfficial, notifyOpened, officialExercise, onOfficialState, submitOfficial, toEvaluation, whenOfficialReady } from '../domain/expert/official';
+import { isEmbedded, isOfficial, isOfficialExercise, notifyOpened, officialExercise, onOfficialState, submitOfficial, toEvaluation, whenOfficialReady } from '../domain/expert/official';
 import { statusMeta } from '../domain/management-status';
 import { findProfile } from '../domain/typification/catalog';
 import { validateDraft, type TypificationDraft } from '../domain/typification/draft';
@@ -145,7 +145,7 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
     // Prueba oficial: un ejercicio entregado se muestra tal como se envió y no se puede volver a guardar.
     let applied = false;
     const applyOfficial = (): void => {
-      const official = isOfficial() ? officialExercise(exercise.number) : null;
+      const official = isOfficialExercise(exercise.number) ? officialExercise(exercise.number) : null;
       if (!official || applied) return;
       applied = true;
       practice?.refreshOfficial();
@@ -231,8 +231,9 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
     // Dentro de la plataforma la prueba siempre es oficial: si su estado aún no llegó, se espera antes de calificar.
     if (exercise && practice && (isOfficial() || isEmbedded())) {
       void whenOfficialReady().then((state) => {
-        if (state && !state.reviewMode) void submitOfficialExercise(draft);
-        else if (state?.reviewMode) evaluateLocally(draft);
+        // Solo las llamadas asignadas al asesor cuentan como evaluación; las demás son práctica libre.
+        if (state && !state.reviewMode && state.exercises.some((item) => item.number === exercise.number)) void submitOfficialExercise(draft);
+        else if (state) evaluateLocally(draft);
         else ctx.toast('No se pudo confirmar tu prueba oficial con la plataforma. Recarga la pantalla e inténtalo de nuevo.', 'error');
       });
       return;

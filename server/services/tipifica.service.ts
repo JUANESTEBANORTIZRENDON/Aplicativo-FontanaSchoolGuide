@@ -13,7 +13,8 @@ import { startAttemptTx, submitAttemptTx } from './attempt.service.js';
 import { attemptResults } from './evaluation-result.service.js';
 import { loadSnapshot, type TrainingSnapshot } from './progress.service.js';
 
-// Prueba oficial de Tipifica: seis ejercicios, un intento cada uno. El navegador solo envía lo que el asesor
+// Prueba oficial de Tipifica: cada asesor presenta las dos llamadas que le tocan (ver domain/tipifica/assignment.ts),
+// un intento cada una. El navegador solo envía lo que el asesor
 // tipificó; el servidor lo califica con el mismo sistema experto del clon y guarda el resultado. Recargar el
 // simulador, limpiar el navegador o cambiar de equipo no devuelve un intento.
 
@@ -46,7 +47,8 @@ async function exerciseStates(db: Db, userId: string, snapshot: TrainingSnapshot
   ]);
   const submitted = attempts.filter((attempt) => attempt.submittedAt);
   const results = await attemptResults(db, submitted.map((attempt) => attempt.id));
-  return EXERCISE_RULES.map((exercise) => {
+  // Solo las llamadas asignadas al asesor (el módulo ya viene filtrado por loadSnapshot).
+  return EXERCISE_RULES.filter((exercise) => activities.has(exercise.number)).map((exercise) => {
     const activity = activities.get(exercise.number);
     const availability = activity ? snapshot.availability.get(activity.id) : undefined;
     const own = submitted.filter((attempt) => attempt.evaluation.activityId === activity?.id);

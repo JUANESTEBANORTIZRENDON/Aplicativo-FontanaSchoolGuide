@@ -5,6 +5,7 @@ import { EXAM_SECTIONS } from '../domain/collections-exam.js';
 import { FINAL_EXAM_BANK } from '../domain/final-exam-bank.js';
 import { OPTION_LETTERS } from '../domain/final-exam.js';
 import { OBJECTIONS_KEYS } from '../domain/objections.js';
+import { TIPIFICA_ASSIGNED_COUNT, assignedExerciseNumbers } from '../domain/tipifica/assignment.js';
 import type { TypificationDraft } from '../domain/tipifica/draft.js';
 import { startAttempt } from '../services/attempt.service.js';
 import { approveCertification, certificationDossier, myCertification } from '../services/certification.service.js';
@@ -30,8 +31,11 @@ const GOOD: Record<number, TypificationDraft> = {
   5: { ...base, contact: 'directo', profile: 'PQR', reason: 'Con recibo', phone: '3115550593', note: '3115550593 // TT INDICA QUE PAGO 250 MIL EL 15 DE OCTUBRE POR TRANSFERENCIA, TIENE COMPROBANTE Y LO ENVIARA. QUEDA PENDIENTE DE VALIDACION.' },
   6: { ...base, contact: 'sin-contacto', profile: 'Número equivocado', reason: 'Número equivocado', phone: '3165550654', note: '3165550654 // CONTESTA UNA PERSONA QUE NO CONOCE AL TITULAR, NUMERO EQUIVOCADO. SE REPORTA PARA ACTUALIZAR.' },
 };
-// Válida para el formulario pero incorrecta para el audio 1 (perfil y motivo equivocados).
-const WRONG_1: TypificationDraft = { ...GOOD[1]!, profile: 'Paz y Salvo', reason: 'Confirmar pago', note: '3105550142 // TT INDICA QUE YA PAGO TODO' };
+// Válida para el formulario pero incorrecta para cualquier audio (perfil y motivo equivocados).
+const wrong = (number: number): TypificationDraft => ({
+  ...GOOD[number]!, contact: 'directo', profile: 'Paz y Salvo', reason: 'Confirmar pago', promiseDate: '', promiseAmount: '', callbackAt: '',
+  note: `${GOOD[number]!.phone} // TT INDICA QUE YA PAGO TODO`,
+});
 
 const created: string[] = [];
 let adminId = '';
@@ -70,7 +74,7 @@ async function reachTipifica(userId: string, experienced: boolean) {
 }
 
 async function passTipifica(userId: string) {
-  for (const number of [1, 2, 3, 4, 5, 6]) await submitTipificaExercise(userId, number, GOOD[number]!);
+  for (const number of assignedExerciseNumbers(userId)) await submitTipificaExercise(userId, number, GOOD[number]!);
 }
 
 async function passFinalExam(userId: string, correct = true) {
@@ -154,25 +158,46 @@ describe('recorridos por perfil', () => {
 });
 
 describe('Tipifica oficial', () => {
-  it('3, 4 y 5. un envío por ejercicio, doble clic sin doble consumo y seis resultados en PostgreSQL', async () => {
+  it('asigna a cada asesor 2 de las 6 llamadas, siempre las mismas, y las demás no se pueden enviar', async () => {
     const userId = await advisor(false);
     await reachTipifica(userId, false);
+    const mine = assignedExerciseNumbers(userId);
+    expect(mine).toHaveLength(TIPIFICA_ASSIGNED_COUNT);
+    expect(assignedExerciseNumbers(userId)).toEqual(mine);
+    const pairs = new Set<string>();
+    for (let index = 0; index < 40; index++) pairs.add(assignedExerciseNumbers(`asesor-${index}`).join('-'));
+    expect(pairs.size).toBeGreaterThan(4);
+    const state = await tipificaState(userId);
+    expect(state.exercises.map((exercise) => exercise.number)).toEqual(mine);
+    expect(state.total).toBe(2);
+    const other = [1, 2, 3, 4, 5, 6].find((number) => !mine.includes(number))!;
+    await expect(submitTipificaExercise(userId, other, GOOD[other]!)).rejects.toMatchObject({ code: 'EXERCISE_NOT_FOUND' });
+    expect(await attemptsOf(userId, 'tipificacion-llamadas')).toHaveLength(0);
+    // Sellar el módulo solo exige las dos asignadas.
+    await passTipifica(userId);
+    expect((await computeModuleState(userId)).find((view) => view.slug === 'tipificacion-llamadas')!.hasSeal).toBe(true);
+  });
+
+  it('3, 4 y 5. un envío por ejercicio, doble clic sin doble consumo y resultados en PostgreSQL', async () => {
+    const userId = await advisor(false);
+    await reachTipifica(userId, false);
+    const [n, ...rest] = assignedExerciseNumbers(userId);
     // Un formulario incompleto no consume el intento.
-    await expect(submitTipificaExercise(userId, 1, { ...GOOD[1]!, action: '' })).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    await expect(submitTipificaExercise(userId, n!, { ...GOOD[n!]!, action: '' })).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
     expect(await attemptsOf(userId, 'tipificacion-llamadas')).toHaveLength(0);
     // Doble clic simultáneo: un solo intento.
-    const [first, second] = await Promise.all([submitTipificaExercise(userId, 1, GOOD[1]!), submitTipificaExercise(userId, 1, GOOD[1]!)]);
+    const [first, second] = await Promise.all([submitTipificaExercise(userId, n!, GOOD[n!]!), submitTipificaExercise(userId, n!, GOOD[n!]!)]);
     expect(first.result.attemptId).toBe(second.result.attemptId);
     expect([first.alreadySubmitted, second.alreadySubmitted].sort()).toEqual([false, true]);
     // Un segundo envío (otro navegador, recarga) devuelve el resultado guardado.
-    const again = await submitTipificaExercise(userId, 1, WRONG_1);
+    const again = await submitTipificaExercise(userId, n!, wrong(n!));
     expect(again.alreadySubmitted).toBe(true);
     expect(again.result.passed).toBe(true);
-    for (const number of [2, 3, 4, 5, 6]) await submitTipificaExercise(userId, number, GOOD[number]!);
+    for (const number of rest) await submitTipificaExercise(userId, number, GOOD[number]!);
     const attempts = await attemptsOf(userId, 'tipificacion-llamadas');
-    expect(attempts).toHaveLength(6);
+    expect(attempts).toHaveLength(2);
     const results = await prisma.typificationResult.findMany({ where: { attemptId: { in: attempts.map((attempt) => attempt.id) } } });
-    expect(results).toHaveLength(6);
+    expect(results).toHaveLength(2);
     expect(results.every((row) => row.unmetCount === 0 && row.rulesVersion === 1 && Array.isArray(row.checks))).toBe(true);
     const state = await tipificaState(userId);
     expect(state.passed).toBe(true);
@@ -182,15 +207,16 @@ describe('Tipifica oficial', () => {
   it('6. la reactivación de un ejercicio conserva los anteriores y su intento fallido', async () => {
     const userId = await advisor(false);
     await reachTipifica(userId, false);
-    const failed = await submitTipificaExercise(userId, 1, WRONG_1);
+    const [n, ...rest] = assignedExerciseNumbers(userId);
+    const failed = await submitTipificaExercise(userId, n!, wrong(n!));
     expect(failed.result.passed).toBe(false);
     expect(Number(failed.result.score)).toBeLessThan(100);
-    for (const number of [2, 3, 4, 5, 6]) await submitTipificaExercise(userId, number, GOOD[number]!);
+    for (const number of rest) await submitTipificaExercise(userId, number, GOOD[number]!);
     let state = await tipificaState(userId);
     expect(state.exercises[0]!.status).toBe('NO_APROBADO');
     expect(state.passed).toBe(false);
     // Sin autorización no hay segundo envío: devuelve el intento fallido.
-    expect((await submitTipificaExercise(userId, 1, GOOD[1]!)).alreadySubmitted).toBe(true);
+    expect((await submitTipificaExercise(userId, n!, GOOD[n!]!)).alreadySubmitted).toBe(true);
     // Solicitud: dos clics simultáneos dejan una sola pendiente.
     const activityId = state.exercises[0]!.activityId!;
     const [r1, r2] = await Promise.all([requestReactivation(userId, activityId, 'Me equivoqué de perfil'), requestReactivation(userId, activityId, null)]);
@@ -203,12 +229,12 @@ describe('Tipifica oficial', () => {
     state = await tipificaState(userId);
     expect(state.exercises[0]!.status).toBe('REACTIVADO');
     expect(state.exercises.slice(1).every((exercise) => exercise.status === 'APROBADO')).toBe(true);
-    const retry = await submitTipificaExercise(userId, 1, GOOD[1]!);
+    const retry = await submitTipificaExercise(userId, n!, GOOD[n!]!);
     expect(retry.alreadySubmitted).toBe(false);
     expect(retry.result.number).toBe(2);
     expect(retry.result.reactivated).toBe(true);
     const attempts = await attemptsOf(userId, 'tipificacion-llamadas');
-    expect(attempts).toHaveLength(7);
+    expect(attempts).toHaveLength(3);
     expect(attempts.filter((attempt) => attempt.status === 'FAILED')).toHaveLength(1);
     expect((await tipificaState(userId)).passed).toBe(true);
     const audit = await prisma.adminAuditLog.findMany({ where: { entityId: r1.request.id } });
@@ -280,11 +306,11 @@ describe('examen general y certificación', () => {
   it('12. el historial consolidado conserva la trazabilidad', async () => {
     const summary = await prisma.trainingCompletionSummary.findFirstOrThrow({ where: { userId: certifiedUser } });
     const certificate = await prisma.certificate.findFirstOrThrow({ where: { userId: certifiedUser, status: 'ACTIVE' } });
-    expect(summary).toMatchObject({ certificateId: certificate.id, certificateCode: certificate.code, approvedById: adminId, typificationPassed: 6, typificationTotal: 6, trainingProfile: 'CON_EXPERIENCIA', planVersion: 1, cycle: 1 });
+    expect(summary).toMatchObject({ certificateId: certificate.id, certificateCode: certificate.code, approvedById: adminId, typificationPassed: 2, typificationTotal: 2, trainingProfile: 'CON_EXPERIENCIA', planVersion: 1, cycle: 1 });
     expect(Number(summary.finalExamScore)).toBe(100);
     expect(summary.diagnosticScore).not.toBeNull();
     // Los datos originales siguen ahí: intentos, auditoría y decisión.
-    expect(await prisma.attempt.count({ where: { userId: certifiedUser } })).toBeGreaterThanOrEqual(11);
+    expect(await prisma.attempt.count({ where: { userId: certifiedUser } })).toBeGreaterThanOrEqual(7);
     expect(await prisma.adminAuditLog.count({ where: { action: { in: ['CERTIFICATION_APPROVED', 'CERTIFICATE_ISSUED'] }, OR: [{ entityId: certificate.id }, { afterJson: { path: ['userId'], equals: certifiedUser } }] } })).toBe(2);
     const dossier = await certificationDossier(certifiedUser);
     expect(dossier.status).toBe('CERTIFICADO');

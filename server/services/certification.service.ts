@@ -21,7 +21,7 @@ const COLLECTIONS_SLUG = 'induccion-cobranzas';
 const PAGE_SIZE = 25;
 
 // Requisitos de la certificación, comprobados con la evidencia guardada (no con el estado de los botones):
-// sello en cada módulo previo al certificado, cada actividad obligatoria aprobada, y los seis ejercicios de
+// sello en cada módulo previo al certificado, cada actividad obligatoria aprobada, y los ejercicios de
 // Tipifica y el examen general aprobados con un intento real.
 export async function certificationRequirements(db: Db, userId: string, snapshot: TrainingSnapshot) {
   const certificate = snapshot.modules.find((module) => module.slug === CERTIFICATE_MODULE_SLUG);

@@ -9,8 +9,14 @@ import type { Evaluation } from '../../domain/expert/engine';
 import type { CustomerView } from '../../types/simulator';
 import { EXERCISE_PORTFOLIO, EXERCISES, type Exercise } from '../../domain/expert/exercises';
 import {
-  isOfficial, officialExercise, officialState, requestOfficialReactivation, toEvaluation, type OfficialExercise,
+  assignedNumbers, isOfficial, isOfficialExercise, officialExercise, officialState, requestOfficialReactivation, toEvaluation, type OfficialExercise,
 } from '../../domain/expert/official';
+
+/** Las llamadas de la prueba de este asesor: las dos que le tocaron (oficial) o las seis (práctica libre). */
+function mine(): Exercise[] {
+  const numbers = assignedNumbers();
+  return numbers ? EXERCISES.filter((exercise) => numbers.includes(exercise.number)) : EXERCISES;
+}
 import { combine, on, qs, type Cleanup } from '../../utils/dom';
 import { esc, formatCOP } from '../../utils/format';
 import { hydrateIcons, icon } from '../icons';
@@ -25,17 +31,17 @@ export interface PracticePanel {
 
 function stepState(ctx: SimContext, exercise: Exercise, current: Exercise): string {
   if (exercise.id === current.id) return 'current';
-  const official = isOfficial() ? officialExercise(exercise.number) : null;
+  const official = isOfficialExercise(exercise.number) ? officialExercise(exercise.number) : null;
   if (official) return official.status === 'APROBADO' ? 'ok' : official.result ? 'bad' : 'pending';
   const r = ctx.store.get().practice.results[exercise.id];
   return r?.approved ? 'ok' : r ? 'bad' : 'pending';
 }
 
 function progressTemplate(ctx: SimContext, current: Exercise): string {
-  return EXERCISES.map((e) => {
+  return mine().map((e, position) => {
     const state = stepState(ctx, e, current);
-    const official = isOfficial() ? officialExercise(e.number) : null;
-    return `<li class="sim-practice__step is-${state}" title="Ejercicio ${e.number}: ${esc(e.title)}${official ? ` · ${esc(official.statusLabel)}` : ''}">${state === 'ok' ? '✓' : e.number}</li>`;
+    const official = isOfficialExercise(e.number) ? officialExercise(e.number) : null;
+    return `<li class="sim-practice__step is-${state}" title="Ejercicio ${e.number}: ${esc(e.title)}${official ? ` · ${esc(official.statusLabel)}` : ''}">${state === 'ok' ? '✓' : position + 1}</li>`;
   }).join('');
 }
 
@@ -64,9 +70,9 @@ async function showSummary(ctx: SimContext): Promise<void> {
       body: `
         <p class="sim-practice__summary"><strong>${official.approvedCount} de ${official.total}</strong> ejercicios aprobados</p>
         <table class="sim-table sim-table--compact"><thead><tr><th>Ejercicio</th><th>Puntaje</th><th>Estado</th></tr></thead><tbody>
-        ${official.exercises.map((e) => `<tr><td>${e.number}. ${esc(EXERCISES[e.number - 1]?.title ?? '')}</td><td>${e.result?.score ? `${Math.round(Number(e.result.score))} %` : '—'}</td><td>${esc(e.statusLabel)}</td></tr>`).join('')}
+        ${official.exercises.map((e) => `<tr><td>${esc(EXERCISES[e.number - 1]?.title ?? '')}</td><td>${e.result?.score ? `${Math.round(Number(e.result.score))} %` : '—'}</td><td>${esc(e.statusLabel)}</td></tr>`).join('')}
         </tbody></table>
-        <p class="sim-help">${official.passed ? '¡Aprobaste los seis ejercicios! Ya puedes presentar el examen general.' : pendingRows ? 'Aún tienes ejercicios por presentar. Cada uno tiene un solo intento.' : 'Para volver a presentar un ejercicio no aprobado solicita la reactivación al administrador.'}</p>`,
+        <p class="sim-help">${official.passed ? '¡Aprobaste tus ejercicios! Ya puedes presentar el examen general.' : pendingRows ? 'Aún tienes ejercicios por presentar. Cada uno tiene un solo intento.' : 'Para volver a presentar un ejercicio no aprobado solicita la reactivación al administrador.'}</p>`,
     });
     return;
   }
@@ -158,14 +164,16 @@ function scoreLine(evaluation: Evaluation, official: OfficialExercise | null | u
 }
 
 export function mountPracticePanel(host: HTMLElement, ctx: SimContext, exercise: Exercise, opts: { onRetry(): void; resultSlot: HTMLElement }): PracticePanel {
-  const isLast = exercise.number === EXERCISES.length;
+  const list = mine();
+  const position = list.findIndex((item) => item.number === exercise.number);
+  const isLast = position === list.length - 1;
   const draw = (): void => {
-    const official = isOfficial();
+    const official = isOfficialExercise(exercise.number);
     host.innerHTML = `
       <section class="sim-card sim-practice" data-sim-guide="prueba.panel" aria-labelledby="sim-practice-title">
         <header class="sim-practice__head">
           <div>
-            <p class="sim-practice__kicker">${icon('ClipboardList')} ${official ? 'Prueba oficial' : 'Práctica'} de tipificación · Ejercicio ${exercise.number} de ${EXERCISES.length}</p>
+            <p class="sim-practice__kicker">${icon('ClipboardList')} ${official ? 'Prueba oficial' : 'Práctica'} de tipificación · Ejercicio ${position + 1} de ${list.length}</p>
             <h2 id="sim-practice-title" class="sim-practice__title">${esc(exercise.title)}</h2>
             <p class="sim-practice__brief">${esc(exercise.brief)} La llamada está abajo, donde va la información del deudor; tipifícala en «Nueva Gestión» y pulsa «Guardar».${official ? ' <strong>Tienes un solo intento:</strong> revisa bien antes de guardar.' : ''}</p>
           </div>
@@ -248,7 +256,7 @@ export function mountPracticePanel(host: HTMLElement, ctx: SimContext, exercise:
             });
         } else if (action === 'next') {
           if (isLast) void showSummary(ctx);
-          else ctx.navigate(`/cartera/${EXERCISE_PORTFOLIO}/cliente/${EXERCISES[exercise.number]!.customer.id}`);
+          else ctx.navigate(`/cartera/${EXERCISE_PORTFOLIO}/cliente/${list[position + 1]!.customer.id}`);
         }
       })),
     ]),
@@ -261,7 +269,7 @@ export function startPractice(ctx: SimContext, restart = false): void {
   const official = isOfficial() ? officialState() : null;
   const results = ctx.store.get().practice.results;
   const next = official
-    ? EXERCISES.find((e) => officialExercise(e.number)?.canSubmit) ?? EXERCISES.find((e) => officialExercise(e.number)?.status !== 'APROBADO') ?? EXERCISES[0]!
+    ? mine().find((e) => officialExercise(e.number)?.canSubmit) ?? mine().find((e) => officialExercise(e.number)?.status !== 'APROBADO') ?? mine()[0]!
     : EXERCISES.find((e) => !results[e.id]?.approved) ?? EXERCISES[0]!;
   ctx.navigate(`/cartera/${EXERCISE_PORTFOLIO}/cliente/${next.customer.id}`);
 }

@@ -85,6 +85,16 @@ export function officialState(): OfficialState | null {
   return current;
 }
 
+/** Números de ejercicio que le tocan al asesor en la prueba oficial (null fuera de la plataforma o en repaso). */
+export function assignedNumbers(): number[] | null {
+  return isOfficial() ? current!.exercises.map((exercise) => exercise.number) : null;
+}
+
+/** ¿Este ejercicio es uno de los asignados al asesor (cuenta como evaluación oficial)? */
+export function isOfficialExercise(number: number): boolean {
+  return isOfficial() && officialExercise(number) !== null;
+}
+
 export function officialExercise(number: number): OfficialExercise | null {
   return current?.exercises.find((exercise) => exercise.number === number) ?? null;
 }

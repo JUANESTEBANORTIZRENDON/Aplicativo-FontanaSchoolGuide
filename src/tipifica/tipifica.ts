@@ -4,7 +4,7 @@ import { bindReactivation, reactivationNotice, statusChip, type EvaluationStatus
 import { playSeal } from '../seal-animation';
 import { TYPIFICATION_MINIMUM } from '../simulador/domain/expert/minimum';
 
-// Estado oficial de los seis ejercicios (lo calcula el servidor; el clon solo lo muestra).
+// Estado oficial de los ejercicios asignados al asesor (lo calcula el servidor; el clon solo lo muestra).
 type ExerciseState = {
   number: number; title: string; activityId: string | null; status: EvaluationStatus; statusLabel: string; canSubmit: boolean;
   attemptsUsed: number; reactivationRequestedAt: string | null;
@@ -154,7 +154,7 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
     const head = state.reviewMode
       ? '<p class="tipifica-official__lead"><strong>Modo repaso.</strong> Ya estás certificado: practica cuanto quieras; lo que hagas no cambia tus resultados oficiales.</p>'
       : state.passed
-        ? `<p class="tipifica-official__lead is-ok"><strong>¡Aprobaste los seis ejercicios!</strong> Continúa con el examen general.${state.nextRoute ? ` <a class="primary-action tipifica-official__next" href="${escapar(state.nextRoute)}">Ir al examen general →</a>` : ''}</p>`
+        ? `<p class="tipifica-official__lead is-ok"><strong>¡Aprobaste tus ejercicios!</strong> Continúa con el examen general.${state.nextRoute ? ` <a class="primary-action tipifica-official__next" href="${escapar(state.nextRoute)}">Ir al examen general →</a>` : ''}</p>`
         : '<p class="tipifica-official__lead">Cada ejercicio tiene <strong>un solo intento</strong> y se califica al pulsar «Guardar» en el clon. Tu resultado queda guardado aunque recargues la página o cambies de equipo.</p>';
     officialBox.innerHTML = `
       <div class="tipifica-official__head"><h3 id="tipifica-official-title">Tu prueba oficial de tipificación</h3><span class="tipifica-official__count">${state.approvedCount} de ${state.total} aprobados</span></div>

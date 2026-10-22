@@ -1,6 +1,7 @@
 import { Prisma, type Evaluation, type ProgressStatus } from '@prisma/client';
 import { prisma, type Db } from '../config/prisma.js';
 import { CERTIFICATE_MODULE_SLUG } from '../domain/enums.js';
+import { assignedExerciseNumbers } from '../domain/tipifica/assignment.js';
 import { ForbiddenError, NotFoundError } from '../domain/errors.js';
 import {
   certificationStatusOf, computeAvailability, computeModuleViews, initialStatus, percentOf,
@@ -117,6 +118,16 @@ async function loadRaw(db: Db, userId: string): Promise<RawState> {
   }
 }
 
+// De las seis llamadas de Tipifica, cada asesor presenta solo las dos que le tocan: las demás no cuentan en su
+// módulo (ni para el porcentaje, ni para el sello, ni para la certificación).
+const TIPIFICA_MODULE_SLUG = 'tipificacion-llamadas';
+function assignExercises(modules: CatalogModule[], userId: string): CatalogModule[] {
+  const mine = new Set(assignedExerciseNumbers(userId));
+  return modules.map((module) => (module.slug === TIPIFICA_MODULE_SLUG
+    ? { ...module, activities: module.activities.filter((activity) => activity.type !== 'TYPIFICATION' || mine.has(activity.order)) }
+    : module));
+}
+
 // Carga todo lo necesario para calcular el estado efectivo de un usuario.
 // Con sync, el estado guardado se alinea con el efectivo (excepciones vencidas o revocadas, desbloqueos)
 // para que las métricas en SQL lo reflejen. Un módulo aprobado o inactivo conserva su estado guardado.
@@ -126,7 +137,8 @@ export async function loadSnapshot(db: Db, userId: string, now = new Date(), opt
     await initializeForUser(db, userId, state.modules);
     state = await loadRaw(db, userId);
   }
-  const { modules, moduleProgress, activityProgress, seals, overrides, evaluations, attempts, attemptLimits } = state;
+  const { moduleProgress, activityProgress, seals, overrides, evaluations, attempts, attemptLimits } = state;
+  const modules = assignExercises(state.modules, userId);
   const facts = await loadCertificationFacts(db, userId);
   const sealedModuleIds = new Set(seals.map((seal) => seal.moduleId));
   const certificateModule = modules.find((module) => module.slug === CERTIFICATE_MODULE_SLUG);
@@ -224,7 +236,9 @@ export async function getAdvisorSummary(userId: string) {
 
 // Recalcula el porcentaje del módulo a partir de sus actividades obligatorias activas.
 export async function refreshModulePercent(db: Db, userId: string, moduleId: string): Promise<{ percent: Prisma.Decimal; complete: boolean }> {
-  const activities = await db.activity.findMany({ where: { moduleId, status: 'ACTIVE', isRequired: true }, select: { id: true } });
+  const all = await db.activity.findMany({ where: { moduleId, status: 'ACTIVE', isRequired: true }, select: { id: true, type: true, order: true, module: { select: { slug: true } } } });
+  const mine = new Set(assignedExerciseNumbers(userId));
+  const activities = all.filter((activity) => activity.module.slug !== TIPIFICA_MODULE_SLUG || activity.type !== 'TYPIFICATION' || mine.has(activity.order));
   const passed = activities.length === 0 ? 0 : await db.userActivityProgress.count({ where: { userId, status: 'PASSED', activityId: { in: activities.map((activity) => activity.id) } } });
   const percent = percentOf(passed, activities.length);
   return { percent, complete: activities.length > 0 && passed === activities.length };
