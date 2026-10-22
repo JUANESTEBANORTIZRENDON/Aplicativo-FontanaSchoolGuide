@@ -27,18 +27,14 @@
 .principle-summary { margin: 0; color: var(--muted); font-size: 16px; }
 .principle-narration { margin-top: 12px; }
 .principle-narration p { color: var(--navy); font-size: 15px; line-height: 1.65; }
-.principle-audio { display: flex; align-items: center; gap: 14px; margin-top: 18px; flex-wrap: wrap; }
-.principle-audio .primary { min-width: 150px; }
-.principle-progress { flex: 1 1 140px; height: 8px; border-radius: 8px; background: #e6dcc8; overflow: hidden; }
-.principle-progress span { display: block; width: 0; height: 100%; border-radius: 8px; background: linear-gradient(90deg, #71112e, #a52d4c 65%, #c59b39); }
-.principle-time { min-width: 84px; color: var(--muted); font-size: 13px; text-align: right; white-space: nowrap; }
-.principle-replay { border: 1px solid #d4af3799; border-radius: 12px; background: #fffdf6; color: var(--red); font-weight: 600; font-size: 14px; padding: 10px 16px; cursor: pointer; }
-.principle-audio button:focus-visible, .principle-options .step:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .principle-status { margin: 12px 0 0; color: var(--muted); font-size: 13px; min-height: 1.4em; }
 @media (max-width: 900px) { #principles-mount { grid-template-columns: 1fr; } }
-@media (max-width: 560px) { .principle-stage { grid-template-columns: 1fr; justify-items: center; text-align: center; } .principle-audio { justify-content: center; } }
+@media (max-width: 560px) { .principle-stage { grid-template-columns: 1fr; justify-items: center; text-align: center; } }
 
 /* Final de los principios: confirmación de lectura y acceso al aula. */
 #principles .principles-finish { grid-column: 1 / -1; }
 .principles-progress { margin: 0; color: var(--muted); font-size: 14px; font-weight: 600; }
 #principles .reading-confirmation { margin-top: 12px; }
+
+.principle-pause { align-self: flex-start; margin-top: 16px; padding: 8px 0; border: 0; background: none; color: var(--red); font: inherit; font-size: 14px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.principle-pause:focus-visible, .principle-options .step:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }

@@ -22,7 +22,7 @@ const STATUS_LABEL: Record<ModuleView['status'], string> = {
   NOT_STARTED: 'Sin iniciar',
   AVAILABLE: 'Disponible',
   IN_PROGRESS: 'En curso',
-  PASSED: 'Aprobado',
+  PASSED: 'Completado',
   FAILED: 'Sin intentos',
   BLOCKED: 'Bloqueado',
 };
@@ -47,23 +47,49 @@ function certificationBanner(certification: CertificationSummary | null): string
   return `<div class="training-route-cert" data-status="${certification.status}"><strong>${escapar(certification.statusLabel)}</strong><p>${escapar(text)}</p>${certification.status === 'CERTIFICADO' ? '<a href="/induccion/certificado">Ver mi certificado →</a>' : ''}</div>`;
 }
 
-function card(module: ModuleView): string {
+type CardState = 'active' | 'completed' | 'locked' | 'available';
+
+const MODULE_IMAGES: Record<string, string> = {
+  'ofimatica-mecanografia': '/imagenes/ofimatica-cobranzas-ilustracion.png',
+  'induccion-cobranzas': '/imagenes/induccion-cobranzas-ilustracion.png',
+  'simulador-cobranzas': '/imagenes/enfrentate-objecion-ilustracion.png',
+  'tipificacion-llamadas': '/imagenes/tipificacion-llamadas-ilustracion.png',
+  'certificado': '/imagenes/certificado-ilustracion.png',
+};
+
+function stateIcon(state: CardState): string {
+  const paths: Record<CardState, string> = {
+    active: '<path d="m9 5 7 7-7 7"/>',
+    completed: '<path d="m5 12 4 4L19 6"/>',
+    locked: '<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/>',
+    available: '<path d="M5 12h14m-6-6 6 6-6 6"/>',
+  };
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${paths[state]}</svg>`;
+}
+
+function card(module: ModuleView, current: boolean): string {
+  const illustration = MODULE_IMAGES[module.slug];
   const percent = Math.max(0, Math.min(100, Number(module.progressPercent) || 0));
+  const state: CardState = module.status === 'PASSED' ? 'completed' : !module.enabled ? 'locked' : current ? 'active' : 'available';
+  const label = current
+    ? `Estás aquí · ${statusLabel(module)}`
+    : state === 'locked' && module.status === 'IN_PROGRESS' ? 'No disponible' : statusLabel(module);
   const button = module.enabled
     ? `<a class="path-card-action" href="${escapar(module.route)}">${escapar(module.actionLabel)} <span aria-hidden="true">→</span></a>`
-    : `<button class="path-card-action" type="button" disabled>${escapar(module.actionLabel)}</button>`;
+    : `<button class="path-card-action" type="button" disabled>${stateIcon(state === 'completed' ? 'completed' : 'locked')}${escapar(module.actionLabel)}</button>`;
   const note = module.blockedReason
     ? `<p class="path-card-note">${escapar(module.blockedReason)}</p>`
-    : module.waitUntil ? `<p class="path-card-note">Podrás intentarlo de nuevo desde ${escapar(formatDate(module.waitUntil))}.</p>` : '';
+    : module.waitUntil ? `<p class="path-card-note">Podrás intentarlo de nuevo desde ${escapar(formatDate(module.waitUntil))}.</p>`
+      : state === 'locked' ? '<p class="path-card-note">Este módulo aún no está disponible.</p>' : '';
   return `
-    <li class="path-card" data-status="${module.status}">
-      <span class="path-card-order">${String(module.order).padStart(2, '0')}</span>
+    <li class="path-card" data-status="${module.status}" data-state="${state}" data-enabled="${module.enabled}"${current ? ' aria-current="step"' : ''}>
+      <div class="path-card-top"><span class="path-card-order">MÓDULO ${String(module.order).padStart(2, '0')}</span><span class="path-card-corner${illustration ? ' path-card-corner--illustrated' : ''}">${illustration ? `<img class="path-card-illustration" src="${escapar(illustration)}" alt="" width="1536" height="1024" decoding="async">` : ''}<span class="path-card-state-icon">${stateIcon(state)}</span></span></div>
       <div class="path-card-body">
         <h3>${escapar(module.name)}</h3>
-        <span class="path-card-status">${escapar(statusLabel(module))}</span>
+        <span class="path-card-status">${escapar(label)}</span>
+        <div class="path-card-progress"><span class="path-card-progress-label">Progreso</span><strong class="path-card-percent">${escapar(module.progressPercent)} %</strong></div>
         <div class="path-card-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" aria-label="Progreso de ${escapar(module.name)}"><span style="width:${percent}%"></span></div>
-        <small>${escapar(module.progressPercent)} %</small>
-        ${note}
+        ${state === 'locked' && note ? `<details class="path-card-requirement"><summary>Ver requisito para avanzar</summary>${note}</details>` : note}
       </div>
       ${button}
     </li>`;
@@ -84,8 +110,10 @@ export async function mountLearningPath(): Promise<void> {
       api<{ data: ModuleView[] }>('/advisor/modules'),
       api<{ data: CertificationSummary }>('/advisor/certification').then((response) => response.data).catch(() => null),
     ]);
+    const current = data.find((module) => module.enabled && module.status === 'IN_PROGRESS')
+      ?? data.find((module) => module.enabled && (module.status === 'AVAILABLE' || module.status === 'NOT_STARTED'));
     section.querySelector('.training-route-loading')!.remove();
-    section.insertAdjacentHTML('beforeend', `${certificationBanner(certification)}<ol class="path-cards">${data.map(card).join('')}</ol>`);
+    section.insertAdjacentHTML('beforeend', `${certificationBanner(certification)}<ol class="path-cards">${data.map((module) => card(module, module === current)).join('')}</ol>`);
     // La primera vez después de la aprobación, la felicitación con el certificado. No se espera: el aula se
     // termina de mostrar y la felicitación aparece encima.
     if (certification?.status === 'CERTIFICADO') {

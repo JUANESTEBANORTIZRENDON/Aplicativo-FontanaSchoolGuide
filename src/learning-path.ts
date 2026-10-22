@@ -16,7 +16,7 @@ export function pasosCamino(actual: PasoCamino, rutaPractica: string | null): st
   return `<ol>${[
     paso(actual === 'empresa'
       ? { numero: '01', titulo: 'Conoce la empresa', detalle: 'Estás aquí', estado: 'current' }
-      : { numero: '01', titulo: 'Conoce la empresa', detalle: 'Completado · Repasar', estado: 'completed', href: '/induccion' }),
+      : { numero: '01', titulo: 'Conoce la empresa', detalle: '← Volver al apartado anterior', estado: 'completed', href: '/induccion' }),
     paso(actual === 'practica'
       ? { numero: '02', titulo: 'Practica', detalle: 'Estás aquí', estado: 'current' }
       : rutaPractica

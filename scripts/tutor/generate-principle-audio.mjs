@@ -24,8 +24,8 @@ if (!existsSync(configPath)) throw new Error(`Falta ${configPath}: ejecuta serve
 const config = JSON.parse(readFileSync(configPath, 'utf8').replace(/^﻿/, ''));
 const voiceDir = path.join(path.dirname(configPath), 'voices', TUTOR_VOICE);
 const modelPath = path.join(voiceDir, `${TUTOR_VOICE}.onnx`);
-if (!existsSync(modelPath)) throw new Error(`Falta la voz ${TUTOR_VOICE} en ${voiceDir}. Descárgala de https://huggingface.co/rhasspy/piper-voices (carpeta es/es_MX) o con server/scripts/tts/setup-tts.ps1.`);
-const voiceInfo = JSON.parse(readFileSync(`${modelPath}.json`, 'utf8'));
+if (!mouthOnly && !existsSync(modelPath)) throw new Error(`Falta la voz ${TUTOR_VOICE} en ${voiceDir}. Descárgala de https://huggingface.co/rhasspy/piper-voices (carpeta es/es_MX) o con server/scripts/tts/setup-tts.ps1.`);
+const voiceInfo = mouthOnly ? {} : JSON.parse(readFileSync(`${modelPath}.json`, 'utf8'));
 const voiceLicense = /License:\s*(.+)/i.exec(existsSync(path.join(voiceDir, 'MODEL_CARD')) ? readFileSync(path.join(voiceDir, 'MODEL_CARD'), 'utf8') : '')?.[1]?.trim() ?? 'ver MODEL_CARD';
 const content = JSON.parse(readFileSync('src/tutor/principles.json', 'utf8'));
 mkdirSync('public/tutor/audio', { recursive: true });
@@ -39,7 +39,14 @@ async function synthesize(text, wav) {
 const sampleRate = voiceInfo.audio?.sample_rate ?? 22050;
 const pitchFilter = PITCH === 1 ? '' : `asetrate=${Math.round(sampleRate * PITCH)},aresample=48000,atempo=${(1 / PITCH).toFixed(5)},`;
 const toOgg = (wav, ogg) => run(config.ffmpeg, ['-y', '-hide_banner', '-loglevel', 'error', '-i', wav, '-af', `${pitchFilter}loudnorm=I=-16:TP=-1.5:LRA=11`, '-ac', '1', '-ar', '48000', '-c:a', 'libopus', '-b:a', '48k', ogg]);
-async function durationMs(ogg) { const { stdout } = await run(config.ffprobe, ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', ogg]); return Math.round(Number(stdout.trim()) * 1000); }
+async function durationMs(ogg) {
+  if (config.ffprobe) {
+    const { stdout } = await run(config.ffprobe, ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', ogg]);
+    return Math.round(Number(stdout.trim()) * 1000);
+  }
+  const { stdout } = await run(config.ffmpeg, ['-v', 'error', '-i', ogg, '-ac', '1', '-ar', '16000', '-f', 's16le', '-'], { encoding: 'buffer', maxBuffer: 64 * 1024 * 1024 });
+  return Math.round(stdout.length / 32);
+}
 
 // Línea de boca desde el audio decodificado (16 kHz, 16 bits). La energía se mide cada 25 ms y la boca se abre cuando
 // la energía supera su media local (±150 ms): así sigue el ritmo de las sílabas en vez de quedarse abierta todo el habla.
@@ -69,4 +76,5 @@ for (const item of content.items) {
 // con --only se conservan las demás entradas ya generadas
 let previous = {};
 if ((only || mouthOnly) && existsSync('src/tutor/principle-audio.generated.ts')) { const m = /export const PRINCIPLE_AUDIO = (\{[\s\S]*?\}) as const;/.exec(readFileSync('src/tutor/principle-audio.generated.ts', 'utf8')); if (m) previous = JSON.parse(m[1]); }
-writeFileSync('src/tutor/principle-audio.generated.ts', `// Generado por scripts/tutor/generate-principle-audio.mjs: no editar a mano.\n// Voz: Piper ${TUTOR_VOICE} (licencia ${voiceLicense}), tono x${PITCH}. «mouth»: un bit cada ${STEP_MS} ms (1 = suena la voz).\nexport const PRINCIPLE_AUDIO_STEP_MS = ${STEP_MS};\nexport const PRINCIPLE_AUDIO = ${JSON.stringify({ ...previous, ...entries }, null, 1)} as const;\n`);
+const sourceNote = mouthOnly ? 'Sincronización calculada desde los OGG existentes; conserva la voz original.' : `Voz: Piper ${TUTOR_VOICE} (licencia ${voiceLicense}), tono x${PITCH}.`;
+writeFileSync('src/tutor/principle-audio.generated.ts', `// Generado por scripts/tutor/generate-principle-audio.mjs: no editar a mano.\n// ${sourceNote} «mouth»: un bit cada ${STEP_MS} ms (1 = suena la voz).\nexport const PRINCIPLE_AUDIO_STEP_MS = ${STEP_MS};\nexport const PRINCIPLE_AUDIO = ${JSON.stringify({ ...previous, ...entries }, null, 1)} as const;\n`);
