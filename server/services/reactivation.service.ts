@@ -44,6 +44,7 @@ export async function requestReactivation(userId: string, activityId: string, no
       const availability = snapshot.availability.get(activityId);
       const activity = snapshot.modules.flatMap((module) => module.activities).find((item) => item.id === activityId);
       if (!activity) throw new NotFoundError('La actividad no existe.', 'ACTIVITY_NOT_FOUND');
+      if (activity.type === 'TYPIFICATION') throw new ConflictError('Tipifica no se aprueba ni se reprueba: no necesita reactivación.', 'REACTIVATION_NOT_APPLICABLE');
       if (!availability?.exhausted) {
         throw new ConflictError(availability?.passed ? 'Ya aprobaste esta actividad.' : 'Todavía tienes un intento disponible en esta actividad.', 'REACTIVATION_NOT_NEEDED');
       }

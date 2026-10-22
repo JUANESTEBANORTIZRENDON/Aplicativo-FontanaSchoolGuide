@@ -6,7 +6,8 @@
 import type { TypificationDraft } from '../typification/draft';
 import type { Evaluation } from './engine';
 
-export type OfficialStatus = 'PENDIENTE' | 'EN_PROGRESO' | 'APROBADO' | 'NO_APROBADO' | 'SIN_INTENTOS' | 'REACTIVACION_SOLICITADA' | 'REACTIVADO';
+// Tipifica no se aprueba ni se reprueba: un ejercicio presentado queda COMPLETADO y trae su retroalimentación.
+export type OfficialStatus = 'PENDIENTE' | 'EN_PROGRESO' | 'COMPLETADO';
 
 export interface OfficialCheck { id: string; ok: boolean; detail: string; label?: string; goal?: string }
 export interface OfficialResult {
@@ -28,7 +29,7 @@ export interface OfficialExercise {
 export interface OfficialState {
   reviewMode: boolean;
   passed: boolean;
-  approvedCount: number;
+  completedCount: number;
   total: number;
   exercises: OfficialExercise[];
 }
@@ -130,11 +131,6 @@ export function notifyOpened(number: number): void {
   if (isOfficial()) void ask('tipifica:abrir', { number });
 }
 
-export async function requestOfficialReactivation(number: number): Promise<void> {
-  const reply = await ask('tipifica:reactivar', { number });
-  if (!reply.ok) throw new Error(reply.error ?? 'No se pudo enviar la solicitud.');
-}
-
 /** Convierte el resultado del servidor al formato de los checkmarks del clon. */
 export function toEvaluation(result: OfficialResult): Evaluation {
   const checks = result.typification?.checks ?? [];
@@ -144,6 +140,7 @@ export function toEvaluation(result: OfficialResult): Evaluation {
     passed,
     total: checks.length,
     score: Math.round(Number(result.score ?? 0)),
-    approved: result.passed,
+    // Solo para el color de la retroalimentación: todos los puntos coinciden con la llamada. No es aprobación.
+    approved: checks.length > 0 && passed === checks.length,
   };
 }

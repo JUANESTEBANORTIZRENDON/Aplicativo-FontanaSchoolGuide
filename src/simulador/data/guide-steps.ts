@@ -168,7 +168,7 @@ export const GUIDE_STEPS: Record<GuideView, GuideStep[]> = {
     },
     {
       title: 'Ahora, tu prueba de tipificación',
-      text: 'Ya conoces la ficha. Ahora te haremos una prueba: escucharás 2 llamadas reales de entrenamiento, distintas para cada asesor (entre ellas: titular, tercero, promesa de pago, volver a llamar, pago ya realizado y número equivocado). En cada una verás arriba los checkmarks de lo que debe tener la tipificación; al guardar, el sistema experto revisa lo que elegiste y escribiste y marca qué cumpliste y qué te faltó. Es una evaluación oficial: cada ejercicio tiene un solo intento y su resultado queda guardado. Si no apruebas uno, podrás solicitar la reactivación al administrador.',
+      text: 'Ya conoces la ficha. Ahora te haremos una prueba: escucharás 2 llamadas reales de entrenamiento, distintas para cada asesor (entre ellas: titular, tercero, promesa de pago, volver a llamar, pago ya realizado y número equivocado). En cada una verás arriba los checkmarks de lo que debe tener la tipificación; al guardar, el sistema experto revisa lo que elegiste y escribiste y marca qué cumpliste y qué te faltó. Cada ejercicio se presenta una sola vez y su resultado queda guardado. No se aprueba ni se reprueba: recibes retroalimentación de qué puntos coincidieron con la llamada. Tus conocimientos se confirman después en el examen general.',
       action: { label: 'Iniciar la prueba de tipificación', run: 'prueba' },
     },
   ],

@@ -113,7 +113,7 @@ async function dossierSection(view: HTMLElement, userId: string, helpers: Helper
     <div class="cert-grid">
       <section><h3>Módulos y sellos</h3><ul class="cert-modules">${data.modules.map((module) => `<li class="${module.hasSeal ? 'is-done' : ''}"><span>${String(module.order).padStart(2, '0')}</span>${escapar(module.name)}<strong>${module.hasSeal ? '✓ Sello' : `${Math.round(Number(module.percent))} %`}</strong></li>`).join('')}</ul></section>
       <section><h3>Resumen</h3><dl class="cert-facts">
-        <div><dt>Tipificaciones aprobadas</dt><dd>${data.typification.filter((activity) => activity.passed).length} de ${data.typification.length}</dd></div>
+        <div><dt>Tipificaciones completadas</dt><dd>${data.typification.filter((activity) => activity.passed).length} de ${data.typification.length}</dd></div>
         <div><dt>Examen diagnóstico</dt><dd>${data.diagnostic && data.advisor.profile === 'CON_EXPERIENCIA' ? (data.diagnostic.attempts ? `${score(data.diagnostic.lastScore)} · ${escapar(data.diagnostic.statusLabel ?? '')}` : 'No lo presentó') : 'No aplica'}</dd></div>
         <div><dt>Examen general</dt><dd>${data.finalExam?.attempts ? `${score(data.finalExam.lastScore)} · ${escapar(data.finalExam.statusLabel ?? '')}` : 'Sin presentar'}</dd></div>
         <div><dt>Reactivaciones usadas</dt><dd>${data.reactivationsUsed}</dd></div>

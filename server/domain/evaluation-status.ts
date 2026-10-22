@@ -9,7 +9,9 @@ export type EvaluationStatus =
   | 'NO_APROBADO'
   | 'SIN_INTENTOS'
   | 'REACTIVACION_SOLICITADA'
-  | 'REACTIVADO';
+  | 'REACTIVADO'
+  // Tipifica no se aprueba ni se reprueba: el ejercicio se presenta una vez y se recibe retroalimentación.
+  | 'COMPLETADO';
 
 export const EVALUATION_STATUS_LABEL: Record<EvaluationStatus, string> = {
   PENDIENTE: 'Pendiente',
@@ -19,6 +21,7 @@ export const EVALUATION_STATUS_LABEL: Record<EvaluationStatus, string> = {
   SIN_INTENTOS: 'Sin intentos disponibles',
   REACTIVACION_SOLICITADA: 'Reactivación solicitada',
   REACTIVADO: 'Reactivado por el administrador',
+  COMPLETADO: 'Completado',
 };
 
 // NO_APROBADO: envió su intento, no aprobó y no le quedan intentos. SIN_INTENTOS: no le quedan intentos sin haber

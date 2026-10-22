@@ -4,10 +4,10 @@ import { api, escapar, formatDate } from './http';
 // Pantalla común cuando un asesor agota su intento oficial sin aprobar: resultado, siguiente paso y el botón
 // «Solicitar reactivación». La solicitud queda en el servidor (una pendiente por actividad).
 
-export type EvaluationStatus = 'PENDIENTE' | 'EN_PROGRESO' | 'APROBADO' | 'NO_APROBADO' | 'SIN_INTENTOS' | 'REACTIVACION_SOLICITADA' | 'REACTIVADO';
+export type EvaluationStatus = 'PENDIENTE' | 'EN_PROGRESO' | 'APROBADO' | 'NO_APROBADO' | 'SIN_INTENTOS' | 'REACTIVACION_SOLICITADA' | 'REACTIVADO' | 'COMPLETADO';
 
 export const STATUS_TONE: Record<EvaluationStatus, 'neutral' | 'info' | 'ok' | 'bad' | 'warn'> = {
-  PENDIENTE: 'neutral', EN_PROGRESO: 'info', APROBADO: 'ok', NO_APROBADO: 'bad', SIN_INTENTOS: 'bad', REACTIVACION_SOLICITADA: 'warn', REACTIVADO: 'info',
+  PENDIENTE: 'neutral', EN_PROGRESO: 'info', APROBADO: 'ok', NO_APROBADO: 'bad', SIN_INTENTOS: 'bad', REACTIVACION_SOLICITADA: 'warn', REACTIVADO: 'info', COMPLETADO: 'ok',
 };
 
 export function statusChip(status: EvaluationStatus, label: string): string {

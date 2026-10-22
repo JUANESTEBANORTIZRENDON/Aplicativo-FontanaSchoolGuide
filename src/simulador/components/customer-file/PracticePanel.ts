@@ -9,7 +9,7 @@ import type { Evaluation } from '../../domain/expert/engine';
 import type { CustomerView } from '../../types/simulator';
 import { EXERCISE_PORTFOLIO, EXERCISES, type Exercise } from '../../domain/expert/exercises';
 import {
-  assignedNumbers, isOfficial, isOfficialExercise, officialExercise, officialState, requestOfficialReactivation, toEvaluation, type OfficialExercise,
+  assignedNumbers, isOfficial, isOfficialExercise, officialExercise, officialState, toEvaluation, type OfficialExercise,
 } from '../../domain/expert/official';
 
 /** Las llamadas de la prueba de este asesor: las dos que le tocaron (oficial) o las seis (práctica libre). */
@@ -32,7 +32,7 @@ export interface PracticePanel {
 function stepState(ctx: SimContext, exercise: Exercise, current: Exercise): string {
   if (exercise.id === current.id) return 'current';
   const official = isOfficialExercise(exercise.number) ? officialExercise(exercise.number) : null;
-  if (official) return official.status === 'APROBADO' ? 'ok' : official.result ? 'bad' : 'pending';
+  if (official) return official.result ? 'ok' : 'pending';
   const r = ctx.store.get().practice.results[exercise.id];
   return r?.approved ? 'ok' : r ? 'bad' : 'pending';
 }
@@ -68,11 +68,11 @@ async function showSummary(ctx: SimContext): Promise<void> {
       title: 'Tu prueba oficial de tipificación',
       wide: true,
       body: `
-        <p class="sim-practice__summary"><strong>${official.approvedCount} de ${official.total}</strong> ejercicios aprobados</p>
-        <table class="sim-table sim-table--compact"><thead><tr><th>Ejercicio</th><th>Puntaje</th><th>Estado</th></tr></thead><tbody>
+        <p class="sim-practice__summary"><strong>${official.completedCount} de ${official.total}</strong> ejercicios completados</p>
+        <table class="sim-table sim-table--compact"><thead><tr><th>Ejercicio</th><th>Coincidencia con la llamada</th><th>Estado</th></tr></thead><tbody>
         ${official.exercises.map((e) => `<tr><td>${esc(EXERCISES[e.number - 1]?.title ?? '')}</td><td>${e.result?.score ? `${Math.round(Number(e.result.score))} %` : '—'}</td><td>${esc(e.statusLabel)}</td></tr>`).join('')}
         </tbody></table>
-        <p class="sim-help">${official.passed ? '¡Aprobaste tus ejercicios! Ya puedes presentar el examen general.' : pendingRows ? 'Aún tienes ejercicios por presentar. Cada uno tiene un solo intento.' : 'Para volver a presentar un ejercicio no aprobado solicita la reactivación al administrador.'}</p>`,
+        <p class="sim-help">${official.passed ? 'Completaste tus ejercicios de tipificación. Tu conocimiento se confirma en el examen general: ya puedes presentarlo.' : pendingRows ? 'Aún tienes ejercicios por presentar. Cada uno se presenta una sola vez.' : ''}</p>`,
     });
     return;
   }
@@ -127,40 +127,38 @@ export function callCardTemplate(exercise: Exercise, v: CustomerView): string {
 const nextButton = (isLast: boolean, size = ''): string =>
   `<button type="button" class="sim-btn sim-btn--primary${size}" data-practice="next">${isLast ? `${icon('Check')} Ver resultados` : `Siguiente ejercicio ${icon('ArrowRight')}`}</button>`;
 
-/** Qué puede hacer el asesor con un ejercicio oficial ya entregado y no aprobado. */
-function officialNextStep(official: OfficialExercise | null | undefined): string {
-  if (!official || official.status === 'APROBADO') return '';
-  if (official.status === 'REACTIVACION_SOLICITADA') return '<p class="sim-expert-result__note">Tu solicitud de reactivación está pendiente: el administrador la revisará.</p>';
-  if (official.canSubmit) return '<p class="sim-expert-result__note">El administrador autorizó un nuevo intento: corrige tu tipificación y guárdala.</p>';
-  return `<div class="sim-expert-result__note">
-      <p><strong>Actividad no aprobada.</strong> Has finalizado tu intento de evaluación. Para volver a presentar esta actividad necesitas una autorización del administrador.</p>
-      <button type="button" class="sim-btn sim-btn--secondary sim-btn--sm" data-practice="reactivate">${icon('Mail')} Solicitar reactivación</button>
-    </div>`;
-}
-
-/** Resultado del sistema experto junto al formulario «Nueva Gestión». */
+/** Resultado del sistema experto junto al formulario «Nueva Gestión». En la prueba oficial es solo retroalimentación. */
 function resultTemplate(evaluation: Evaluation, isLast: boolean, attempts: number, official?: OfficialExercise | null): string {
   const missing = evaluation.items.filter((i) => !i.ok);
-  const head = official
-    ? `Resultado oficial guardado: ${evaluation.approved ? `aprobado (${evaluation.score} %)` : `${evaluation.passed} de ${evaluation.total} puntos (${evaluation.score} %) · no aprobado`}`
-    : `Sistema experto: ${evaluation.approved ? `tipificación correcta (${evaluation.score} %)` : `${evaluation.passed} de ${evaluation.total} puntos (${evaluation.score} %) · intento ${attempts}`}`;
+  if (official) {
+    return `
+    <div class="sim-expert-result is-feedback" role="status">
+      <p class="sim-expert-result__title">${icon('ClipboardList')} Retroalimentación de tu tipificación: ${evaluation.passed} de ${evaluation.total} puntos (${evaluation.score} %)</p>
+      ${missing.length ? `<p class="sim-expert-result__lead">Puntos que no coincidieron con la llamada:</p><ul class="sim-expert-result__list">${missing.map((i) => `<li><strong>✗ ${esc(i.label)}.</strong> ${esc(i.detail)}</li>`).join('')}</ul>` : '<p>Tu tipificación coincide con todos los puntos de esta llamada.</p>'}
+      <p class="sim-expert-result__note">Tu ejercicio quedó registrado y no se repite. Tu conocimiento se confirma en el examen general.</p>
+      <div class="sim-expert-result__actions">
+        <button type="button" class="sim-btn sim-btn--ghost sim-btn--sm" data-practice="checks">${icon('ClipboardList')} Ver los checkmarks</button>
+        ${nextButton(isLast, ' sim-btn--sm')}
+      </div>
+    </div>`;
+  }
+  const head = `Sistema experto: ${evaluation.approved ? `tipificación correcta (${evaluation.score} %)` : `${evaluation.passed} de ${evaluation.total} puntos (${evaluation.score} %) · intento ${attempts}`}`;
   return `
     <div class="sim-expert-result ${evaluation.approved ? 'is-ok' : 'is-bad'}" role="status">
       <p class="sim-expert-result__title">${icon(evaluation.approved ? 'CircleCheck' : 'TriangleAlert')} ${esc(head)}</p>
       ${missing.length ? `<ul class="sim-expert-result__list">${missing.map((i) => `<li><strong>✗ ${esc(i.label)}.</strong> ${esc(i.detail)}</li>`).join('')}</ul>` : '<p>Cumpliste todos los puntos de esta llamada.</p>'}
-      ${official ? officialNextStep(official) : ''}
       <div class="sim-expert-result__actions">
         <button type="button" class="sim-btn sim-btn--ghost sim-btn--sm" data-practice="checks">${icon('ClipboardList')} Ver los checkmarks</button>
-        ${evaluation.approved || official ? '' : `<button type="button" class="sim-btn sim-btn--ghost sim-btn--sm" data-practice="retry">${icon('RotateCcw')} Intentar de nuevo</button>`}
+        ${evaluation.approved ? '' : `<button type="button" class="sim-btn sim-btn--ghost sim-btn--sm" data-practice="retry">${icon('RotateCcw')} Intentar de nuevo</button>`}
         ${nextButton(isLast, ' sim-btn--sm')}
       </div>
     </div>`;
 }
 
 function scoreLine(evaluation: Evaluation, official: OfficialExercise | null | undefined, attempts: number): string {
+  if (official) return `<strong>Tu ejercicio quedó registrado: ${evaluation.passed} de ${evaluation.total} puntos (${evaluation.score} %).</strong> Revisa la retroalimentación.`;
   if (evaluation.approved) return `<strong class="is-ok">✓ Tipificación correcta (${evaluation.score} %).</strong> Pasa al siguiente ejercicio.`;
-  const base = `<strong class="is-bad">${evaluation.passed} de ${evaluation.total} puntos (${evaluation.score} %).</strong>`;
-  return official ? `${base} Tu intento oficial quedó registrado.` : `${base} Revisa lo marcado con ✗ e inténtalo de nuevo. Intento ${attempts}.`;
+  return `<strong class="is-bad">${evaluation.passed} de ${evaluation.total} puntos (${evaluation.score} %).</strong> Revisa lo marcado con ✗ e inténtalo de nuevo. Intento ${attempts}.`;
 }
 
 export function mountPracticePanel(host: HTMLElement, ctx: SimContext, exercise: Exercise, opts: { onRetry(): void; resultSlot: HTMLElement }): PracticePanel {
@@ -243,17 +241,6 @@ export function mountPracticePanel(host: HTMLElement, ctx: SimContext, exercise:
           opts.onRetry();
         } else if (action === 'checks') {
           host.querySelector('.sim-practice')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-        } else if (action === 'reactivate' && button) {
-          button.disabled = true;
-          requestOfficialReactivation(exercise.number)
-            .then(() => {
-              ctx.toast('Solicitud enviada. El administrador la revisará.', 'success');
-              if (shown) render(shown, officialExercise(exercise.number), 1);
-            })
-            .catch((error: Error) => {
-              button.disabled = false;
-              ctx.toast(error.message, 'error');
-            });
         } else if (action === 'next') {
           if (isLast) void showSummary(ctx);
           else ctx.navigate(`/cartera/${EXERCISE_PORTFOLIO}/cliente/${list[position + 1]!.customer.id}`);
@@ -269,7 +256,7 @@ export function startPractice(ctx: SimContext, restart = false): void {
   const official = isOfficial() ? officialState() : null;
   const results = ctx.store.get().practice.results;
   const next = official
-    ? mine().find((e) => officialExercise(e.number)?.canSubmit) ?? mine().find((e) => officialExercise(e.number)?.status !== 'APROBADO') ?? mine()[0]!
+    ? mine().find((e) => officialExercise(e.number)?.canSubmit) ?? mine().find((e) => officialExercise(e.number)?.status !== 'COMPLETADO') ?? mine()[0]!
     : EXERCISES.find((e) => !results[e.id]?.approved) ?? EXERCISES[0]!;
   ctx.navigate(`/cartera/${EXERCISE_PORTFOLIO}/cliente/${next.customer.id}`);
 }

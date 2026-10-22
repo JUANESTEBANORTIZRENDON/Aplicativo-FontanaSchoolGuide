@@ -517,3 +517,7 @@
 .sim-expert-result.is-bad .sim-expert-result__title { color: #b42323; }
 .sim-expert-result__list { display: grid; gap: 4px; margin: 0; padding-left: 4px; list-style: none; font-size: 14px; color: #374151; }
 .sim-expert-result__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.sim-expert-result.is-feedback { border-color: #b9d3ee; background: #f3f8fe; }
+.sim-expert-result.is-feedback .sim-expert-result__title { color: #1d4f91; }
+.sim-expert-result__lead { margin: 0; font-weight: 700; font-size: 14px; color: #374151; }
+.sim-expert-result__note { margin: 0; font-size: 13px; color: #4b5563; }

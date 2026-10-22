@@ -1,16 +1,16 @@
 import './tipifica.css';
 import { api, escapar } from '../http';
-import { bindReactivation, reactivationNotice, statusChip, type EvaluationStatus } from '../reactivation';
+import { statusChip, type EvaluationStatus } from '../reactivation';
 import { playSeal } from '../seal-animation';
 import { TYPIFICATION_MINIMUM } from '../simulador/domain/expert/minimum';
 
 // Estado oficial de los ejercicios asignados al asesor (lo calcula el servidor; el clon solo lo muestra).
 type ExerciseState = {
   number: number; title: string; activityId: string | null; status: EvaluationStatus; statusLabel: string; canSubmit: boolean;
-  attemptsUsed: number; reactivationRequestedAt: string | null;
-  result: { attemptId: string; number: number; score: string | null; passed: boolean; submittedAt: string | null; typification?: unknown } | null;
+  attemptsUsed: number;
+  result: { attemptId: string; number: number; score: string | null; submittedAt: string | null; typification?: { metCount: number; unmetCount: number; checks: { id: string; ok: boolean; detail: string; label?: string }[] } } | null;
 };
-type TipificaState = { reviewMode: boolean; passed: boolean; approvedCount: number; total: number; nextRoute: string | null; exercises: ExerciseState[] };
+type TipificaState = { reviewMode: boolean; passed: boolean; completedCount: number; total: number; nextRoute: string | null; exercises: ExerciseState[] };
 
 // Módulo 04 «Tipifica»: el clon de práctica de Control Next se muestra en una pantalla dentro de la página
 // (iframe /simulador/), con pantalla completa como un video para que la práctica sea inmersiva.
@@ -141,26 +141,29 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
 
   const renderOfficial = (): void => {
     if (!state) return;
-    const rows = state.exercises.map((exercise) => {
+    const rows = state.exercises.map((exercise, position) => {
       const score = exercise.result?.score ? `${Math.round(Number(exercise.result.score))} %` : '—';
-      const notice = exercise.activityId ? reactivationNotice({ activityId: exercise.activityId, status: exercise.status, requestedAt: exercise.reactivationRequestedAt, title: `Ejercicio ${exercise.number} no aprobado` }) : '';
+      const typification = exercise.result?.typification;
+      const missing = typification?.checks.filter((check) => !check.ok) ?? [];
+      const feedback = typification
+        ? `<details class="tipifica-official__feedback"${missing.length ? ' open' : ''}><summary>Retroalimentación: ${typification.metCount} de ${typification.metCount + typification.unmetCount} puntos coinciden con la llamada</summary>${missing.length ? `<ul>${missing.map((check) => `<li><strong>✗ ${escapar(check.label ?? check.id)}.</strong> ${escapar(check.detail)}</li>`).join('')}</ul>` : '<p>Tu tipificación coincide con todos los puntos de esta llamada.</p>'}</details>`
+        : '';
       return `<li class="tipifica-official__row" data-status="${exercise.status}">
-          <span class="tipifica-num">${exercise.number}</span>
-          <div class="tipifica-official__name"><strong>${escapar(exercise.title)}</strong><small>Puntaje: ${escapar(score)}</small></div>
+          <span class="tipifica-num">${position + 1}</span>
+          <div class="tipifica-official__name"><strong>${escapar(exercise.title)}</strong><small>Coincidencia con la llamada: ${escapar(score)}</small></div>
           ${statusChip(exercise.status, exercise.statusLabel)}
-          ${notice ? `<div class="tipifica-official__notice">${notice}</div>` : ''}
+          ${feedback ? `<div class="tipifica-official__notice">${feedback}</div>` : ''}
         </li>`;
     }).join('');
     const head = state.reviewMode
       ? '<p class="tipifica-official__lead"><strong>Modo repaso.</strong> Ya estás certificado: practica cuanto quieras; lo que hagas no cambia tus resultados oficiales.</p>'
       : state.passed
-        ? `<p class="tipifica-official__lead is-ok"><strong>¡Aprobaste tus ejercicios!</strong> Continúa con el examen general.${state.nextRoute ? ` <a class="primary-action tipifica-official__next" href="${escapar(state.nextRoute)}">Ir al examen general →</a>` : ''}</p>`
-        : '<p class="tipifica-official__lead">Cada ejercicio tiene <strong>un solo intento</strong> y se califica al pulsar «Guardar» en el clon. Tu resultado queda guardado aunque recargues la página o cambies de equipo.</p>';
+        ? `<p class="tipifica-official__lead is-ok"><strong>¡Completaste tus ejercicios de tipificación!</strong> Ahora el examen general confirma tus conocimientos.${state.nextRoute ? ` <a class="primary-action tipifica-official__next" href="${escapar(state.nextRoute)}">Ir al examen general →</a>` : ''}</p>`
+        : '<p class="tipifica-official__lead">Escucha cada llamada y tipifícala en el clon. Al pulsar «Guardar» recibes <strong>retroalimentación</strong> de qué puntos coincidieron con la llamada y cuáles no; no se aprueba ni se reprueba. Cada ejercicio se presenta una sola vez y queda guardado aunque recargues la página o cambies de equipo. Tus conocimientos se confirman en el examen general.</p>';
     officialBox.innerHTML = `
-      <div class="tipifica-official__head"><h3 id="tipifica-official-title">Tu prueba oficial de tipificación</h3><span class="tipifica-official__count">${state.approvedCount} de ${state.total} aprobados</span></div>
+      <div class="tipifica-official__head"><h3 id="tipifica-official-title">Tu prueba de tipificación</h3><span class="tipifica-official__count">${state.completedCount} de ${state.total} completados</span></div>
       ${head}
       <ol class="tipifica-official__list">${rows}</ol>`;
-    bindReactivation(officialBox, () => { void loadState(); });
   };
 
   async function loadState(): Promise<void> {
@@ -173,14 +176,13 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
     }
     renderOfficial();
     sendState();
-    if (wasPassed === false && state.passed) await playSeal({ moduleName: 'Tipifica', moduleNumber: moduleOrder, label: 'APROBADO', nextName: 'Examen general' });
+    if (wasPassed === false && state.passed) await playSeal({ moduleName: 'Tipifica', moduleNumber: moduleOrder, label: 'COMPLETADO', nextName: 'Examen general' });
   }
 
   // Respuestas al clon: { requestId, ok, data | error, state }.
   const reply = (requestId: string, payload: { ok: boolean; data?: unknown; error?: string }): void => {
     frame.contentWindow?.postMessage({ type: 'tipifica:respuesta', requestId, ...payload, state }, location.origin);
   };
-  const exerciseOf = (number: unknown): ExerciseState | undefined => state?.exercises.find((exercise) => exercise.number === number);
 
   const send = (type: string): void => {
     frame.contentWindow?.postMessage({ type }, location.origin);
@@ -233,12 +235,6 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
     } else if (data?.type === 'tipifica:abrir' && typeof data.number === 'number') {
       api(`/training/tipifica/exercises/${data.number}/start`, { method: 'POST', body: '{}' })
         .then(() => reply(requestId, { ok: true }))
-        .catch((error: Error) => reply(requestId, { ok: false, error: error.message }));
-    } else if (data?.type === 'tipifica:reactivar') {
-      const exercise = exerciseOf(data.number);
-      if (!exercise?.activityId) { reply(requestId, { ok: false, error: 'Ejercicio no encontrado.' }); return; }
-      api('/training/reactivation-requests', { method: 'POST', body: JSON.stringify({ activityId: exercise.activityId }) })
-        .then(async () => { await loadState(); reply(requestId, { ok: true }); })
         .catch((error: Error) => reply(requestId, { ok: false, error: error.message }));
     }
   });

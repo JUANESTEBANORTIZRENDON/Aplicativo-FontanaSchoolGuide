@@ -54,11 +54,13 @@ async function exerciseStates(db: Db, userId: string, snapshot: TrainingSnapshot
     const own = submitted.filter((attempt) => attempt.evaluation.activityId === activity?.id);
     const last = own[0];
     const request = pending.find((item) => item.activityId === activity?.id);
-    const status = evaluationStatusOf({ availability, lastAttemptFailed: last?.status === 'FAILED', pendingRequest: Boolean(request) });
+    // Tipifica no se aprueba ni se reprueba: presentar el ejercicio lo completa y el asesor recibe retroalimentación.
+    const done = own.length > 0;
+    const status = done ? 'COMPLETADO' as const : evaluationStatusOf({ availability, lastAttemptFailed: false, pendingRequest: Boolean(request) });
     return {
       number: exercise.number, key: exercise.key, title: exercise.title, activityId: activity?.id ?? null,
       status, statusLabel: EVALUATION_STATUS_LABEL[status],
-      canSubmit: Boolean(availability && !availability.passed && (availability.openAttemptId || availability.canStart)),
+      canSubmit: Boolean(!done && availability && (availability.openAttemptId || availability.canStart)),
       attemptsUsed: own.length, attemptsRemaining: availability?.remaining ?? 0,
       reactivationRequestedAt: request?.createdAt.toISOString() ?? null,
       // El último resultado enviado (se conserva aunque se reactive el ejercicio).
@@ -74,8 +76,8 @@ export async function tipificaState(userId: string) {
   return {
     reviewMode,
     moduleStatus: view.status,
-    passed: exercises.every((exercise) => exercise.status === 'APROBADO'),
-    approvedCount: exercises.filter((exercise) => exercise.status === 'APROBADO').length,
+    passed: exercises.every((exercise) => exercise.status === 'COMPLETADO'),
+    completedCount: exercises.filter((exercise) => exercise.status === 'COMPLETADO').length,
     total: exercises.length,
     nextRoute: snapshot.views.find((item) => item.order === view.order + 1)?.route ?? null,
     exercises,
@@ -134,9 +136,10 @@ export async function submitTipificaExercise(userId: string, number: number, inp
         checks: evaluation.items.map((item) => ({ id: item.id, ok: item.ok, detail: item.detail })) as Prisma.InputJsonValue,
       },
     });
-    // La nota es la proporción de requisitos cumplidos; se aprueba solo con todos (el mismo criterio del motor).
+    // El puntaje es la proporción de puntos que coinciden con la llamada. No decide nada: presentar el ejercicio lo
+    // completa (passed) y la evaluación de conocimientos es el examen general.
     const score = evaluation.total ? Math.round((evaluation.passed / evaluation.total) * 10000) / 100 : 0;
-    await submitAttemptTx(tx, userId, attempt.id, { score, passed: evaluation.approved, now });
+    await submitAttemptTx(tx, userId, attempt.id, { score, passed: true, now });
     return { result: (await attemptResults(tx, [attempt.id])).get(attempt.id)!, alreadySubmitted: false };
   }, { timeout: 30_000 });
 }

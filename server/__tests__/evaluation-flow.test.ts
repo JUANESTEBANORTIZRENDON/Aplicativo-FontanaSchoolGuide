@@ -10,7 +10,7 @@ import type { TypificationDraft } from '../domain/tipifica/draft.js';
 import { startAttempt } from '../services/attempt.service.js';
 import { approveCertification, certificationDossier, myCertification } from '../services/certification.service.js';
 import { completeCollectionsBlock, saveCollectionsExamSection, startCollectionsExam, submitCollectionsExam } from '../services/collections.service.js';
-import { saveFinalExamAnswer, startFinalExam, submitFinalExam } from '../services/final-exam.service.js';
+import { finalExamState, saveFinalExamAnswer, startFinalExam, submitFinalExam } from '../services/final-exam.service.js';
 import { completeObjectionsBlock } from '../services/objections.service.js';
 import { computeModuleState } from '../services/progress.service.js';
 import { approveReactivation, requestReactivation } from '../services/reactivation.service.js';
@@ -204,39 +204,58 @@ describe('Tipifica oficial', () => {
     expect((await computeModuleState(userId)).find((view) => view.slug === 'tipificacion-llamadas')!.hasSeal).toBe(true);
   });
 
-  it('6. la reactivación de un ejercicio conserva los anteriores y su intento fallido', async () => {
+  it('6. Tipifica no se aprueba ni se reprueba: un ejercicio con errores se completa y trae retroalimentación', async () => {
     const userId = await advisor(false);
     await reachTipifica(userId, false);
     const [n, ...rest] = assignedExerciseNumbers(userId);
-    const failed = await submitTipificaExercise(userId, n!, wrong(n!));
-    expect(failed.result.passed).toBe(false);
-    expect(Number(failed.result.score)).toBeLessThan(100);
+    const sent = await submitTipificaExercise(userId, n!, wrong(n!));
+    // El puntaje es solo la coincidencia con la llamada: el ejercicio queda completado, no reprobado.
+    expect(Number(sent.result.score)).toBeLessThan(100);
+    expect(sent.result.typification!.unmetCount).toBeGreaterThan(0);
+    expect(sent.result.typification!.checks.some((check) => !check.ok && check.detail.length > 0)).toBe(true);
     for (const number of rest) await submitTipificaExercise(userId, number, GOOD[number]!);
-    let state = await tipificaState(userId);
-    expect(state.exercises[0]!.status).toBe('NO_APROBADO');
-    expect(state.passed).toBe(false);
-    // Sin autorización no hay segundo envío: devuelve el intento fallido.
-    expect((await submitTipificaExercise(userId, n!, GOOD[n!]!)).alreadySubmitted).toBe(true);
-    // Solicitud: dos clics simultáneos dejan una sola pendiente.
-    const activityId = state.exercises[0]!.activityId!;
-    const [r1, r2] = await Promise.all([requestReactivation(userId, activityId, 'Me equivoqué de perfil'), requestReactivation(userId, activityId, null)]);
+    const state = await tipificaState(userId);
+    expect(state.exercises[0]!.status).toBe('COMPLETADO');
+    expect(state.exercises[0]!.canSubmit).toBe(false);
+    expect(state.passed).toBe(true);
+    expect(state.completedCount).toBe(2);
+    // Un segundo envío devuelve el guardado: el ejercicio no se repite.
+    const again = await submitTipificaExercise(userId, n!, GOOD[n!]!);
+    expect(again.alreadySubmitted).toBe(true);
+    expect(Number(again.result.score)).toBeLessThan(100);
+    // No hay nada que reactivar en Tipifica.
+    await expect(requestReactivation(userId, state.exercises[0]!.activityId!, null)).rejects.toMatchObject({ code: 'REACTIVATION_NOT_APPLICABLE' });
+    // Con los dos ejercicios presentados el módulo se sella aunque haya errores.
+    expect((await computeModuleState(userId)).find((view) => view.slug === 'tipificacion-llamadas')!.hasSeal).toBe(true);
+    expect(await attemptsOf(userId, 'tipificacion-llamadas')).toHaveLength(2);
+  });
+});
+
+describe('reactivaciones', () => {
+  it('7. el examen general no aprobado puede reactivarse: se conserva el intento anterior y no se duplica la solicitud', async () => {
+    const userId = await advisor(false);
+    await reachTipifica(userId, false);
+    await passTipifica(userId);
+    const failed = await passFinalExam(userId, false);
+    expect(failed.result.passed).toBe(false);
+    const exam = await finalExamState(userId);
+    expect(exam.status).toBe('NO_APROBADO');
+    await expect(startFinalExam(userId)).rejects.toMatchObject({ code: 'NO_ATTEMPTS_LEFT' });
+    const [r1, r2] = await Promise.all([requestReactivation(userId, exam.activityId, 'Quiero repasar y volver a intentar'), requestReactivation(userId, exam.activityId, null)]);
     expect(r1.request.id).toBe(r2.request.id);
     expect(await prisma.reactivationRequest.count({ where: { userId, status: 'PENDING' } })).toBe(1);
-    expect((await tipificaState(userId)).exercises[0]!.status).toBe('REACTIVACION_SOLICITADA');
+    expect((await finalExamState(userId)).status).toBe('REACTIVACION_SOLICITADA');
     const approved = await approveReactivation(r1.request.id, 'Autorizado por coordinación', ctx());
     expect(approved.status).toBe('APPROVED');
     expect((await approveReactivation(r1.request.id, 'Autorizado por coordinación', ctx())).overrideId).toBe(approved.overrideId);
-    state = await tipificaState(userId);
-    expect(state.exercises[0]!.status).toBe('REACTIVADO');
-    expect(state.exercises.slice(1).every((exercise) => exercise.status === 'APROBADO')).toBe(true);
-    const retry = await submitTipificaExercise(userId, n!, GOOD[n!]!);
-    expect(retry.alreadySubmitted).toBe(false);
+    expect((await finalExamState(userId)).status).toBe('REACTIVADO');
+    const retry = await passFinalExam(userId, true);
+    expect(retry.result.passed).toBe(true);
     expect(retry.result.number).toBe(2);
     expect(retry.result.reactivated).toBe(true);
-    const attempts = await attemptsOf(userId, 'tipificacion-llamadas');
-    expect(attempts).toHaveLength(3);
+    const attempts = await attemptsOf(userId, 'examen-general');
+    expect(attempts).toHaveLength(2);
     expect(attempts.filter((attempt) => attempt.status === 'FAILED')).toHaveLength(1);
-    expect((await tipificaState(userId)).passed).toBe(true);
     const audit = await prisma.adminAuditLog.findMany({ where: { entityId: r1.request.id } });
     expect(audit.map((row) => row.action)).toContain('REACTIVATION_REQUEST_APPROVED');
   });

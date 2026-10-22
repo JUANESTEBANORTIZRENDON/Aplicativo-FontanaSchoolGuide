@@ -109,9 +109,11 @@ export async function certificationDossier(userId: string, db: Db = prisma) {
       const submitted = own.filter((attempt) => attempt.submittedAt);
       const last = submitted.at(-1);
       const availability = snapshot.availability.get(activity.id);
-      const status = snapshot.evaluations.has(activity.id)
-        ? evaluationStatusOf({ availability, lastAttemptFailed: last?.status === 'FAILED', pendingRequest: pending.has(activity.id) })
-        : null;
+      const status = activity.type === 'TYPIFICATION'
+        ? (submitted.length ? 'COMPLETADO' as const : 'PENDIENTE' as const)
+        : snapshot.evaluations.has(activity.id)
+          ? evaluationStatusOf({ availability, lastAttemptFailed: last?.status === 'FAILED', pendingRequest: pending.has(activity.id) })
+          : null;
       return {
         activityId: activity.id, moduleSlug: module.slug, moduleName: module.name, title: activity.title, type: activity.type, required: activity.isRequired,
         evaluated: snapshot.evaluations.has(activity.id), status, statusLabel: status ? EVALUATION_STATUS_LABEL[status] : null,
