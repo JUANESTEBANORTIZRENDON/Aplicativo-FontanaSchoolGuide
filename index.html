@@ -126,13 +126,6 @@
 
       <!-- CONTENIDO DE CAPACITACIÓN: título, pestañas y sus paneles. -->
       <section id="learning" tabindex="-1" class="learning" aria-label="Contenido de introducción">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Explora el módulo</p>
-            <h2>Así comienza tu formación</h2>
-          </div>
-        </div>
-
         <!-- PESTAÑAS: conserva los id y aria-controls; src/main.ts los utiliza. -->
         <div class="tabs" role="tablist" aria-label="Secciones de Conoce la empresa">
           <button id="history-tab" role="tab" aria-selected="true" aria-controls="history" tabindex="0">
@@ -146,6 +139,12 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg>
             </span>
             Principios de trabajo
+          </button>
+          <button id="security-tab" role="tab" aria-selected="false" aria-controls="security" tabindex="-1">
+            <span class="tab-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7z"/><path d="m8 12 3 3 5-6"/></svg>
+            </span>
+            Seguridad de la información
           </button>
         </div>
 
@@ -235,11 +234,6 @@
               <p class="eyebrow">PRINCIPIOS DE TRABAJO</p>
               <h3>Cómo trabajamos, en cinco ideas.</h3>
             </div>
-            <p class="proposal">
-              Contenido propuesto para capacitación.
-              <br>
-              Pendiente de validación por la empresa.
-            </p>
           </div>
           <div id="principles-mount"></div>
           <!-- Al revisar los cinco principios se confirma la lectura y se pasa al aula. -->
@@ -262,6 +256,20 @@
               <p id="experience-result" class="experience-result" role="status" hidden></p>
             </form>
           </section>
+        </div>
+        <div id="security" class="panel company-security" role="tabpanel" aria-labelledby="security-tab" hidden>
+          <a class="security-manual-link" href="/manuales/fontana-seguridad-informacion.pdf" download="Fontana_Guia_General_Seguridad_Informacion.pdf"><span>↓ Descargar manual de seguridad de la información</span><small>PDF · 5 páginas</small></a>
+          <div class="method-heading security-heading"><div><p class="eyebrow">SEGURIDAD DE LA INFORMACIÓN</p><h3>Cómo protegemos la información, en seis pasos.</h3></div></div>
+          <div class="security-cards" data-security-slides>
+            <article><span class="security-number" aria-hidden="true">01</span><h4>Usa tu propia cuenta</h4><p>Entra solo a los sistemas autorizados para tu cargo. Si te falta un permiso, solicítalo; no uses la cuenta de un compañero ni intentes saltar bloqueos.</p></article>
+            <article><span class="security-number" aria-hidden="true">02</span><h4>Tu contraseña es personal</h4><p>No la compartas, ni siquiera con jefes o personas que digan ser de soporte. No la envíes por mensajes ni actives la opción de recordarla.</p></article>
+            <article><span class="security-number" aria-hidden="true">03</span><h4>Cuida equipos y archivos</h4><p>Bloquea el equipo al alejarte y guarda la información solo en los lugares autorizados. No instales programas ni conectes memorias USB por tu cuenta.</p></article>
+            <article><span class="security-number" aria-hidden="true">04</span><h4>Verifica antes de compartir</h4><p>Comprueba la identidad y, cuando corresponda, la representación de quien pide información. Comparte datos solo con personas autorizadas y para la finalidad permitida.</p></article>
+            <article><span class="security-number" aria-hidden="true">05</span><h4>Canaliza las solicitudes</h4><p>Si alguien pide conocer, corregir o eliminar sus datos, registra la solicitud y envíala oportunamente al área competente. No borres información por iniciativa propia.</p></article>
+            <article><span class="security-number" aria-hidden="true">06</span><h4>Reporta lo que ocurra</h4><p>Ante un acceso extraño, envío equivocado o posible fuga, sigue el procedimiento interno. Explica qué pasó, cuándo y qué se afectó; conserva las evidencias.</p></article>
+          </div>
+
+
         </div>
       </section>
 

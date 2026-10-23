@@ -1,4 +1,6 @@
 import './styles.css';
+import './company-security.css';
+import { mountSecuritySlider } from './company-security';
 import { api } from './http';
 import { showAppLoading } from './loading';
 import type { PrinciplesPanel } from './tutor/principles-panel';
@@ -10,7 +12,9 @@ function element<T extends HTMLElement>(selector: string): T {
   return result;
 }
 
-// NAVEGACIÓN ENTRE HISTORIA Y PRINCIPIOS
+mountSecuritySlider(element('#security'));
+
+// NAVEGACIÓN ENTRE HISTORIA, PRINCIPIOS Y SEGURIDAD
 // La ruta permanece visible; su alto determina el espacio al desplazar el contenido.
 const learningPath = element('.learning-path');
 const pathResizeObserver = new ResizeObserver(() => {
@@ -26,9 +30,10 @@ let principlesVisible = false;
 async function showPrinciples(): Promise<void> {
   if (!principles) {
     const { mountPrinciples } = await import('./tutor/principles-panel');
-    principles ??= mountPrinciples(element('#principles-mount'), { onProgress: updatePrinciplesProgress });
+    principles ??= mountPrinciples(element('#principles-mount'), { completed: principlesReviewed, onProgress: updatePrinciplesProgress });
   }
   if (principlesVisible) principles.show(); else principles.hide();
+  if (principlesReviewed && !inductionCompleted) saveProgress('metodo');
 }
 // Los principios se habilitan al terminar Nuestra historia.
 function unlockTab(tab: HTMLButtonElement): void {
@@ -45,6 +50,7 @@ function selectTab(index: number): void {
   });
   principlesVisible = tabs[index] === principlesTab;
   if (principlesVisible || principles) void showPrinciples();
+
 }
 tabs.forEach((tab, index) => {
   tab.addEventListener('click', () => selectTab(index));
@@ -67,8 +73,8 @@ tabs.forEach((tab, index) => {
   });
 });
 // El avance se guarda la primera vez que se termina cada parte; si falla, se reintenta al volver a terminarla.
-const savedProgress = { historia: false };
-function saveProgress(paso: 'historia'): void {
+const savedProgress = { historia: false, metodo: false };
+function saveProgress(paso: 'historia' | 'metodo'): void {
   if (savedProgress[paso]) return;
   savedProgress[paso] = true;
   api('/auth/induccion/avance', { method: 'POST', body: JSON.stringify({ paso }) }).catch(() => {
@@ -169,7 +175,9 @@ function updateExperienceAccess(): void {
 }
 function updatePrinciplesProgress({ reviewed, total }: { reviewed: number; total: number }): void {
   if (inductionCompleted) return;
+  if (principlesReviewed && reviewed >= total) { updateExperienceAccess(); return; }
   principlesReviewed = reviewed >= total;
+  if (principlesReviewed) saveProgress('metodo');
   principlesProgress.textContent = principlesReviewed
     ? 'Revisaste los cinco principios. Confirma tu lectura para continuar al aula.'
     : `Revisa los cinco principios para continuar. Llevas ${reviewed} de ${total}.`;
@@ -230,12 +238,13 @@ export function restoreProgress(progress: { historia: boolean; metodo: boolean; 
     finishStory.textContent = 'Continuar a los principios →';
     unlockTab(principlesTab);
   }
-  if (progress.completada) {
-    // Inducción ya terminada: se puede repasar con la confirmación marcada.
-    inductionCompleted = true;
+  if (progress.metodo || progress.completada) {
+    savedProgress.metodo = true;
     principlesReviewed = true;
     principlesProgress.textContent = 'Ya completaste los principios de trabajo.';
-    companyRead.checked = true;
+    // Solo la inducción terminada restaura también la confirmación final.
+    inductionCompleted = progress.completada;
+    companyRead.checked = progress.completada;
     updateExperienceAccess();
   }
 }

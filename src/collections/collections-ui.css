@@ -1,9 +1,9 @@
 /* Presentación exclusiva del módulo. Ninguna regla actúa fuera de su raíz. */
-body.auth-screen:has(.collections-course--induction) { background: radial-gradient(ellipse at 100% 0, #f0e4d3 0, transparent 55%), #f4f6fa; }
+body.auth-screen:has(.collections-course--induction) { background: radial-gradient(ellipse at 4% 8%, #d4af3730, transparent 58%), radial-gradient(ellipse at 97% 32%, #8b15380b, transparent 48%), linear-gradient(135deg, #faf3e5, #f1e4cb); }
 body:has(.collections-course--induction) .auth-main { max-width: 1420px; padding: 32px 28px 80px; }
 .collections-course--induction {
-  --fc-wine: #831336; --fc-gold: #d4af37; --fc-ink: #233247; --fc-muted: #475569;
-  --fc-line: #d8e0eb; --fc-body: 17px; --fc-small: 14px;
+  --fc-wine: #8b1538; --fc-gold: #d4af37; --fc-ink: #233247; --fc-muted: #475569;
+  --fc-line: #e4d5bb; --fc-body: 17px; --fc-small: 14px;
   color-scheme: light; color: var(--fc-ink); font-family: 'Segoe UI', Arial, sans-serif;
   font-size: var(--fc-body); line-height: 1.65; text-align: left;
 }
@@ -14,7 +14,7 @@ body:has(.collections-course--induction) .auth-main { max-width: 1420px; padding
 .collections-course--induction :is(fieldset,form) { min-inline-size: 0; max-width: 100%; }
 .collections-course--induction [hidden] { display: none !important; }
 .collections-course--induction .collections-card :is(p,li,dd,label,legend,blockquote) { font-size: var(--fc-body); line-height: 1.7; }
-.collections-course--induction .collections-card :is(h2,h3,h4,h5,h6) { font-family: 'Manrope', 'Segoe UI', Arial, sans-serif; line-height: 1.4; font-weight: 600; letter-spacing: -.01em; }
+.collections-course--induction .collections-card :is(h2,h3,h4,h5,h6) { font-family: Georgia, 'Times New Roman', serif; color: #70112c; line-height: 1.4; font-weight: 600; letter-spacing: -.01em; }
 .collections-course--induction .collections-card h3 { font-size: clamp(23px, 2.2vw, 29px); }
 .collections-course--induction .collections-card h4 { font-size: clamp(21px, 2vw, 26px); }
 .collections-course--induction .collections-card h5 { font-size: 20px; }
@@ -23,12 +23,12 @@ body:has(.collections-course--induction) .auth-main { max-width: 1420px; padding
 .collections-course--induction .collections-kicker { color: #745316 !important; font-size: var(--fc-small); font-weight: 650; letter-spacing: .04em; line-height: 1.6; }
 
 /* Encabezado, progreso y recorrido. */
-.collections-course--induction .collections-heading { padding: clamp(24px, 3vw, 40px); margin-bottom: 20px; border: 1px solid var(--fc-line); border-left: 5px solid var(--fc-gold); border-radius: 22px; background: radial-gradient(ellipse at 100% 0, #f3e5e9, transparent 65%), #fff; box-shadow: 0 12px 36px #24344808; }
-.collections-course--induction .collections-heading h1 { margin: 12px 0; font: 600 clamp(30px, 3.4vw, 44px)/1.25 'Manrope', 'Segoe UI', Arial, sans-serif; color: #70112c; letter-spacing: -.015em; }
+.collections-course--induction .collections-heading { padding: 4px 0 24px; margin-bottom: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.collections-course--induction .collections-heading h1 { margin: 12px 0; font: 600 clamp(30px, 3.4vw, 44px)/1.25 Georgia, 'Times New Roman', serif; color: #70112c; letter-spacing: -.015em; }
 .collections-course--induction .collections-heading p { max-width: 65ch; font-size: var(--fc-body); color: var(--fc-muted); }
 .collections-course--induction .collections-heading .collections-kicker { font-size: var(--fc-small); }
 .collections-course--induction .collections-back { border-color: #9c8090; border-radius: 12px; background: #fff; color: #70112c; font-size: 16px; padding: 12px 18px; }
-.collections-course--induction .collections-progress { padding: 20px 24px; background: #fff; border-color: var(--fc-line); box-shadow: none; }
+.collections-course--induction .collections-progress { padding: 20px 24px; background: #fffaf0; border-color: var(--fc-line); box-shadow: none; }
 .collections-course--induction .collections-progress > div { font-size: 16px; line-height: 1.6; }
 .collections-course--induction .collections-progress > div > span { flex-shrink: 0; font-size: 16px; background: #f8e9ee; color: #70112c; }
 .collections-course--induction :is(.collections-progress,.collections-dossier-progress) progress { height: 10px; background: #e2e8f0; }
@@ -37,27 +37,27 @@ body:has(.collections-course--induction) .auth-main { max-width: 1420px; padding
 .collections-course--induction :is(.collections-progress,.collections-dossier-progress) progress::-moz-progress-bar { background: #831336; }
 .collections-course--induction .collections-layout { grid-template-columns: 260px minmax(0,1fr); gap: 24px; }
 .collections-course--induction .collections-layout > * { min-width: 0; }
-.collections-course--induction .collections-nav { top: 20px; padding: 16px; background: #fff; border: 1px solid var(--fc-line); border-radius: 18px; }
+.collections-course--induction .collections-nav { top: 20px; padding: 16px; background: #fffaf0; border: 1px solid var(--fc-line); border-radius: 18px; }
 .collections-course--induction .collections-nav-label { flex-wrap: wrap; gap: 4px 12px; margin-bottom: 16px; font-size: 16px; }
 .collections-course--induction .collections-nav-label small { font-size: var(--fc-small); color: var(--fc-muted); }
-.collections-course--induction .collections-nav button { grid-template-columns: 32px minmax(0,1fr) 14px; padding: 16px 12px; background: #fff; border-color: var(--fc-line); border-radius: 12px; font-size: 15px; line-height: 1.5; box-shadow: none; }
+.collections-course--induction .collections-nav button { grid-template-columns: 32px minmax(0,1fr) 14px; padding: 16px 12px; background: #fffcf5; border-color: var(--fc-line); border-radius: 12px; font-size: 15px; line-height: 1.5; box-shadow: none; }
 .collections-course--induction .collections-nav-copy small { color: var(--fc-muted); font-size: var(--fc-small); font-weight: 500; line-height: 1.5; }
 .collections-course--induction .collections-nav button[aria-current] { color: #fff; background: #831336; border-color: #70112c; box-shadow: 0 6px 16px #8313361a; }
 .collections-course--induction .collections-nav button[aria-current] small { color: #fff3f7; }
 .collections-course--induction .collections-step { width: 32px; height: 32px; background: #f8f1df; color: #704d12; border-color: #b89a58; font-size: 14px; font-weight: 650; }
 .collections-course--induction .collections-nav button[aria-current] .collections-step { color: #fff; border-color: #f2d58e; background: #6a0f2b; }
-.collections-course--induction .collections-nav button:disabled { opacity: 1; color: #526071; background: #edf1f6; border: 1px dashed #8d99aa; box-shadow: none; }
+.collections-course--induction .collections-nav button:disabled { opacity: 1; color: #635d54; background: #f1ecdf; border: 1px dashed #b7aa93; box-shadow: none; }
 .collections-course--induction .collections-nav button:disabled small { color: #526071; }
 .collections-course--induction .collections-nav button:disabled .collections-step { background: #e2e8f0; color: #475569; border-color: #8d99aa; }
 .collections-course--induction .collections-nav button:disabled .collections-nav-mark { color: #475569; }
-.collections-course--induction .collections-card { padding: clamp(22px, 2.4vw, 34px); border-color: var(--fc-line); border-radius: 22px; background: #fff; box-shadow: 0 14px 40px #23324708; }
-.collections-course--induction .collections-card > h2 { margin: 16px 0 24px; font-size: clamp(27px, 2.6vw, 34px); color: #233247; }
+.collections-course--induction .collections-card { padding: clamp(22px, 2.4vw, 34px); border-color: var(--fc-line); border-radius: 22px; background: linear-gradient(145deg, #fffdf8, #fbf5e9); box-shadow: 0 14px 40px #7152190c; }
+.collections-course--induction .collections-card > h2 { margin: 16px 0 24px; font-size: clamp(27px, 2.6vw, 34px); color: #70112c; }
 .collections-course--induction .collections-block-toolbar .collections-kicker { padding: 7px 12px; border: 1px solid #d8c58f; border-radius: 8px; background: #fcf6e7; font-size: var(--fc-small); letter-spacing: .05em; }
 .collections-course--induction .collections-card .fontana-concepts-intro { margin: 0 0 20px; font-size: var(--fc-body); color: var(--fc-muted); }
 .collections-course--induction .collections-process { gap: 12px; margin: 0 0 24px; padding: 16px 8px; border-block: 1px solid var(--fc-line); }
 .collections-course--induction .collections-process li { font-size: 14px; color: #526071; line-height: 1.5; }
-.collections-course--induction .collections-process li > span { width: 34px; height: 34px; font-size: 15px; border-color: #8995a6; color: #475569; background: #f4f6fa; }
-.collections-course--induction .collections-process li::before { top: 17px; background: #b8c3d2; }
+.collections-course--induction .collections-process li > span { width: 34px; height: 34px; font-size: 15px; border-color: #c8af78; color: #665235; background: #faf1dc; }
+.collections-course--induction .collections-process li::before { top: 17px; background: #d4bf91; }
 .collections-course--induction .collections-process li.is-current { color: #70112c; font-weight: 650; }
 .collections-course--induction .collections-process li.is-current > span { background: #831336; color: #fff; border: 2px solid #831336; outline: 3px solid #f1d9e0; outline-offset: 2px; }
 .collections-course--induction .collections-process li.is-done > span { background: #f8f1df; color: #704d12; border-color: #b89a58; }
