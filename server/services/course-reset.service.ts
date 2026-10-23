@@ -19,6 +19,10 @@ export async function resetCourse(userId: string, reason: string, context: Actio
 
     const attemptIds = (await tx.attempt.findMany({ where: { userId }, select: { id: true } })).map((row) => row.id);
     const byAttempt = { attemptId: { in: attemptIds } };
+    // Solicitudes, decisiones y resúmenes apuntan a intentos, excepciones y certificados: van primero.
+    await tx.reactivationRequest.deleteMany({ where: { userId } });
+    await tx.trainingCompletionSummary.deleteMany({ where: { userId } });
+    await tx.certificationDecision.deleteMany({ where: { userId } });
     // Los certificados reemitidos se enlazan entre sí: se sueltan antes de borrarlos.
     await tx.certificate.updateMany({ where: { userId }, data: { previousCertificateId: null } });
     const certificates = (await tx.certificate.deleteMany({ where: { userId } })).count;

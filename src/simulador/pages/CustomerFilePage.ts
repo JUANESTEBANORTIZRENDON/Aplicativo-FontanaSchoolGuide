@@ -5,7 +5,7 @@
 import { mountAppShell } from '../components/AppShell';
 import { campaignHeadTemplate, handleCampaignHeadClick } from '../components/CampaignHead';
 import { showDemographics, showPayments, showReferences } from '../components/customer-file/modals';
-import { mountPracticePanel, type PracticePanel } from '../components/customer-file/PracticePanel';
+import { callCardTemplate, mountPracticePanel, type PracticePanel } from '../components/customer-file/PracticePanel';
 import {
   agreementsTemplate,
   dataTemplate,
@@ -21,6 +21,7 @@ import { hms, splitDuration, stableHash } from '../domain/control-next';
 import { applyCustomerFilters } from '../domain/customer-filters';
 import { evaluate } from '../domain/expert/engine';
 import { EXERCISE_REFERENCE_DATE, findExercise } from '../domain/expert/exercises';
+import { isEmbedded, isOfficial, isOfficialExercise, notifyOpened, officialExercise, onOfficialState, submitOfficial, toEvaluation, whenOfficialReady } from '../domain/expert/official';
 import { statusMeta } from '../domain/management-status';
 import { findProfile } from '../domain/typification/catalog';
 import { validateDraft, type TypificationDraft } from '../domain/typification/draft';
@@ -77,6 +78,7 @@ function pageTemplate(ctx: SimContext, portfolio: Portfolio, v: CustomerView, in
           <button type="button" class="sim-mic" data-action="mic" aria-label="Grabación de la llamada" data-sim-guide="ficha.mic">${icon('Mic')}</button>
         </div>
         <div data-gpanel="gestion" data-form-slot></div>
+        <div data-expert-result aria-live="polite"></div>
         <div data-gpanel="acuerdos" hidden data-region="agreements">${agreementsTemplate(v)}</div>
       </section>
       <section class="sim-card" data-sim-guide="ficha.historico" aria-labelledby="sim-hist-title">
@@ -132,7 +134,30 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
   if (exercise) for (const el of form.element.querySelectorAll('[min], [max]')) (el.removeAttribute('min'), el.removeAttribute('max'));
 
   let practice: PracticePanel | null = null;
-  if (exercise) practice = mountPracticePanel(qs(shell.main, '[data-practice-slot]'), ctx, exercise, { onRetry: () => form.reset() });
+  let stopOfficial: (() => void) | null = null;
+  if (exercise) {
+    // En la prueba, la información del deudor se cambia por la llamada que hay que tipificar.
+    const info = qs(shell.main, '.sim-file__info');
+    info.classList.add('is-call');
+    info.innerHTML = callCardTemplate(exercise, initial);
+    hydrateIcons(info);
+    practice = mountPracticePanel(qs(shell.main, '[data-practice-slot]'), ctx, exercise, { onRetry: () => form.showErrors({}), resultSlot: qs(shell.main, '[data-expert-result]') });
+    // Prueba oficial: un ejercicio entregado se muestra tal como se envió y no se puede volver a guardar.
+    let applied = false;
+    const applyOfficial = (): void => {
+      const official = isOfficialExercise(exercise.number) ? officialExercise(exercise.number) : null;
+      if (!official || applied) return;
+      applied = true;
+      practice?.refreshOfficial();
+      if (official.result && !official.canSubmit) {
+        if (official.result.typification?.fields) form.fill(official.result.typification.fields);
+        form.setLocked(true);
+      } else if (official.canSubmit) notifyOpened(exercise.number);
+    };
+    applyOfficial();
+    // Tras recargar el clon, el estado oficial puede llegar después de dibujar la ficha.
+    if (!applied && isEmbedded()) stopOfficial = onOfficialState(applyOfficial);
+  }
 
   const historyRegion = qs(shell.main, '[data-region="history"]');
   const sizeSelect = qs<HTMLSelectElement>(shell.main, '[data-hist-size]');
@@ -178,18 +203,54 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
     histPage = 1;
   };
 
+  // Entrega oficial: confirma, la califica el servidor y deja el ejercicio cerrado. Un error de red no consume el
+  // intento dos veces: si ya quedó guardado, el servidor devuelve el mismo resultado.
+  async function submitOfficialExercise(draft: TypificationDraft): Promise<void> {
+    if (!exercise || !practice) return;
+    const ok = await ctx.confirm({ title: 'Entregar ejercicio oficial', message: 'Tienes un solo intento por ejercicio. ¿Revisaste el audio y tu tipificación? Al guardar se califica y queda registrado.', confirmLabel: 'Guardar y calificar' });
+    if (!ok) return;
+    form.setLocked(true);
+    try {
+      const { result, alreadySubmitted } = await submitOfficial(exercise.number, draft);
+      if (!alreadySubmitted) save(draft);
+      else if (result.typification?.fields) form.fill(result.typification.fields);
+      const info = officialExercise(exercise.number);
+      practice.showEvaluation(toEvaluation(result), info);
+      form.setLocked(!info?.canSubmit);
+      ctx.toast(alreadySubmitted ? 'Este ejercicio ya estaba entregado: ves tu resultado guardado.' : 'Ejercicio entregado. Tu resultado quedó registrado.', alreadySubmitted ? 'info' : 'success');
+    } catch (error) {
+      form.setLocked(false);
+      ctx.toast((error as Error).message, 'error');
+    }
+  }
+
   function submit(): void {
     const draft = form.read();
     const errors = validateDraft(draft, current().totalBalance, clock());
     if (form.showErrors(errors)) return;
+    // Dentro de la plataforma la prueba siempre es oficial: si su estado aún no llegó, se espera antes de calificar.
+    if (exercise && practice && (isOfficial() || isEmbedded())) {
+      void whenOfficialReady().then((state) => {
+        // Solo las llamadas asignadas al asesor cuentan como evaluación; las demás son práctica libre.
+        if (state && !state.reviewMode && state.exercises.some((item) => item.number === exercise.number)) void submitOfficialExercise(draft);
+        else if (state) evaluateLocally(draft);
+        else ctx.toast('No se pudo confirmar tu prueba oficial con la plataforma. Recarga la pantalla e inténtalo de nuevo.', 'error');
+      });
+      return;
+    }
+    evaluateLocally(draft);
+  }
+
+  function evaluateLocally(draft: TypificationDraft): void {
     save(draft);
     if (exercise && practice) {
       // El sistema experto compara la tipificación con lo que pasó en la llamada del audio.
       practice.showEvaluation(evaluate(exercise.rules, draft, EXERCISE_REFERENCE_DATE));
-      ctx.toast('Gestión guardada. Revisa arriba el resultado del sistema experto.', 'info');
-    } else {
-      ctx.toast(`Gestión guardada: ${draft.profile.toUpperCase()}. Quedó en el Histórico.`, 'success');
+      ctx.toast('Gestión guardada. El resultado del sistema experto está debajo del formulario.', 'info');
+      // En la prueba se conserva lo escrito para revisarlo contra los checkmarks y corregirlo si hace falta.
+      return;
     }
+    ctx.toast(`Gestión guardada: ${draft.profile.toUpperCase()}. Quedó en el Histórico.`, 'success');
     form.reset();
   }
 
@@ -241,6 +302,7 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
     shell.cleanup,
     form.cleanup,
     () => practice?.cleanup(),
+    () => stopOfficial?.(),
     () => clearInterval(timer),
     () => observer?.disconnect(),
     on(shell.main, 'click', (event) => {
@@ -262,9 +324,12 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
     ctx.store.subscribe((s, prev) => {
       if (s.managements !== prev.managements) {
         const v = current();
-        const info = qs(shell.main, '[data-region="info"]');
-        info.innerHTML = infoTemplate(v);
-        hydrateIcons(info);
+        // En la prueba esa zona muestra la llamada: no se reemplaza.
+        const info = shell.main.querySelector<HTMLElement>('[data-region="info"]');
+        if (info) {
+          info.innerHTML = infoTemplate(v);
+          hydrateIcons(info);
+        }
         qs(shell.main, '[data-region="agreements"]').innerHTML = agreementsTemplate(v);
         renderHistory();
       }

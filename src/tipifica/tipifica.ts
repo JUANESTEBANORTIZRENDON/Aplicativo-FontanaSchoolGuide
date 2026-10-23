@@ -1,6 +1,16 @@
 import './tipifica.css';
 import { api, escapar } from '../http';
+import { statusChip, type EvaluationStatus } from '../reactivation';
+import { playSeal } from '../seal-animation';
 import { TYPIFICATION_MINIMUM } from '../simulador/domain/expert/minimum';
+
+// Estado oficial de los ejercicios asignados al asesor (lo calcula el servidor; el clon solo lo muestra).
+type ExerciseState = {
+  number: number; title: string; activityId: string | null; status: EvaluationStatus; statusLabel: string; canSubmit: boolean;
+  attemptsUsed: number;
+  result: { attemptId: string; number: number; score: string | null; submittedAt: string | null; typification?: { metCount: number; unmetCount: number; checks: { id: string; ok: boolean; detail: string; label?: string }[] } } | null;
+};
+type TipificaState = { reviewMode: boolean; passed: boolean; completedCount: number; total: number; nextRoute: string | null; exercises: ExerciseState[] };
 
 // Módulo 04 «Tipifica»: el clon de práctica de Control Next se muestra en una pantalla dentro de la página
 // (iframe /simulador/), con pantalla completa como un video para que la práctica sea inmersiva.
@@ -59,7 +69,7 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
       <header class="tipifica-head">
         <p class="auth-kicker">MÓDULO ${String(moduleOrder).padStart(2, '0')}</p>
         <h2>Tipifica</h2>
-        <p class="tipifica-lead"><strong>Control Next</strong> es el aplicativo de gestión de cobranzas con el que trabajarás cada día: ahí ves tus campañas, buscas a cada cliente, registras lo que pasó en la llamada (<em>la tipificación</em>) y consultas su histórico. Aquí tienes una copia de práctica: los clientes son ficticios y nada de lo que hagas sale de tu navegador.</p>
+        <p class="tipifica-lead"><strong>Control Next</strong> es el aplicativo de gestión de cobranzas con el que trabajarás cada día: ahí ves tus campañas, buscas a cada cliente, registras lo que pasó en la llamada (<em>la tipificación</em>) y consultas su histórico. Aquí tienes una copia de práctica con clientes ficticios. La <strong>prueba de tipificación</strong> es oficial: cada ejercicio se califica en el servidor y tiene un solo intento.</p>
       </header>
 
       <section class="tipifica-minimum" aria-labelledby="tipifica-minimum-title">
@@ -70,7 +80,10 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
         <ol class="tipifica-minimum__list">
           ${TYPIFICATION_MINIMUM.map((m) => `<li><span class="tipifica-tick" aria-hidden="true">✓</span><div><strong>${escapar(m.title)}</strong><p>${escapar(m.text)}</p></div></li>`).join('')}
         </ol>
-        <p class="tipifica-result" id="tipifica-result" aria-live="polite" hidden></p>
+      </section>
+
+      <section class="tipifica-official" id="tipifica-official" aria-labelledby="tipifica-official-title" aria-live="polite">
+        <p class="tipifica-official__loading">Cargando el estado de tu prueba oficial…</p>
       </section>
 
       <div class="tipifica-screen" id="tipifica-screen">
@@ -119,7 +132,57 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
   const frame = container.querySelector<HTMLIFrameElement>('#tipifica-frame')!;
   const fullBtn = container.querySelector<HTMLButtonElement>('[data-tip="full"]')!;
   const counter = container.querySelector<HTMLElement>('#tipifica-count')!;
-  const resultBox = container.querySelector<HTMLElement>('#tipifica-result')!;
+  const officialBox = container.querySelector<HTMLElement>('#tipifica-official')!;
+  let state: TipificaState | null = null;
+
+  const sendState = (): void => {
+    if (state) frame.contentWindow?.postMessage({ type: 'tipifica:estado', state }, location.origin);
+  };
+
+  const renderOfficial = (): void => {
+    if (!state) return;
+    const rows = state.exercises.map((exercise, position) => {
+      const score = exercise.result?.score ? `${Math.round(Number(exercise.result.score))} %` : '—';
+      const typification = exercise.result?.typification;
+      const missing = typification?.checks.filter((check) => !check.ok) ?? [];
+      const feedback = typification
+        ? `<details class="tipifica-official__feedback"${missing.length ? ' open' : ''}><summary>Retroalimentación: ${typification.metCount} de ${typification.metCount + typification.unmetCount} puntos coinciden con la llamada</summary>${missing.length ? `<ul>${missing.map((check) => `<li><strong>✗ ${escapar(check.label ?? check.id)}.</strong> ${escapar(check.detail)}</li>`).join('')}</ul>` : '<p>Tu tipificación coincide con todos los puntos de esta llamada.</p>'}</details>`
+        : '';
+      return `<li class="tipifica-official__row" data-status="${exercise.status}">
+          <span class="tipifica-num">${position + 1}</span>
+          <div class="tipifica-official__name"><strong>${escapar(exercise.title)}</strong><small>Coincidencia con la llamada: ${escapar(score)}</small></div>
+          ${statusChip(exercise.status, exercise.statusLabel)}
+          ${feedback ? `<div class="tipifica-official__notice">${feedback}</div>` : ''}
+        </li>`;
+    }).join('');
+    const head = state.reviewMode
+      ? '<p class="tipifica-official__lead"><strong>Modo repaso.</strong> Ya estás certificado: practica cuanto quieras; lo que hagas no cambia tus resultados oficiales.</p>'
+      : state.passed
+        ? `<p class="tipifica-official__lead is-ok"><strong>¡Completaste tus ejercicios de tipificación!</strong> Ahora el examen general confirma tus conocimientos.${state.nextRoute ? ` <a class="primary-action tipifica-official__next" href="${escapar(state.nextRoute)}">Ir al examen general →</a>` : ''}</p>`
+        : '<p class="tipifica-official__lead">Escucha cada llamada y tipifícala en el clon. Al pulsar «Guardar» recibes <strong>retroalimentación</strong> de qué puntos coincidieron con la llamada y cuáles no; no se aprueba ni se reprueba. Cada ejercicio se presenta una sola vez y queda guardado aunque recargues la página o cambies de equipo. Tus conocimientos se confirman en el examen general.</p>';
+    officialBox.innerHTML = `
+      <div class="tipifica-official__head"><h3 id="tipifica-official-title">Tu prueba de tipificación</h3><span class="tipifica-official__count">${state.completedCount} de ${state.total} completados</span></div>
+      ${head}
+      <ol class="tipifica-official__list">${rows}</ol>`;
+  };
+
+  async function loadState(): Promise<void> {
+    const wasPassed = state?.passed ?? null;
+    try {
+      state = (await api<{ data: TipificaState }>('/training/tipifica')).data;
+    } catch (error) {
+      officialBox.innerHTML = `<p class="feedback feedback-error">${escapar((error as Error).message)}</p>`;
+      return;
+    }
+    renderOfficial();
+    sendState();
+    if (wasPassed === false && state.passed) await playSeal({ moduleName: 'Tipifica', moduleNumber: moduleOrder, label: 'COMPLETADO', nextName: 'Examen general' });
+  }
+
+  // Respuestas al clon: { requestId, ok, data | error, state }.
+  const reply = (requestId: string, payload: { ok: boolean; data?: unknown; error?: string }): void => {
+    frame.contentWindow?.postMessage({ type: 'tipifica:respuesta', requestId, ...payload, state }, location.origin);
+  };
 
   const send = (type: string): void => {
     frame.contentWindow?.postMessage({ type }, location.origin);
@@ -154,20 +217,29 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
       syncFull();
     }
   });
-  // Cada gestión guardada en el clon llega aquí: se muestra cuántas lleva el asesor en esta práctica.
+  // Mensajes del clon. Solo se aceptan de este iframe y del mismo origen; aun así, el servidor califica y decide:
+  // el clon solo envía lo que el asesor tipificó.
   window.addEventListener('message', (event) => {
     if (event.origin !== location.origin || event.source !== frame.contentWindow) return;
-    const data = event.data as { type?: string; total?: number; approved?: number; average?: number } | null;
-    // Resultado de la prueba de tipificación (lo envía el clon al terminar los 6 ejercicios).
-    if (data?.type === 'tipifica:prueba' && typeof data.approved === 'number' && typeof data.total === 'number') {
-      resultBox.hidden = false;
-      resultBox.classList.toggle('is-ok', data.approved === data.total);
-      resultBox.textContent = `Tu prueba de tipificación: ${data.approved} de ${data.total} llamadas correctas · puntaje promedio ${data.average ?? 0} %.`;
-    }
+    const data = event.data as { type?: string; total?: number; requestId?: string; number?: number; draft?: Record<string, unknown> } | null;
+    if (data?.type === 'tipifica:listo') sendState();
     if (data?.type === 'tipifica:gestion' && typeof data.total === 'number') {
       counter.textContent = `${data.total} ${data.total === 1 ? 'gestión guardada' : 'gestiones guardadas'} en tu práctica`;
     }
+    const requestId = typeof data?.requestId === 'string' ? data.requestId : null;
+    if (!requestId) return;
+    if (data?.type === 'tipifica:evaluar' && typeof data.number === 'number' && data.draft) {
+      api<{ data: unknown }>(`/training/tipifica/exercises/${data.number}/submit`, { method: 'POST', body: JSON.stringify(data.draft) })
+        .then(async (response) => { await loadState(); reply(requestId, { ok: true, data: response.data }); })
+        .catch((error: Error) => reply(requestId, { ok: false, error: error.message }));
+    } else if (data?.type === 'tipifica:abrir' && typeof data.number === 'number') {
+      api(`/training/tipifica/exercises/${data.number}/start`, { method: 'POST', body: '{}' })
+        .then(() => reply(requestId, { ok: true }))
+        .catch((error: Error) => reply(requestId, { ok: false, error: error.message }));
+    }
   });
+  frame.addEventListener('load', sendState);
+  void loadState();
 
   container.querySelector('.tipifica-screen__controls')!.addEventListener('click', (event) => {
     const action = (event.target as HTMLElement).closest<HTMLElement>('[data-tip]')?.dataset.tip;
@@ -176,6 +248,7 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
     else if (action === 'demo') send('tipifica:demo');
     else if (action === 'pausa') send('tipifica:pausa');
     else if (action === 'prueba') send('tipifica:prueba');
+    // Recargar el clon no cambia nada oficial: al cargar vuelve a recibir el estado guardado en el servidor.
     else if (action === 'reload') frame.contentWindow?.location.reload();
   });
 }

@@ -56,9 +56,9 @@ describe('sistema experto de tipificación', () => {
     expect(failed(6, { ...GOOD[6]!, contact: 'indirecto', profile: 'Titular no reside / no labora ahí' })).toContain('contacto');
   });
 
-  it('la nota debe empezar con el teléfono y decir quién contestó', () => {
+  it('la nota debe decir quién contestó', () => {
     expect(failed(1, { ...GOOD[1]!, note: 'SE INFORMA SALDO, HA TENIDO GASTOS Y SE COMUNICARA POR CANALES OFICIALES MAS ADELANTE CON FECHA' })).toEqual(
-      expect.arrayContaining(['nota-telefono', 'nota-quien']),
+      expect.arrayContaining(['nota-quien']),
     );
   });
 });

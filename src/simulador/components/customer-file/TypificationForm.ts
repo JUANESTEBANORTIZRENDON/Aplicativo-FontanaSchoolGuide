@@ -111,6 +111,10 @@ export interface TypificationForm {
   setInCall(inCall: boolean): void;
   /** Coloca el teléfono si está vacío (al marcar). */
   suggestPhone(phone: string): void;
+  /** Muestra una tipificación ya guardada (p. ej. la entregada en la prueba oficial). */
+  fill(draft: Partial<TypificationDraft>): void;
+  /** Bloquea el formulario: un ejercicio oficial entregado no se vuelve a enviar. */
+  setLocked(locked: boolean): void;
   cleanup: Cleanup;
 }
 
@@ -197,6 +201,19 @@ export function mountTypificationForm(host: HTMLElement, opts: { balance: number
     },
     suggestPhone(phone) {
       if (!el('phone').value) el('phone').value = phone;
+    },
+    fill(draft) {
+      // En orden: cada lista depende de la anterior (acción → contacto → canal → perfil → motivo).
+      for (const name of ['action', 'contact', 'channel', 'profile', 'reason', 'phone', 'note', 'promiseDate', 'promiseAmount', 'callbackAt'] as const) {
+        const value = draft[name];
+        const field = form.querySelector<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(`[name="${name}"]`);
+        if (field && typeof value === 'string') field.value = value;
+        sync();
+      }
+    },
+    setLocked(locked) {
+      for (const control of form.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | HTMLButtonElement>('input, select, textarea, button')) control.disabled = locked;
+      form.classList.toggle('is-locked', locked);
     },
     cleanup: combine([
       on(form, 'change', (e) => {

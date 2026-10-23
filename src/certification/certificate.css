@@ -1,0 +1,51 @@
+/* Certificado y felicitación (identidad Fontana School: vino, dorado y marfil). */
+.cert-page { max-width: 900px; margin: 24px auto; padding: 24px; background: #fff; border-radius: 20px; border: 1px solid var(--line); }
+.cert-page__actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+.cert-page__actions .primary-action, .cert-page__actions .secondary-action { width: auto; text-decoration: none; }
+
+.cert-paper { margin: 16px 0; aspect-ratio: 842 / 595; width: 100%; container-type: inline-size; background: #fdfaf4; border: 6px solid var(--red); border-radius: 6px; padding: 1.6%; box-shadow: 0 16px 40px rgb(17 24 39 / 14%); }
+.cert-paper__frame { height: 100%; border: 1.5px solid var(--gold); display: grid; align-content: center; justify-items: center; text-align: center; gap: 0.9cqi; padding: 2cqi; }
+.cert-seal { width: 9cqi; height: 9cqi; border-radius: 50%; display: grid; place-items: center; border: 0.45cqi solid var(--gold); box-shadow: inset 0 0 0 0.6cqi #fdfaf4, inset 0 0 0 0.75cqi var(--red); }
+.cert-seal span { font: 800 3cqi/1 'DM Sans', sans-serif; color: var(--red); }
+.cert-paper__brand { margin: 0; font: 800 1.7cqi/1 'DM Sans', sans-serif; letter-spacing: 0.2em; color: var(--red); }
+.cert-paper__title { margin: 0; font: 800 3.4cqi/1.1 'DM Sans', sans-serif; color: var(--ink); text-transform: uppercase; letter-spacing: 0.04em; }
+.cert-paper__muted { margin: 0; font-size: 1.7cqi; color: var(--muted); }
+.cert-paper__name { margin: 0.4cqi 0; font: 800 4.4cqi/1.1 'DM Sans', sans-serif; color: var(--red); }
+.cert-paper__training { margin: 0; font: 700 2.3cqi/1.2 'DM Sans', sans-serif; color: var(--ink); }
+.cert-paper__sign { display: grid; justify-items: center; gap: 0.4cqi; margin-top: 1.4cqi; }
+.cert-paper__sign span { display: block; width: 32cqi; border-top: 1px solid var(--muted); }
+.cert-paper__sign small { font-size: 1.3cqi; color: var(--muted); }
+.cert-paper__code { margin: 0.6cqi 0 0; font-size: 1.45cqi; color: var(--ink); }
+
+.cert-celebration { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; overflow-y: auto; padding: 24px 16px; background: radial-gradient(circle at 50% 30%, rgb(139 21 56 / 96%), rgb(31 42 55 / 97%)); animation: cert-fade 0.6s ease both; }
+.cert-celebration__inner { width: min(760px, 100%); display: grid; justify-items: center; gap: 14px; text-align: center; color: #fff; }
+.cert-celebration__seal { position: relative; width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center; background: #fdfaf4; border: 6px solid var(--gold); box-shadow: 0 0 0 6px rgb(212 175 55 / 25%), 0 18px 40px rgb(0 0 0 / 35%); animation: cert-pop 0.8s 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.cert-celebration__seal span { font: 800 38px/1 'DM Sans', sans-serif; color: var(--red); }
+.cert-celebration__sparks { position: absolute; inset: 0; pointer-events: none; }
+.cert-celebration__sparks i { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: var(--gold); opacity: 0; transform: rotate(var(--a)) translateY(0); animation: cert-spark 1.4s calc(0.9s + var(--d)) ease-out both; }
+.cert-celebration__title { margin: 6px 0 0; font: 800 clamp(1.4rem, 3.6vw, 2.1rem)/1.2 'DM Sans', sans-serif; animation: cert-rise 0.6s 1.1s ease both; }
+.cert-celebration__name { margin: 0; font: 700 clamp(1.1rem, 2.6vw, 1.5rem)/1.2 'DM Sans', sans-serif; color: var(--gold); animation: cert-rise 0.6s 1.4s ease both; }
+.cert-celebration__paper { width: 100%; animation: cert-reveal 0.9s 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.cert-celebration__paper .cert-paper { margin: 6px 0; color: var(--ink); }
+.cert-celebration__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; animation: cert-rise 0.6s 2.4s ease both; }
+.cert-celebration__actions a { width: auto; text-decoration: none; }
+.cert-celebration__actions .secondary-action { color: var(--ink); display: inline-flex; align-items: center; }
+
+@keyframes cert-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cert-pop { from { opacity: 0; transform: scale(0.3) rotate(-25deg); } to { opacity: 1; transform: scale(1) rotate(0); } }
+@keyframes cert-spark { 0% { opacity: 0; transform: rotate(var(--a)) translateY(0) scale(0.6); } 30% { opacity: 1; } 100% { opacity: 0; transform: rotate(var(--a)) translateY(-92px) scale(1); } }
+@keyframes cert-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes cert-reveal { from { opacity: 0; transform: perspective(900px) rotateX(35deg) translateY(30px); } to { opacity: 1; transform: none; } }
+
+/* Movimiento reducido: todo aparece sin animación. */
+.cert-celebration.is-reduced, .cert-celebration.is-reduced * { animation: none !important; }
+.cert-celebration.is-reduced .cert-celebration__sparks { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .cert-celebration, .cert-celebration * { animation: none !important; }
+  .cert-celebration__sparks { display: none; }
+}
+@media (max-width: 640px) {
+  .cert-page { margin: 12px 0; padding: 16px; }
+  .cert-paper { border-width: 4px; }
+  .cert-celebration__seal { width: 88px; height: 88px; }
+}

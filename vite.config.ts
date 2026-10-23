@@ -29,7 +29,7 @@ export default defineConfig({
     watch: {
       ignored: (file) => {
         const path = file.replace(/\\/g, '/');
-        if (/(?:^|\/)(?:\.mergejuan|\.mergemain|server-dist|prisma|dist|docs-assets|documentacion)(?:\/|$)/.test(path) || /(?:^|\/)\.env$/.test(path)) return true;
+        if (/(?:^|\/)(?:\.local|\.mergejuan|\.mergemain|server-dist|prisma|dist|docs-assets|documentacion)(?:\/|$)/.test(path) || /(?:^|\/)\.env$/.test(path)) return true;
         // Este motor puro también lo importa el simulador: debe actualizarse en el navegador.
         // Se permite recorrer server/domain, pero se omiten los demás archivos del servidor.
         const server = /(?:^|\/)server(?:\/(.*))?$/.exec(path);

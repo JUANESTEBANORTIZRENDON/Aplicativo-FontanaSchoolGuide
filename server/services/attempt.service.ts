@@ -10,9 +10,17 @@ import {
 import { formatLocal } from '../utils/time.js';
 import { completeModule, loadSnapshot, refreshModulePercent } from './progress.service.js';
 
-// Sin rutas públicas todavía: lo usan las pruebas, el seed demo y, más adelante, los módulos de contenido.
+// Intentos de las evaluaciones oficiales. El cupo (un intento por defecto), las excepciones del administrador y el
+// modo repaso se verifican aquí, en el servidor, con la sesión del asesor: el navegador no decide nada.
 
 type Tx = Prisma.TransactionClient;
+
+// Un asesor certificado repasa sin generar notas nuevas: ningún intento oficial se abre después del certificado.
+export async function assertNotCertified(db: Tx | typeof prisma, userId: string): Promise<void> {
+  if (await db.certificate.findFirst({ where: { userId, status: 'ACTIVE' }, select: { id: true } })) {
+    throw new ConflictError('Ya estás certificado: este es el modo repaso y no registra nuevas evaluaciones oficiales.', 'REVIEW_MODE');
+  }
+}
 
 async function availabilityFor(tx: Tx, userId: string, activityId: string, evaluation: Parameters<typeof computeAvailability>[0] & { id: string }, now: Date, unlimitedPractice = false): Promise<Availability> {
   const [attempts, overrides, limit] = await Promise.all([
@@ -34,6 +42,7 @@ export async function startAttemptTx(tx: Tx, userId: string, activityId: string,
   {
     const user = await tx.usuario.findUnique({ where: { id: userId }, select: { rol: true, estado: true } });
     if (!user || user.rol !== Role.ADVISOR || user.estado !== UserStatus.ACTIVE) throw new ForbiddenError('El usuario no puede iniciar intentos.', 'USER_NOT_ALLOWED');
+    await assertNotCertified(tx, userId);
     const activity = await findActivityById(tx, activityId);
     if (!activity) throw new NotFoundError('La actividad no existe.', 'ACTIVITY_NOT_FOUND');
     if (activity.status !== 'ACTIVE') throw new ForbiddenError('Actividad no disponible temporalmente.', 'ACTIVITY_INACTIVE');
@@ -43,7 +52,7 @@ export async function startAttemptTx(tx: Tx, userId: string, activityId: string,
     await lockActivityProgress(tx, userId, activityId);
 
     const view = (await loadSnapshot(tx, userId, now)).views.find((module) => module.moduleId === activity.moduleId);
-    if (view?.status === 'FAILED') throw new ConflictError('No tienes intentos disponibles. Solicita una reactivación al administrador.', 'NO_ATTEMPTS_LEFT');
+    if (view?.status === 'FAILED' && activity.isRequired) throw new ConflictError('No tienes intentos disponibles. Solicita una reactivación al administrador.', 'NO_ATTEMPTS_LEFT');
     if (!view || !view.enabled) {
       throw new ForbiddenError(view?.blockedReason ?? 'Módulo no disponible.', 'MODULE_BLOCKED', { blockedReason: view?.blockedReason ?? null });
     }
@@ -76,6 +85,8 @@ export async function startAttemptTx(tx: Tx, userId: string, activityId: string,
 
     const activityProgress = await tx.userActivityProgress.findUniqueOrThrow({ where: { userId_activityId: { userId, activityId } } });
     await upsertActivityProgress(tx, userId, activityId, { status: 'IN_PROGRESS', startedAt: activityProgress.startedAt ?? now, lastActivityAt: now });
+    // Una actividad no obligatoria (examen diagnóstico) no cambia el estado del módulo.
+    if (!activity.isRequired) return { attempt, resumed: false };
     const moduleProgress = await findModuleProgress(tx, userId, activity.moduleId);
     await upsertModuleProgress(tx, userId, activity.moduleId, {
       status: moduleProgress?.status === 'PASSED' ? 'PASSED' : 'IN_PROGRESS',
@@ -137,6 +148,8 @@ export async function submitAttemptTx(tx: Tx, userId: string, attemptId: string,
       completedAt: passed ? now : activityProgress?.completedAt ?? null,
       lastActivityAt: now,
     });
+    // El examen diagnóstico se guarda, pero no aprueba ni reprueba el módulo.
+    if (!activity.isRequired) return { attempt: closed, passed };
 
     const { percent, complete } = await refreshModulePercent(tx, userId, activity.moduleId);
     const moduleProgress = await findModuleProgress(tx, userId, activity.moduleId);

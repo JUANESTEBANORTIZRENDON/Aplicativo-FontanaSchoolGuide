@@ -29,10 +29,10 @@ describe('módulo con una actividad sin intentos', () => {
   });
 
   it('se detiene cuando todo lo pendiente está agotado', () => {
-    expect(view({ a: { passed: true }, b: { exhausted: true, remaining: 0 }, c: { exhausted: true, remaining: 0 } })).toMatchObject({ status: 'FAILED', enabled: false });
+    expect(view({ a: { passed: true }, b: { exhausted: true, remaining: 0 }, c: { exhausted: true, remaining: 0 } })).toMatchObject({ status: 'FAILED', enabled: true, actionLabel: 'Ver resultado' });
   });
 
   it('con una sola actividad pendiente y agotada, se detiene', () => {
-    expect(view({ a: { passed: true }, b: { passed: true }, c: { exhausted: true, remaining: 0 } })).toMatchObject({ status: 'FAILED', enabled: false });
+    expect(view({ a: { passed: true }, b: { passed: true }, c: { exhausted: true, remaining: 0 } })).toMatchObject({ status: 'FAILED', enabled: true });
   });
 });

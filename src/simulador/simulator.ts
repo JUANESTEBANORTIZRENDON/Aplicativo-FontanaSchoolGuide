@@ -14,6 +14,8 @@ import { createToaster } from './components/Toast';
 import type { MountOptions, SimContext } from './context';
 import { BRAND_NAME } from './data/catalogs';
 import { createDataset } from './data/mock-metrics';
+// Se carga al montar: recibe de la plataforma el estado de la prueba oficial de tipificación.
+import './domain/expert/official';
 import { buildCustomerViews } from './domain/customer-view';
 import { createRouter } from './router';
 import { createSimulatorStorage, DEFAULT_STORAGE_PREFIX } from './services/simulator-storage';

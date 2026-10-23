@@ -1,25 +1,47 @@
 // Panel de la prueba de tipificación, arriba de la ficha del cliente: audio de la llamada y los checkmarks de lo que
 // debe tener la tipificación. Al guardar, el sistema experto los llena (✓ cumple · ✗ falta, con la explicación).
+// Dentro de Fontana School la prueba es oficial: califica el servidor, cada ejercicio tiene un intento y el
+// resultado queda guardado (recargar el clon o limpiar el navegador no lo cambia). En el clon suelto o en modo
+// repaso es una práctica libre que se puede repetir.
 
 import type { SimContext } from '../../context';
 import type { Evaluation } from '../../domain/expert/engine';
+import type { CustomerView } from '../../types/simulator';
 import { EXERCISE_PORTFOLIO, EXERCISES, type Exercise } from '../../domain/expert/exercises';
+import {
+  assignedNumbers, isOfficial, isOfficialExercise, officialExercise, officialState, toEvaluation, type OfficialExercise,
+} from '../../domain/expert/official';
+
+/** Las llamadas de la prueba de este asesor: las dos que le tocaron (oficial) o las seis (práctica libre). */
+function mine(): Exercise[] {
+  const numbers = assignedNumbers();
+  return numbers ? EXERCISES.filter((exercise) => numbers.includes(exercise.number)) : EXERCISES;
+}
 import { combine, on, qs, type Cleanup } from '../../utils/dom';
-import { esc } from '../../utils/format';
+import { esc, formatCOP } from '../../utils/format';
 import { hydrateIcons, icon } from '../icons';
 import { openModal } from '../Modal';
 
 export interface PracticePanel {
-  showEvaluation(evaluation: Evaluation): void;
+  showEvaluation(evaluation: Evaluation, official?: OfficialExercise | null): void;
+  /** Vuelve a dibujar el panel cuando llega (o cambia) el estado oficial de la prueba. */
+  refreshOfficial(): void;
   cleanup: Cleanup;
 }
 
+function stepState(ctx: SimContext, exercise: Exercise, current: Exercise): string {
+  if (exercise.id === current.id) return 'current';
+  const official = isOfficialExercise(exercise.number) ? officialExercise(exercise.number) : null;
+  if (official) return official.result ? 'ok' : 'pending';
+  const r = ctx.store.get().practice.results[exercise.id];
+  return r?.approved ? 'ok' : r ? 'bad' : 'pending';
+}
+
 function progressTemplate(ctx: SimContext, current: Exercise): string {
-  const results = ctx.store.get().practice.results;
-  return EXERCISES.map((e) => {
-    const r = results[e.id];
-    const state = e.id === current.id ? 'current' : r?.approved ? 'ok' : r ? 'bad' : 'pending';
-    return `<li class="sim-practice__step is-${state}" title="Ejercicio ${e.number}: ${esc(e.title)}${r ? ` · ${r.score} %` : ''}">${r?.approved ? '✓' : e.number}</li>`;
+  return mine().map((e, position) => {
+    const state = stepState(ctx, e, current);
+    const official = isOfficialExercise(e.number) ? officialExercise(e.number) : null;
+    return `<li class="sim-practice__step is-${state}" title="Ejercicio ${e.number}: ${esc(e.title)}${official ? ` · ${esc(official.statusLabel)}` : ''}">${state === 'ok' ? '✓' : position + 1}</li>`;
   }).join('');
 }
 
@@ -38,16 +60,28 @@ function checklistTemplate(exercise: Exercise, evaluation?: Evaluation): string 
 }
 
 async function showSummary(ctx: SimContext): Promise<void> {
+  const official = isOfficial() ? officialState() : null;
+  ctx.store.endPractice();
+  if (official) {
+    const pendingRows = official.exercises.filter((e) => !e.result).length;
+    await openModal(ctx.root, {
+      title: 'Tu prueba oficial de tipificación',
+      wide: true,
+      body: `
+        <p class="sim-practice__summary"><strong>${official.completedCount} de ${official.total}</strong> ejercicios completados</p>
+        <table class="sim-table sim-table--compact"><thead><tr><th>Ejercicio</th><th>Coincidencia con la llamada</th><th>Estado</th></tr></thead><tbody>
+        ${official.exercises.map((e) => `<tr><td>${esc(EXERCISES[e.number - 1]?.title ?? '')}</td><td>${e.result?.score ? `${Math.round(Number(e.result.score))} %` : '—'}</td><td>${esc(e.statusLabel)}</td></tr>`).join('')}
+        </tbody></table>
+        <p class="sim-help">${official.passed ? 'Completaste tus ejercicios de tipificación. Tu conocimiento se confirma en el examen general: ya puedes presentarlo.' : pendingRows ? 'Aún tienes ejercicios por presentar. Cada uno se presenta una sola vez.' : ''}</p>`,
+    });
+    return;
+  }
   const results = ctx.store.get().practice.results;
   const done = EXERCISES.filter((e) => results[e.id]);
   const approved = EXERCISES.filter((e) => results[e.id]?.approved).length;
   const average = done.length ? Math.round(done.reduce((s, e) => s + results[e.id]!.score, 0) / EXERCISES.length) : 0;
-  if (window.parent !== window) {
-    window.parent.postMessage({ type: 'tipifica:prueba', approved, total: EXERCISES.length, average }, location.origin);
-  }
-  ctx.store.endPractice();
   await openModal(ctx.root, {
-    title: 'Resultado de la prueba de tipificación',
+    title: 'Resultado de la práctica de tipificación',
     wide: true,
     body: `
       <p class="sim-practice__summary"><strong>${approved} de ${EXERCISES.length}</strong> llamadas tipificadas correctamente · puntaje promedio <strong>${average} %</strong></p>
@@ -57,70 +91,161 @@ async function showSummary(ctx: SimContext): Promise<void> {
         return `<tr><td>${e.number}. ${esc(e.title)}</td><td>${r ? `${r.score} %` : '—'}</td><td>${r?.attempts ?? 0}</td><td>${r?.approved ? '✓ Aprobado' : r ? '✗ Por mejorar' : 'Sin presentar'}</td></tr>`;
       }).join('')}
       </tbody></table>
-      <p class="sim-help">${approved === EXERCISES.length ? '¡Excelente! Tipificas como en la operación.' : 'Puedes repetir los ejercicios que quedaron por mejorar: abre la guía y pulsa «Iniciar la prueba de tipificación».'}</p>`,
+      <p class="sim-help">Esta es una práctica libre: no cuenta como evaluación oficial y puedes repetirla cuando quieras.</p>`,
   });
 }
 
-export function mountPracticePanel(host: HTMLElement, ctx: SimContext, exercise: Exercise, opts: { onRetry(): void }): PracticePanel {
-  const isLast = exercise.number === EXERCISES.length;
-  host.innerHTML = `
-    <section class="sim-card sim-practice" data-sim-guide="prueba.panel" aria-labelledby="sim-practice-title">
-      <header class="sim-practice__head">
-        <div>
-          <p class="sim-practice__kicker">${icon('ClipboardList')} Prueba de tipificación · Ejercicio ${exercise.number} de ${EXERCISES.length}</p>
-          <h2 id="sim-practice-title" class="sim-practice__title">${esc(exercise.title)}</h2>
-          <p class="sim-practice__brief">${esc(exercise.brief)} Luego tipifícala en «Nueva Gestión» y pulsa «Guardar».</p>
-        </div>
-        <ol class="sim-practice__steps" aria-label="Avance de la prueba" data-progress>${progressTemplate(ctx, exercise)}</ol>
-      </header>
-      <div class="sim-practice__audio" data-sim-guide="prueba.audio">
-        <span>${icon('Headphones')} Llamada grabada</span>
-        <audio controls preload="none" src="${esc(exercise.audio)}">Tu navegador no reproduce el audio.</audio>
+/**
+ * En la prueba, la zona de «Información Personal» muestra la llamada: el audio y lo mínimo del deudor para tipificar
+ * (nombre, identificación, teléfono marcado y saldo). MP3 primero (suena en cualquier navegador) y Opus de respaldo.
+ */
+export function callCardTemplate(exercise: Exercise, v: CustomerView): string {
+  return `
+    <div class="sim-call-card" data-sim-guide="prueba.audio">
+      <div class="sim-call-card__player">
+        <p class="sim-call-card__title">${icon('Headphones')} Llamada del ejercicio ${exercise.number}: ${esc(exercise.title)}</p>
+        <audio controls preload="metadata" data-call-audio>
+          <source src="${esc(exercise.audio)}.mp3" type="audio/mpeg" />
+          <source src="${esc(exercise.audio)}.ogg" type="audio/ogg; codecs=opus" />
+          Tu navegador no reproduce el audio.
+        </audio>
+        <ol class="sim-call-card__steps">
+          <li>Escucha la llamada completa (sube el volumen de tu equipo).</li>
+          <li>Tipifícala abajo en <strong>«Nueva Gestión»</strong>: acción, contacto, canal, perfil, motivo, teléfono y la gestión escrita.</li>
+          <li>Pulsa <strong>«Guardar»</strong>: el sistema experto revisa tu tipificación y llena los checkmarks.</li>
+        </ol>
       </div>
-      <div class="sim-practice__checks" data-sim-guide="prueba.checks">
-        <p class="sim-practice__subtitle">Lo que debe tener esta tipificación</p>
-        <ol class="sim-check-list" data-checks>${checklistTemplate(exercise)}</ol>
-      </div>
-      <footer class="sim-practice__foot">
-        <p class="sim-practice__score" data-score aria-live="polite">Escucha el audio completo antes de tipificar.</p>
-        <div class="sim-practice__actions">
-          <button type="button" class="sim-btn sim-btn--ghost" data-practice="retry" hidden>${icon('RotateCcw')} Intentar de nuevo</button>
-          <button type="button" class="sim-btn sim-btn--primary" data-practice="next">${isLast ? `${icon('Check')} Ver resultados` : `Siguiente ejercicio ${icon('ArrowRight')}`}</button>
-        </div>
-      </footer>
-    </section>`;
-  hydrateIcons(host);
+      <dl class="sim-call-card__data">
+        <div><dt>Nombre</dt><dd>${esc(v.name.toUpperCase())}</dd></div>
+        <div><dt>Identificación</dt><dd>${esc(v.document)}</dd></div>
+        <div><dt>Teléfono marcado</dt><dd>${esc(v.phone.replace(/\s/g, ''))}</dd></div>
+        <div><dt>Saldo total</dt><dd>${esc(formatCOP(v.totalBalance))}</dd></div>
+      </dl>
+    </div>`;
+}
 
-  const checks = qs(host, '[data-checks]');
-  const score = qs(host, '[data-score]');
+const nextButton = (isLast: boolean, size = ''): string =>
+  `<button type="button" class="sim-btn sim-btn--primary${size}" data-practice="next">${isLast ? `${icon('Check')} Ver resultados` : `Siguiente ejercicio ${icon('ArrowRight')}`}</button>`;
+
+/** Resultado del sistema experto junto al formulario «Nueva Gestión». En la prueba oficial es solo retroalimentación. */
+function resultTemplate(evaluation: Evaluation, isLast: boolean, attempts: number, official?: OfficialExercise | null): string {
+  const missing = evaluation.items.filter((i) => !i.ok);
+  if (official) {
+    return `
+    <div class="sim-expert-result is-feedback" role="status">
+      <p class="sim-expert-result__title">${icon('ClipboardList')} Retroalimentación de tu tipificación: ${evaluation.passed} de ${evaluation.total} puntos (${evaluation.score} %)</p>
+      ${missing.length ? `<p class="sim-expert-result__lead">Puntos que no coincidieron con la llamada:</p><ul class="sim-expert-result__list">${missing.map((i) => `<li><strong>✗ ${esc(i.label)}.</strong> ${esc(i.detail)}</li>`).join('')}</ul>` : '<p>Tu tipificación coincide con todos los puntos de esta llamada.</p>'}
+      <p class="sim-expert-result__note">Tu ejercicio quedó registrado y no se repite. Tu conocimiento se confirma en el examen general.</p>
+      <div class="sim-expert-result__actions">
+        <button type="button" class="sim-btn sim-btn--ghost sim-btn--sm" data-practice="checks">${icon('ClipboardList')} Ver los checkmarks</button>
+        ${nextButton(isLast, ' sim-btn--sm')}
+      </div>
+    </div>`;
+  }
+  const head = `Sistema experto: ${evaluation.approved ? `tipificación correcta (${evaluation.score} %)` : `${evaluation.passed} de ${evaluation.total} puntos (${evaluation.score} %) · intento ${attempts}`}`;
+  return `
+    <div class="sim-expert-result ${evaluation.approved ? 'is-ok' : 'is-bad'}" role="status">
+      <p class="sim-expert-result__title">${icon(evaluation.approved ? 'CircleCheck' : 'TriangleAlert')} ${esc(head)}</p>
+      ${missing.length ? `<ul class="sim-expert-result__list">${missing.map((i) => `<li><strong>✗ ${esc(i.label)}.</strong> ${esc(i.detail)}</li>`).join('')}</ul>` : '<p>Cumpliste todos los puntos de esta llamada.</p>'}
+      <div class="sim-expert-result__actions">
+        <button type="button" class="sim-btn sim-btn--ghost sim-btn--sm" data-practice="checks">${icon('ClipboardList')} Ver los checkmarks</button>
+        ${evaluation.approved ? '' : `<button type="button" class="sim-btn sim-btn--ghost sim-btn--sm" data-practice="retry">${icon('RotateCcw')} Intentar de nuevo</button>`}
+        ${nextButton(isLast, ' sim-btn--sm')}
+      </div>
+    </div>`;
+}
+
+function scoreLine(evaluation: Evaluation, official: OfficialExercise | null | undefined, attempts: number): string {
+  if (official) return `<strong>Tu ejercicio quedó registrado: ${evaluation.passed} de ${evaluation.total} puntos (${evaluation.score} %).</strong> Revisa la retroalimentación.`;
+  if (evaluation.approved) return `<strong class="is-ok">✓ Tipificación correcta (${evaluation.score} %).</strong> Pasa al siguiente ejercicio.`;
+  return `<strong class="is-bad">${evaluation.passed} de ${evaluation.total} puntos (${evaluation.score} %).</strong> Revisa lo marcado con ✗ e inténtalo de nuevo. Intento ${attempts}.`;
+}
+
+export function mountPracticePanel(host: HTMLElement, ctx: SimContext, exercise: Exercise, opts: { onRetry(): void; resultSlot: HTMLElement }): PracticePanel {
+  const list = mine();
+  const position = list.findIndex((item) => item.number === exercise.number);
+  const isLast = position === list.length - 1;
+  const draw = (): void => {
+    const official = isOfficialExercise(exercise.number);
+    host.innerHTML = `
+      <section class="sim-card sim-practice" data-sim-guide="prueba.panel" aria-labelledby="sim-practice-title">
+        <header class="sim-practice__head">
+          <div>
+            <p class="sim-practice__kicker">${icon('ClipboardList')} ${official ? 'Prueba oficial' : 'Práctica'} de tipificación · Ejercicio ${position + 1} de ${list.length}</p>
+            <h2 id="sim-practice-title" class="sim-practice__title">${esc(exercise.title)}</h2>
+            <p class="sim-practice__brief">${esc(exercise.brief)} La llamada está abajo, donde va la información del deudor; tipifícala en «Nueva Gestión» y pulsa «Guardar».${official ? ' <strong>Tienes un solo intento:</strong> revisa bien antes de guardar.' : ''}</p>
+          </div>
+          <ol class="sim-practice__steps" aria-label="Avance de la prueba" data-progress>${progressTemplate(ctx, exercise)}</ol>
+        </header>
+        <div class="sim-practice__checks" data-sim-guide="prueba.checks">
+          <p class="sim-practice__subtitle">Lo que debe tener esta tipificación</p>
+          <ol class="sim-check-list" data-checks>${checklistTemplate(exercise)}</ol>
+        </div>
+        <footer class="sim-practice__foot">
+          <p class="sim-practice__score" data-score aria-live="polite">Escucha el audio completo antes de tipificar.</p>
+          <div class="sim-practice__actions">
+            <button type="button" class="sim-btn sim-btn--ghost" data-practice="retry" hidden>${icon('RotateCcw')} Intentar de nuevo</button>
+            ${nextButton(isLast)}
+          </div>
+        </footer>
+      </section>`;
+    hydrateIcons(host);
+  };
+  draw();
+
+  const checks = (): HTMLElement => qs(host, '[data-checks]');
+  const score = (): HTMLElement => qs(host, '[data-score]');
+  let shown: Evaluation | null = null;
+
+  const render = (evaluation: Evaluation, officialInfo: OfficialExercise | null | undefined, attempts: number): void => {
+    shown = evaluation;
+    checks().innerHTML = checklistTemplate(exercise, evaluation);
+    qs(host, '[data-progress]').innerHTML = progressTemplate(ctx, exercise);
+    score().innerHTML = scoreLine(evaluation, officialInfo, attempts);
+    qs<HTMLElement>(host, '[data-practice="retry"]').hidden = evaluation.approved || Boolean(officialInfo);
+    // El resultado aparece junto al formulario, donde el asesor está mirando.
+    opts.resultSlot.innerHTML = resultTemplate(evaluation, isLast, attempts, officialInfo);
+    hydrateIcons(opts.resultSlot);
+  };
+
+  // Ejercicio oficial ya entregado: se muestra su resultado guardado en el servidor.
+  const showSaved = (): void => {
+    const saved = isOfficial() ? officialExercise(exercise.number) : null;
+    if (saved?.result && !saved.canSubmit) render(toEvaluation(saved.result), saved, 1);
+  };
+  showSaved();
 
   return {
-    showEvaluation(evaluation) {
-      const result = ctx.store.recordPractice(exercise.id, evaluation.score, evaluation.approved);
-      checks.innerHTML = checklistTemplate(exercise, evaluation);
-      qs(host, '[data-progress]').innerHTML = progressTemplate(ctx, exercise);
-      score.innerHTML = evaluation.approved
-        ? `<strong class="is-ok">✓ Tipificación correcta (${evaluation.score} %).</strong> Pasa al siguiente ejercicio.`
-        : `<strong class="is-bad">${evaluation.passed} de ${evaluation.total} puntos (${evaluation.score} %).</strong> Revisa lo marcado con ✗ e inténtalo de nuevo. Intento ${result.attempts}.`;
-      qs<HTMLElement>(host, '[data-practice="retry"]').hidden = evaluation.approved;
-      host.querySelector('.sim-practice')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    showEvaluation(evaluation, officialInfo) {
+      const attempts = officialInfo ? 1 : ctx.store.recordPractice(exercise.id, evaluation.score, evaluation.approved).attempts;
+      render(evaluation, officialInfo, attempts);
+      opts.resultSlot.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    },
+    refreshOfficial() {
+      if (shown) return;
+      draw();
+      showSaved();
     },
     cleanup: combine([
       () => {
-        host.querySelector('audio')?.pause();
         host.innerHTML = '';
+        opts.resultSlot.innerHTML = '';
       },
-      on(host, 'click', (event) => {
-        const action = (event.target as HTMLElement).closest<HTMLElement>('[data-practice]')?.dataset.practice;
+      ...[host, opts.resultSlot].map((el) => on(el, 'click', (event) => {
+        const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-practice]');
+        const action = button?.dataset.practice;
         if (action === 'retry') {
-          checks.innerHTML = checklistTemplate(exercise);
-          score.textContent = 'Corrige la tipificación y vuelve a guardar.';
+          checks().innerHTML = checklistTemplate(exercise);
+          score().textContent = 'Corrige la tipificación y vuelve a guardar.';
+          opts.resultSlot.innerHTML = '';
           opts.onRetry();
+        } else if (action === 'checks') {
+          host.querySelector('.sim-practice')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
         } else if (action === 'next') {
           if (isLast) void showSummary(ctx);
-          else ctx.navigate(`/cartera/${EXERCISE_PORTFOLIO}/cliente/${EXERCISES[exercise.number]!.customer.id}`);
+          else ctx.navigate(`/cartera/${EXERCISE_PORTFOLIO}/cliente/${list[position + 1]!.customer.id}`);
         }
-      }),
+      })),
     ]),
   };
 }
@@ -128,7 +253,10 @@ export function mountPracticePanel(host: HTMLElement, ctx: SimContext, exercise:
 /** Lleva al primer ejercicio sin aprobar (o al primero) y activa la prueba. */
 export function startPractice(ctx: SimContext, restart = false): void {
   ctx.store.startPractice(restart);
+  const official = isOfficial() ? officialState() : null;
   const results = ctx.store.get().practice.results;
-  const next = EXERCISES.find((e) => !results[e.id]?.approved) ?? EXERCISES[0]!;
+  const next = official
+    ? mine().find((e) => officialExercise(e.number)?.canSubmit) ?? mine().find((e) => officialExercise(e.number)?.status !== 'COMPLETADO') ?? mine()[0]!
+    : EXERCISES.find((e) => !results[e.id]?.approved) ?? EXERCISES[0]!;
   ctx.navigate(`/cartera/${EXERCISE_PORTFOLIO}/cliente/${next.customer.id}`);
 }

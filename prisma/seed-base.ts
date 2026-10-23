@@ -2,7 +2,10 @@ import bcrypt from 'bcryptjs';
 import type { PrismaClient } from '@prisma/client';
 import { setPrerequisites } from '../server/services/catalog.service.js';
 import { completeModule, initializeForUser } from '../server/services/progress.service.js';
-import { COLLECTIONS_BLOCKS, COLLECTIONS_EXAM, COLLECTIONS_VERSION, EXAM_KEY } from '../server/domain/collections.js';
+import { COLLECTIONS_BLOCKS, COLLECTIONS_DIAGNOSTIC_TITLE, COLLECTIONS_EXAM, COLLECTIONS_THEORY_TITLE, COLLECTIONS_VERSION, EXAM_KEY } from '../server/domain/collections.js';
+import { FINAL_EXAM_ACTIVITY_TITLE, FINAL_EXAM_DEFAULTS, FINAL_EXAM_NAME, FINAL_EXAM_SLUG } from '../server/domain/final-exam.js';
+import { FINAL_EXAM_BANK_VERSION } from '../server/domain/final-exam-bank.js';
+import { EXERCISE_RULES, TIPIFICA_RULES_VERSION, tipificaActivityTitle } from '../server/domain/tipifica/exercises.js';
 import { OBJECTIONS_ACTIVITY_TITLE, OBJECTIONS_NAME, OBJECTIONS_SLUG } from '../server/domain/objections.js';
 import { OFFICE_MODULE_SLUG, SECTION_ORDER, SECTION_TITLE } from '../server/domain/office.js';
 import { DICTATIONS, EXCEL_ANSWER_KEY, EXCEL_SCENARIO_DATA, SPELLING_RULES, TYPING_TEXTS } from './seed-office-content.js';
@@ -13,13 +16,46 @@ export const CATALOG = [
   { order: 2, slug: 'induccion-cobranzas', name: 'Inducción a las cobranzas', route: '/induccion/modulos/induccion-cobranzas', prerequisites: ['ofimatica-mecanografia'] },
   { order: 3, slug: OBJECTIONS_SLUG, name: OBJECTIONS_NAME, route: '/induccion/modulos/simulador-cobranzas', prerequisites: ['induccion-cobranzas'] },
   { order: 4, slug: 'tipificacion-llamadas', name: 'Tipifica', route: '/induccion/modulos/tipificacion-llamadas', prerequisites: ['simulador-cobranzas'] },
-  { order: 5, slug: 'certificado', name: 'Certificado', route: '/induccion/certificado', prerequisites: ['ofimatica-mecanografia', 'induccion-cobranzas', 'simulador-cobranzas', 'tipificacion-llamadas'] },
+  { order: 5, slug: FINAL_EXAM_SLUG, name: FINAL_EXAM_NAME, route: `/induccion/modulos/${FINAL_EXAM_SLUG}`, prerequisites: ['tipificacion-llamadas'] },
+  { order: 6, slug: 'certificado', name: 'Certificado', route: '/induccion/certificado', prerequisites: ['ofimatica-mecanografia', 'induccion-cobranzas', 'simulador-cobranzas', 'tipificacion-llamadas', FINAL_EXAM_SLUG] },
 ];
 
 export const INDUCTION_MODULE_SLUG = 'induccion-cobranzas';
-// Módulo 04 «Tipifica» (slug técnico conservado): práctica de tipificación en el clon de Control Next.
+// Módulo 04 «Tipifica» (slug técnico conservado): seis ejercicios evaluables en el clon de Control Next.
 export const TIPIFICA_SLUG = 'tipificacion-llamadas';
-const TIPIFICA_ACTIVITY_TITLE = 'Tipifica: práctica en Control Next';
+
+// Un ejercicio evaluable por llamada grabada: aprueba con el 100 % de sus requisitos y tiene un intento.
+// El orden 1 era el marcador de posición del módulo: se convierte y conserva su id (la migración hace lo mismo).
+async function seedTipifica(prisma: PrismaClient, moduleId: string, route: string): Promise<void> {
+  for (const exercise of EXERCISE_RULES) {
+    const data = { type: 'TYPIFICATION' as const, status: 'ACTIVE' as const, isRequired: true, title: tipificaActivityTitle(exercise), route };
+    const activity = await prisma.activity.upsert({
+      where: { moduleId_order: { moduleId, order: exercise.number } },
+      create: { moduleId, order: exercise.number, ...data },
+      update: exercise.number === 1 ? data : {},
+    });
+    if (!(await prisma.evaluation.findFirst({ where: { activityId: activity.id } }))) {
+      await prisma.evaluation.create({ data: { activityId: activity.id, version: 1, title: activity.title, status: 'ACTIVE', minimumScore: 100, maxAttempts: 1, waitMinutes: 0, contentVersion: TIPIFICA_RULES_VERSION } });
+    }
+  }
+}
+
+// Módulo 05 «Examen general»: una sola actividad evaluable (preguntas A, B, C, D sorteadas del banco).
+async function seedFinalExam(prisma: PrismaClient, moduleId: string, route: string): Promise<void> {
+  const activity = await prisma.activity.upsert({
+    where: { moduleId_order: { moduleId, order: 1 } },
+    create: { moduleId, order: 1, type: 'QUIZ', status: 'ACTIVE', isRequired: true, title: FINAL_EXAM_ACTIVITY_TITLE, route },
+    update: {},
+  });
+  if (!(await prisma.evaluation.findFirst({ where: { activityId: activity.id } }))) {
+    await prisma.evaluation.create({
+      data: {
+        activityId: activity.id, version: 1, title: FINAL_EXAM_ACTIVITY_TITLE, status: 'ACTIVE', waitMinutes: 0,
+        minimumScore: FINAL_EXAM_DEFAULTS.minimumScore, maxAttempts: 1, questionCount: FINAL_EXAM_DEFAULTS.questionCount, contentVersion: FINAL_EXAM_BANK_VERSION,
+      },
+    });
+  }
+}
 
 // Módulo 03 «Enfréntate a la objeción» (slug técnico conservado): su única actividad obligatoria es una lección
 // que se aprueba con el examen final. Convierte el marcador de posición anterior sin cambiar su id, así que
@@ -32,20 +68,23 @@ async function seedObjections(prisma: PrismaClient, moduleId: string, route: str
   });
 }
 
-// Introducción (solo para quien no tiene experiencia) y examen de inducción: 80 % y 3 intentos. Idempotente.
+// La teoría es obligatoria para todos; el examen es el diagnóstico del asesor con experiencia (80 %, un intento,
+// no obligatorio: su resultado se guarda pero no reemplaza la teoría ni el examen general). Idempotente.
 async function seedInduction(prisma: PrismaClient, moduleId: string, route: string): Promise<void> {
+  const theory = { isRequired: true, title: COLLECTIONS_THEORY_TITLE };
   await prisma.activity.upsert({
     where: { moduleId_order: { moduleId, order: 1 } },
-    create: { moduleId, order: 1, type: 'LESSON', status: 'ACTIVE', isRequired: false, title: 'Introducción a las cobranzas', route },
-    update: {},
+    create: { moduleId, order: 1, type: 'LESSON', status: 'ACTIVE', route, ...theory },
+    update: theory,
   });
+  const diagnostic = { isRequired: false, title: COLLECTIONS_DIAGNOSTIC_TITLE };
   const exam = await prisma.activity.upsert({
     where: { moduleId_order: { moduleId, order: 2 } },
-    create: { moduleId, order: 2, type: 'QUIZ', status: 'ACTIVE', isRequired: true, title: 'Examen de inducción', route },
-    update: {},
+    create: { moduleId, order: 2, type: 'QUIZ', status: 'ACTIVE', route, ...diagnostic },
+    update: diagnostic,
   });
   if (!(await prisma.evaluation.findFirst({ where: { activityId: exam.id } }))) {
-    await prisma.evaluation.create({ data: { activityId: exam.id, version: 1, title: 'Examen de inducción', status: 'ACTIVE', minimumScore: 80, maxAttempts: 3, waitMinutes: 0 } });
+    await prisma.evaluation.create({ data: { activityId: exam.id, version: 1, title: COLLECTIONS_DIAGNOSTIC_TITLE, status: 'ACTIVE', minimumScore: 80, maxAttempts: 1, waitMinutes: 0 } });
   }
 }
 
@@ -80,13 +119,8 @@ export async function seedCatalog(prisma: PrismaClient): Promise<Map<string, str
     // (seedOfficeModule); los demás, una actividad PLACEHOLDER activa y obligatoria, sin evaluación.
     if (item.slug === INDUCTION_MODULE_SLUG) await seedInduction(prisma, module.id, item.route);
     else if (item.slug === OBJECTIONS_SLUG) await seedObjections(prisma, module.id, item.route);
-    else if (item.slug !== 'certificado' && item.slug !== OFFICE_MODULE_SLUG) {
-      await prisma.activity.upsert({
-        where: { moduleId_order: { moduleId: module.id, order: 1 } },
-        create: { moduleId: module.id, order: 1, type: 'PLACEHOLDER', status: 'ACTIVE', isRequired: true, title: item.slug === TIPIFICA_SLUG ? TIPIFICA_ACTIVITY_TITLE : `${item.name}: contenido en preparación`, route: item.route },
-        update: {},
-      });
-    }
+    else if (item.slug === TIPIFICA_SLUG) await seedTipifica(prisma, module.id, item.route);
+    else if (item.slug === FINAL_EXAM_SLUG) await seedFinalExam(prisma, module.id, item.route);
   }
   await prisma.$transaction(async (tx) => {
     for (const item of CATALOG) await setPrerequisites(tx, ids.get(item.slug)!, item.prerequisites.map((slug) => ids.get(slug)!));
@@ -123,8 +157,8 @@ export async function seedOfficeModule(prisma: PrismaClient, moduleId: string): 
     { section: 'resultado', type: 'LESSON', required: false },
   ] as const;
   const evaluations: Record<string, { minimumScore: number; maxAttempts: number }> = {
-    mecanografia: { minimumScore: 100, maxAttempts: 3 },
-    excel: { minimumScore: 80, maxAttempts: 3 },
+    mecanografia: { minimumScore: 100, maxAttempts: 1 },
+    excel: { minimumScore: 80, maxAttempts: 1 },
     ortografia: { minimumScore: 85, maxAttempts: 1 },
   };
   for (const item of sections) {

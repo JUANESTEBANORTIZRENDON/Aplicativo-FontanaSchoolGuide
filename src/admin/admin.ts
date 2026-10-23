@@ -2,9 +2,10 @@ import './admin.css';
 import { api, escapar, formatDate } from '../http';
 import { officeFileHtml, officeSection } from './office-admin';
 import { mountCollectionsHistory } from './collections-admin';
+import { certificationSection } from './certification-admin';
 
 // Panel administrativo. Navegación por hash dentro de /admin:
-// #asesores, #ficha/<id>, #modulos, #ofimatica, #metricas, #auditoria.
+// #asesores, #ficha/<id>, #validacion (y sus pestañas), #expediente/<id>, #modulos, #ofimatica, #metricas, #auditoria.
 
 type Usuario = { id: string; nombreCompleto: string; numeroDocumento: string; rol: string; estado: string; correo: string | null; telefono: string | null; debeCompletarDatos: boolean; tieneExperienciaCobranzasDigitales?: boolean | null; fechaCreacion: string; ultimoAcceso: string | null };
 type Shell = (title: string, subtitle: string, content: string) => void;
@@ -365,7 +366,7 @@ async function advisorFileSection(view: HTMLElement, userId: string): Promise<vo
     <section class="auth-card admin-card file-head">
       <div><h2>${escapar(data.user.nombreCompleto)}</h2>
         <p>Documento ${escapar(data.user.numeroDocumento)} · ${escapar(data.user.correo ?? 'sin correo')} · experiencia: ${data.user.tieneExperienciaCobranzasDigitales === true ? 'con experiencia' : data.user.tieneExperienciaCobranzasDigitales === false ? 'nuevo' : 'sin responder'} · último acceso ${escapar(formatDate(data.user.ultimoAcceso))}</p></div>
-      <div class="file-head-actions">${data.user.numeroDocumento === COURSE_RESET_DOCUMENT ? '<button class="row-action row-action-danger" data-reset-course>Reiniciar curso</button>' : ''}
+      <div class="file-head-actions"><a class="row-action" href="#expediente/${data.user.id}">Expediente de certificación</a>${data.user.numeroDocumento === COURSE_RESET_DOCUMENT ? '<button class="row-action row-action-danger" data-reset-course>Reiniciar curso</button>' : ''}
       ${pill(data.user.estado === 'activo' ? 'active' : data.user.estado === 'bloqueado' ? 'blocked' : 'inactive', data.user.estado.charAt(0).toUpperCase() + data.user.estado.slice(1))}</div>
     </section>
     <section class="stat-grid">
@@ -630,6 +631,7 @@ async function auditSection(view: HTMLElement): Promise<void> {
 
 const SECTIONS = [
   { hash: '#asesores', label: 'Asesores' },
+  { hash: '#validacion', label: 'Validación y certificaciones' },
   { hash: '#modulos', label: 'Módulos y actividades' },
   { hash: '#ofimatica', label: 'Ofimática' },
   { hash: '#metricas', label: 'Métricas' },
@@ -647,7 +649,7 @@ export function renderAdmin(shell: Shell): void {
 
   async function route(): Promise<void> {
     const hash = location.hash || '#asesores';
-    document.querySelectorAll<HTMLAnchorElement>('[data-nav]').forEach((link) => link.classList.toggle('selected', hash.startsWith(link.dataset.nav!) || (hash.startsWith('#ficha') && link.dataset.nav === '#asesores')));
+    document.querySelectorAll<HTMLAnchorElement>('[data-nav]').forEach((link) => link.classList.toggle('selected', hash.startsWith(link.dataset.nav!) || (hash.startsWith('#ficha') && link.dataset.nav === '#asesores') || (hash.startsWith('#expediente') && link.dataset.nav === '#validacion')));
     const old = document.querySelector<HTMLElement>('#admin-view')!;
     const view = old.cloneNode(false) as HTMLElement; // descarta escuchadores de la sección anterior
     old.replaceWith(view);
@@ -655,6 +657,7 @@ export function renderAdmin(shell: Shell): void {
     document.querySelector<HTMLElement>('#admin-feedback')!.hidden = true;
     try {
       if (hash.startsWith('#ficha/')) await advisorFileSection(view, hash.slice('#ficha/'.length));
+      else if (hash.startsWith('#validacion') || hash.startsWith('#expediente/')) await certificationSection(view, hash, { askForm, run, feedback, rerender, empty });
       else if (hash === '#modulos') await modulesSection(view);
       else if (hash === '#ofimatica') await officeSection(view, { askForm, run, feedback, rerender, badge, empty });
       else if (hash === '#metricas') await metricsSection(view);

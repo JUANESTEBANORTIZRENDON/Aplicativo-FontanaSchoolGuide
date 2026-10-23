@@ -10,7 +10,7 @@ export const EXHAUSTED_REASON = 'Agotaste los intentos disponibles. Solicita una
 // Módulos con pantalla de resultados: al aprobarlos siguen abiertos para repasar su resumen.
 // Los demás se habilitan cuando tengan su pantalla de resultados.
 export const RESULT_SCREEN_AVAILABLE = false;
-export const RESULT_SCREEN_SLUGS: ReadonlySet<string> = new Set(["ofimatica-mecanografia", "induccion-cobranzas", "simulador-cobranzas"]);
+export const RESULT_SCREEN_SLUGS: ReadonlySet<string> = new Set(["ofimatica-mecanografia", "induccion-cobranzas", "simulador-cobranzas", "tipificacion-llamadas", "examen-general"]);
 // Módulos guiados por bloques: mientras no tengan sello muestran el avance guardado de sus bloques.
 const GUIDED_BLOCK_SLUGS: ReadonlySet<string> = new Set(["induccion-cobranzas", "simulador-cobranzas"]);
 
@@ -132,13 +132,34 @@ export type ModuleView = {
   lastActivityAt: string | null;
 };
 
+// Estado general de la certificación del asesor (ver certificationStatusOf).
+export type CertificationStatus = 'EN_FORMACION' | 'PENDIENTE_VALIDACION' | 'DEVUELTO' | 'CERTIFICADO';
+export type CertificationState = { status: CertificationStatus; reason: string | null };
+
 export type UserTrainingState = {
   moduleProgress: Map<string, { status: ProgressStatus; lastActivityAt: Date | null; percent?: Prisma.Decimal }>;
   activityProgress: Map<string, { status: ProgressStatus }>;
   sealedModuleIds: Set<string>;
   overrides: OverrideLite[];
   availability: Map<string, Availability>;
+  certification?: CertificationState;
 };
+
+// La certificación la aprueba el administrador: tener todos los sellos solo deja al asesor «Pendiente de validación».
+// Una devolución para corrección queda vigente hasta que el asesor registra un avance nuevo (otro intento o sello).
+export function certificationStatusOf(input: {
+  requirementsMet: boolean;
+  hasActiveCertificate: boolean;
+  lastDecision: { decision: 'APPROVED' | 'RETURNED'; reason: string | null; createdAt: Date } | null;
+  lastProgressAt: Date | null;
+}): CertificationState {
+  if (input.hasActiveCertificate) return { status: 'CERTIFICADO', reason: null };
+  const returned = input.lastDecision?.decision === 'RETURNED' && (!input.lastProgressAt || input.lastProgressAt <= input.lastDecision.createdAt);
+  if (returned) return { status: 'DEVUELTO', reason: input.lastDecision!.reason };
+  return { status: input.requirementsMet ? 'PENDIENTE_VALIDACION' : 'EN_FORMACION', reason: null };
+}
+
+const REVIEW_LABEL = 'Repasar';
 
 export function percentOf(passed: number, total: number): Prisma.Decimal {
   if (total === 0) return new Prisma.Decimal(0);
@@ -151,6 +172,7 @@ function joinNames(names: string[]): string {
 
 // Estado efectivo de cada módulo para un usuario. Una sola función para asesor, panel y métricas.
 export function computeModuleViews(modules: ModuleInput[], state: UserTrainingState, now: Date): ModuleView[] {
+  const certified = state.certification?.status === 'CERTIFICADO';
   return [...modules].sort((a, b) => a.order - b.order).map((module) => {
     const activityIds = new Set(module.activities.map((activity) => activity.id));
     const moduleOverrides = state.overrides.filter((override) => activityIds.has(override.activityId) && isOverrideActive(override, now));
@@ -173,13 +195,25 @@ export function computeModuleViews(modules: ModuleInput[], state: UserTrainingSt
     }
 
     if (module.slug === CERTIFICATE_MODULE_SLUG) {
-      if (missing.length === 0) return { ...base, status: 'AVAILABLE', progressPercent: '100.00', actionLabel: 'Ver certificado', enabled: true, blockedReason: null, missingSeals: [] };
+      if (certified) return { ...base, status: 'PASSED', progressPercent: '100.00', actionLabel: 'Ver certificado', enabled: true, blockedReason: null, missingSeals: [] };
+      if (missing.length === 0) {
+        const returned = state.certification?.status === 'DEVUELTO';
+        return {
+          ...base, status: 'IN_PROGRESS', progressPercent: '100.00', actionLabel: 'Ver estado', enabled: true, missingSeals: [],
+          blockedReason: returned
+            ? `El administrador devolvió tu certificación para corrección${state.certification?.reason ? `: ${state.certification.reason}` : '.'}`
+            : 'Completaste la formación. El administrador está validando tu certificación.',
+        };
+      }
       const sealed = module.prerequisites.length - missing.length;
       return {
         ...base, status: 'BLOCKED', progressPercent: percentOf(sealed, module.prerequisites.length).toFixed(2), actionLabel: 'Bloqueado', enabled: false,
         blockedReason: `Te faltan los sellos de: ${joinNames(missing)}`, missingSeals: missing,
       };
     }
+
+    // Con el certificado activo todo queda abierto en modo repaso: lo que se practique no cambia el historial oficial.
+    if (certified) return { ...base, status: 'PASSED', progressPercent: '100.00', actionLabel: REVIEW_LABEL, enabled: true, blockedReason: null };
 
     if (hasSeal || stored?.status === 'PASSED') {
       if (moduleOverrides.some((override) => override.action === 'REOPEN_MODULE')) {
@@ -194,10 +228,11 @@ export function computeModuleViews(modules: ModuleInput[], state: UserTrainingSt
 
     const availabilities = required.map((activity) => state.availability.get(activity.id)).filter((value): value is Availability => Boolean(value));
     // Una actividad sin intentos no frena las demás: el asesor sigue con lo que le falta y el administrador
-    // decide si reactiva la agotada. El módulo solo se detiene cuando todo lo pendiente está agotado.
+    // decide si reactiva la agotada. Cuando todo lo pendiente está agotado el módulo queda «Sin intentos», pero se
+    // puede abrir para ver el resultado y solicitar la reactivación (no abre intentos nuevos).
     const pending = required.filter((activity) => !(state.activityProgress.get(activity.id)?.status === 'PASSED' || state.availability.get(activity.id)?.passed));
     if (pending.length > 0 && pending.every((activity) => state.availability.get(activity.id)?.exhausted)) {
-      return { ...base, status: 'FAILED', progressPercent: percent, actionLabel: 'Sin intentos', enabled: false, blockedReason: EXHAUSTED_REASON };
+      return { ...base, status: 'FAILED', progressPercent: percent, actionLabel: 'Ver resultado', enabled: true, blockedReason: EXHAUSTED_REASON };
     }
 
     const started = stored?.status === 'IN_PROGRESS' || stored?.status === 'FAILED' || passedCount > 0

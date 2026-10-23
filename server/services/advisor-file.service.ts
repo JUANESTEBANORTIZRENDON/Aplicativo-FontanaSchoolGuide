@@ -47,8 +47,6 @@ export async function getAdvisorFile(userId: string, now = new Date()) {
       activities: module.activities.map((activity) => {
         const availability = snapshot.availability.get(activity.id);
         return {
-    // La bienvenida (historia, método y principios) está completa: al ingresar va directo al aula.
-    welcomeCompleted: Boolean(welcome?.fechaInduccionCompletada),
           activityId: activity.id, title: activity.title, type: activity.type, order: activity.order, status: activity.status, isRequired: activity.isRequired,
           hasEvaluation: snapshot.evaluations.has(activity.id),
           attemptsRemaining: availability?.remaining ?? null,
