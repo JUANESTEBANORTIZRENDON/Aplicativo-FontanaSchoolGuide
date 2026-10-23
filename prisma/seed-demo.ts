@@ -79,7 +79,7 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
   const { findSessionUser } = await import('../server/repositories/usuario.repository.js');
   const { officeActivities, recordView } = await import('../server/repositories/office.repository.js');
   const { computeTypingMetrics, typingPassed, typingScore } = await import('../server/domain/typing.js');
-  const { EXCEL_QUIZ, gradeQuiz } = await import('../server/domain/excel-quiz.js');
+  const { applyPracticeAction, newPractice, practiceScore, practiceSteps } = await import('../server/domain/excel-practice.js');
   const { evaluateDictation } = await import('../server/domain/spelling/engine.js');
   const { templateRecommendation } = await import('../server/domain/spelling/recommendations.js');
   const { EXCEL_LESSON_KEYS, SPELLING_LESSON_KEYS } = await import('../server/domain/office-content.js');
@@ -191,16 +191,30 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
     });
   }
 
-  // Excel: evaluación de opción múltiple; `drop` deja sin responder las últimas preguntas para simular errores.
+  // Excel: el demo ejecuta los mismos comandos que la práctica interactiva.
   async function excel(userId: string, at: Date, drop = 0) {
     const { attempt } = await attemptService.startAttempt(userId, X, { now: at });
     const seed = seedCursor++;
-    const answers = EXCEL_QUIZ.slice(0, Math.max(0, EXCEL_QUIZ.length - drop)).map((question) => ({ questionId: question.id, optionId: question.correct }));
-    const graded = gradeQuiz(answers, config.excelMinScore);
+    let practice = newPractice();
+    const actions: import('../server/domain/excel-practice.js').PracticeAction[][] = [
+      [{ type: 'filter', value: 'Pendiente' }],
+      [{ type: 'undo', method: 'shortcut' }],
+      [{ type: 'sort', direction: 'asc' }],
+      [{ type: 'sort', direction: 'desc' }],
+      [{ type: 'copy', cell: { row: 'c1', column: 'cliente' }, method: 'shortcut' }],
+      [{ type: 'paste', cell: { row: 'c2', column: 'observacion' }, method: 'shortcut' }],
+      [{ type: 'open-search', method: 'shortcut' }, { type: 'search', query: 'Laura Méndez' }],
+      [{ type: 'save', method: 'shortcut' }],
+    ];
+    for (let i = 0; i < actions.length; i++) {
+      if (i < actions.length - drop) for (const action of actions[i]!) practice = applyPracticeAction(practice, action, at);
+      if (i < actions.length - 1) practice = applyPracticeAction(practice, { type: practice.completed[i] ? 'next' : 'skip' }, at);
+    }
+    const graded = { score: practiceScore(practice), passed: practiceScore(practice) >= 80, results: practiceSteps(practice) };
     const closedAt = new Date(at.getTime() + 6 * MIN);
     await prisma.excelAttemptResult.create({
       data: {
-        attemptId: attempt.id, excelActivityId: scenarioRow.id, excelVersion: scenarioRow.version, seed, configSnapshot: snapshot,
+        attemptId: attempt.id, excelActivityId: scenarioRow.id, excelVersion: scenarioRow.version, seed, configSnapshot: { ...(snapshot as Record<string, unknown>), practice } as unknown as import('@prisma/client').Prisma.InputJsonValue,
         score: new Prisma.Decimal(graded.score), passed: graded.passed, stepResults: graded.results as unknown as import('@prisma/client').Prisma.InputJsonValue, completedAt: closedAt,
       },
     });

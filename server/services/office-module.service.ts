@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { env } from '../config/env.js';
 import { ConflictError, NotFoundError } from '../domain/errors.js';
+import { EXCEL_PASS_SCORE } from '../domain/excel-practice.js';
 import { EXCEL_LESSONS, EXCEL_LESSON_KEYS, OFFICE_IMAGES, SPELLING_LESSONS, SPELLING_LESSON_KEYS, WELCOME } from '../domain/office-content.js';
 import {
   GRADED_SECTIONS, OFFICE_MODULE_SLUG, OFFICE_SECTIONS, SECTION_TITLE, type GradedSection, type OfficeSection,
@@ -58,8 +59,8 @@ export async function getModuleState(userId: string, now = new Date(), preloaded
     return {
       key, title: SECTION_TITLE[key], activityId: activity?.id ?? null, graded, status,
       route: activity?.route ?? null,
-      attemptsRemaining: graded ? availability?.remaining ?? null : null,
-      maxAttempts: graded ? (activity ? snapshot.attemptLimits.get(activity.id) : undefined) ?? evaluation?.maxAttempts ?? null : null,
+      attemptsRemaining: graded && key !== 'excel' ? availability?.remaining ?? null : null,
+      maxAttempts: graded && key !== 'excel' ? (activity ? snapshot.attemptLimits.get(activity.id) : undefined) ?? evaluation?.maxAttempts ?? null : null,
       waitUntil: availability?.waitUntil?.toISOString() ?? null,
       lessonsViewed: key === 'excel' || key === 'ortografia' ? viewedKeys(key) : [],
       lessonsTotal: key === 'excel' ? EXCEL_LESSON_KEYS.length : key === 'ortografia' ? SPELLING_LESSON_KEYS.length : 0,
@@ -83,7 +84,7 @@ export async function getModuleState(userId: string, now = new Date(), preloaded
         durationSeconds: config.typingDurationSeconds, minCorrectCpm: config.typingMinCorrectCpm, minAccuracy: config.typingMinAccuracy,
         startWindowSeconds: config.typingStartWindowSeconds, maxAttempts: config.typingMaxAttempts,
       },
-      excel: { minScore: config.excelMinScore, maxAttempts: config.excelMaxAttempts },
+      excel: { minScore: EXCEL_PASS_SCORE, maxAttempts: null },
       dictation: { minScore: config.dictationMinScore, maxAttempts: config.dictationMaxAttempts, maxPlays: config.dictationMaxPlays },
     },
     typing: {
@@ -131,7 +132,7 @@ function pluck<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
-type StepResult = { questionId: string; lesson: string; correct: boolean; awardedScore: number; weight: number; hint: string };
+type StepResult = { questionId: string; lesson: string; title?: string; correct: boolean; awardedScore: number; weight: number; hint: string };
 type DetectedError = { type: string; expected: string; written: string; severity: string; weight: number; explanation: string; category: string | null; ruleKey: string | null };
 
 // Nota del módulo: la ortografía se tiene en cuenta pero pesa poco (20 %), para que un dictado flojo baje un poco
@@ -171,9 +172,9 @@ export async function getResult(userId: string, now = new Date(), preloaded?: Tr
     const lessonTitle = (key: string) => EXCEL_LESSONS.find((lesson) => lesson.key === key)?.title ?? key;
     const wrong = steps.filter((step) => !step.correct);
     if (excel.passed) strengths.push(`Excel: aprobaste con ${Number(excel.score).toFixed(2)} puntos.`);
-    for (const lesson of [...new Set(wrong.map((step) => step.lesson))]) reinforce.push(`Excel · ${lessonTitle(lesson)}: ${wrong.find((step) => step.lesson === lesson)!.hint}`);
+    for (const step of wrong) reinforce.push(`Excel · ${step.title ?? lessonTitle(step.lesson)}: ${step.hint}`);
     for (const lesson of [...new Set(steps.filter((step) => step.correct).map((step) => step.lesson))]) {
-      if (!wrong.some((step) => step.lesson === lesson)) strengths.push(`Excel · ${lessonTitle(lesson)}: sin errores.`);
+      if (!wrong.some((step) => step.lesson === lesson)) strengths.push(`Excel · ${lessonTitle(lesson)}: práctica completada.`);
     }
   } else reinforce.push('Excel: todavía no completas la práctica.');
 

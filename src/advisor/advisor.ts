@@ -93,7 +93,7 @@ export async function mountLearningPath(): Promise<void> {
     const { data } = await api<{ data: ModuleView[] }>('/advisor/modules');
     const current = data.find((module) => module.enabled && module.status === 'IN_PROGRESS')
       ?? data.find((module) => module.enabled && (module.status === 'AVAILABLE' || module.status === 'NOT_STARTED'));
-    section.insertAdjacentHTML('beforeend', `<ol class="path-cards">${data.map((module) => card(module, module === current)).join('')}</ol>`);
+    section.insertAdjacentHTML('beforeend', `<p class="training-route-swipe-hint">Desliza para ver todos los módulos →</p><ol class="path-cards" tabindex="0" aria-label="Módulos de formación">${data.map((module) => card(module, module === current)).join('')}</ol>`);
     section.querySelector('.training-route-loading')!.remove();
   } catch (error) {
     section.querySelector('.training-route-loading')!.textContent = (error as Error).message;

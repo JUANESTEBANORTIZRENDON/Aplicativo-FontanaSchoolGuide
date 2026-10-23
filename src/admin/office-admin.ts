@@ -28,8 +28,6 @@ const CONFIG_FIELDS: { key: keyof ConfigValues; label: string; hint: string; ste
   { key: 'typingMaxAttempts', label: 'Intentos de mecanografía', hint: 'Máximo por asesor' },
   { key: 'typingStartWindowSeconds', label: 'Ventana de arranque (s)', hint: 'Tiempo máximo para la primera tecla' },
   { key: 'typingAttemptTtlMinutes', label: 'Vigencia de un intento preparado (min)', hint: 'Después vence' },
-  { key: 'excelMinScore', label: 'Nota mínima de Excel', hint: 'De 1 a 100', step: '0.01' },
-  { key: 'excelMaxAttempts', label: 'Intentos de Excel', hint: 'Máximo por asesor' },
   { key: 'dictationMinScore', label: 'Nota mínima del dictado', hint: 'De 1 a 100', step: '0.01' },
   { key: 'dictationMaxAttempts', label: 'Intentos del dictado', hint: 'Máximo por asesor' },
   { key: 'dictationMaxPlays', label: 'Reproducciones por intento', hint: 'Veces que puede oír el audio' },
@@ -99,7 +97,7 @@ async function drawConfig(body: HTMLElement, helpers: AdminHelpers, redraw: () =
   const current = data.config;
   body.innerHTML = `
     <section class="auth-card admin-card"><div class="section-title"><div><h2>Versión vigente: v${current.version}</h2>
-      <p>Solo se envían los valores que cambies. El motivo es obligatorio.</p></div></div>
+      <p>Solo se envían los valores que cambies. El motivo es obligatorio.</p><p>Excel práctico: ocho ejercicios individuales, aprobación con 80 puntos y reintentos sin límite. Los valores de Excel del historial corresponden a la configuración anterior.</p></div></div>
       <form id="office-config" class="admin-form">
         ${CONFIG_FIELDS.map((field) => `<label>${escapar(field.label)} <small>${escapar(field.hint)}</small><input name="${field.key}" type="number" step="${field.step ?? '1'}" required value="${current[field.key]}"></label>`).join('')}
         <label>Motivo del cambio <small>Obligatorio</small><textarea name="reason" required minlength="5" maxlength="500" rows="2"></textarea></label>

@@ -6,7 +6,7 @@ import * as excelService from '../services/office-excel.service.js';
 import * as moduleService from '../services/office-module.service.js';
 import * as typingService from '../services/office-typing.service.js';
 import { getAccessibleModule } from '../services/progress.service.js';
-import type { DictationSubmitBody, ExcelSubmitBody, TypingCompleteBody } from '../validators/office.validator.js';
+import type { DictationSubmitBody, ExcelActionBody, ExcelSubmitBody, TypingCompleteBody } from '../validators/office.validator.js';
 
 // El acceso lo decide el servidor en cada solicitud: un módulo bloqueado responde 403 con su motivo
 // también al entrar por URL directa. Un módulo aprobado sigue abierto para ver el resultado.
@@ -75,6 +75,11 @@ export async function excelSubmit(request: Request, response: Response): Promise
   const { id } = validParams<{ id: string }>(request);
   const body = validBody<ExcelSubmitBody>(request);
   response.json({ data: await excelService.submitPractice(request.usuario!.id, id, body) });
+}
+
+export async function excelAction(request: Request, response: Response): Promise<void> {
+  const { id } = validParams<{ id: string }>(request);
+  response.json({ data: await excelService.performAction(request.usuario!.id, id, validBody<ExcelActionBody>(request)) });
 }
 
 // ---- Dictado ----

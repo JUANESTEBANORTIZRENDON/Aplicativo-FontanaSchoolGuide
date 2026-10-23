@@ -5,7 +5,7 @@ import { Role } from '../domain/enums.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import {
-  activityParams, attemptParams, dictationPlayBody, dictationQuery, dictationSubmitBody, excelSubmitBody, sectionParams, typingCompleteBody,
+  activityParams, attemptParams, dictationPlayBody, dictationQuery, dictationSubmitBody, excelActionBody, excelSubmitBody, sectionParams, typingCompleteBody,
 } from '../validators/office.validator.js';
 
 // /api/training/office: solo asesores con acceso al módulo (el servidor lo comprueba en cada solicitud).
@@ -26,6 +26,7 @@ officeRouter.post('/typing/practice/complete', office.typingPractice);
 
 officeRouter.get('/excel/activity', office.excelActivity);
 officeRouter.post('/excel/activity/:id/attempts', validate({ params: activityParams }), office.excelStart);
+officeRouter.post('/excel/activity/:id/actions', validate({ params: activityParams, body: excelActionBody }), office.excelAction);
 officeRouter.post('/excel/activity/:id/submit', validate({ params: activityParams, body: excelSubmitBody }), office.excelSubmit);
 
 officeRouter.get('/dictation/next', office.dictationNext);

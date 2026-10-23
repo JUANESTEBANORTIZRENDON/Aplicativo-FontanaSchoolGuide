@@ -2,7 +2,8 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { app } from '../app.js';
 import { prisma } from '../config/prisma.js';
-import { EXCEL_QUIZ } from '../domain/excel-quiz.js';
+import { EXERCISES, type PracticeAction } from '../domain/excel-practice.js';
+import { PRACTICE_ACTIONS } from './excel-practice-actions.js';
 import { signedUrl } from '../services/media.service.js';
 import { cleanupSuite, createTestUser, loginAgent, ORIGIN } from './helpers.js';
 
@@ -20,7 +21,7 @@ async function advisorAgent(): Promise<{ agent: Agent; id: string; documento: st
 describe('evaluación de Excel', () => {
   afterAll(() => cleanupSuite(SUITE));
 
-  it('entrega las preguntas sin respuestas y las califica en el servidor', async () => {
+  it('persiste comandos, recupera la hoja y califica ocho ejercicios en el servidor', async () => {
     const { agent, id } = await advisorAgent();
     const activity = await agent.get('/api/training/office/excel/activity');
     expect(activity.status).toBe(200);
@@ -28,40 +29,53 @@ describe('evaluación de Excel', () => {
 
     const started = await agent.post(`/api/training/office/excel/activity/${activity.body.data.id}/attempts`).set(ORIGIN);
     expect(started.status).toBe(201);
-    expect(JSON.stringify(started.body)).not.toMatch(/"correct"|explanation/);
-    const questions = started.body.data.questions as { id: string; options: { id: string }[] }[];
-    expect(questions).toHaveLength(EXCEL_QUIZ.length);
-    expect(questions.every((question) => question.options.length === 4)).toBe(true);
-
-    const correct = EXCEL_QUIZ.map((question) => ({ questionId: question.id, optionId: question.correct }));
-    const graded = await agent.post(`/api/training/office/excel/activity/${activity.body.data.id}/submit`).set(ORIGIN).send({ attemptId: started.body.data.attemptId, answers: correct });
+    expect(started.body.data.exercises).toHaveLength(EXERCISES.length);
+    expect(started.body.data.questions).toBeUndefined();
+    let current = started.body.data;
+    const action = async (value: PracticeAction) => {
+      const response = await agent.post(`/api/training/office/excel/activity/${activity.body.data.id}/actions`).set(ORIGIN).send({ attemptId: current.attemptId, revision: current.state.revision, action: value });
+      expect(response.status).toBe(200); current = response.body.data;
+    };
+    for (let i = 0; i < EXERCISES.length; i++) {
+      for (const value of PRACTICE_ACTIONS[i]!) await action(value);
+      expect(current.state.completed[i]).toBe(true);
+      if (i < EXERCISES.length - 1) await action({ type: 'next' });
+    }
+    const recovered = (await agent.get('/api/training/office/excel/activity')).body.data.practice;
+    expect(recovered.state).toEqual(current.state);
+    expect(recovered.state.savedRows[0].observacion).toBe('Cliente solicita llamada mañana.');
+    const graded = await agent.post(`/api/training/office/excel/activity/${activity.body.data.id}/submit`).set(ORIGIN).send({ attemptId: current.attemptId, revision: current.state.revision });
     expect(graded.status).toBe(200);
     expect(graded.body.data).toMatchObject({ score: 100, passed: true });
     expect(graded.body.data.steps.every((step: { correct: boolean }) => step.correct)).toBe(true);
     const answers = await prisma.attemptAnswer.findMany({ where: { attemptId: started.body.data.attemptId } });
-    expect(answers).toHaveLength(EXCEL_QUIZ.length);
+    expect(answers).toHaveLength(EXERCISES.length);
     expect(answers.every((answer) => answer.isCorrect === true)).toBe(true);
     // Sin reenvío.
-    const again = await agent.post(`/api/training/office/excel/activity/${activity.body.data.id}/submit`).set(ORIGIN).send({ attemptId: started.body.data.attemptId, answers: correct });
+    const again = await agent.post(`/api/training/office/excel/activity/${activity.body.data.id}/submit`).set(ORIGIN).send({ attemptId: current.attemptId, revision: current.state.revision });
     expect(again.status).toBe(409);
     expect(id).toBeTruthy();
   });
 
-  it('califica cada pregunta con la respuesta correcta y la explicación', async () => {
+  it('no completa por continuar y permite reintentar una evaluación fallida sin bloqueo', async () => {
     const { agent } = await advisorAgent();
     const activity = (await agent.get('/api/training/office/excel/activity')).body.data;
     const started = (await agent.post(`/api/training/office/excel/activity/${activity.id}/attempts`).set(ORIGIN)).body.data;
-    const graded = await agent.post(`/api/training/office/excel/activity/${activity.id}/submit`).set(ORIGIN).send({
-      attemptId: started.attemptId,
-      answers: [{ questionId: 'suma', optionId: 'a' }, { questionId: 'buscar', optionId: 'b' }],
-    });
+    let revision = 0;
+    const advance = await agent.post(`/api/training/office/excel/activity/${activity.id}/actions`).set(ORIGIN).send({ attemptId: started.attemptId, revision, action: { type: 'next' } });
+    expect(advance.body.data.state).toMatchObject({ current: 0, ok: false }); revision++;
+    for (let i = 0; i < EXERCISES.length - 1; i++) {
+      const skipped = await agent.post(`/api/training/office/excel/activity/${activity.id}/actions`).set(ORIGIN).send({ attemptId: started.attemptId, revision, action: { type: 'skip' } });
+      expect(skipped.status).toBe(200); revision++;
+    }
+    const saved = await agent.post(`/api/training/office/excel/activity/${activity.id}/actions`).set(ORIGIN).send({ attemptId: started.attemptId, revision, action: { type: 'save', method: 'button' } });
+    expect(saved.status).toBe(200); revision++;
+    const graded = await agent.post(`/api/training/office/excel/activity/${activity.id}/submit`).set(ORIGIN).send({ attemptId: started.attemptId, revision });
     expect(graded.status).toBe(200);
-    expect(graded.body.data).toMatchObject({ score: 10, passed: false, attemptsRemaining: 2 });
-    const byId = new Map<string, { correct: boolean; chosen: string | null; correctOption: string; feedback: string }>(graded.body.data.steps.map((step: { questionId: string }) => [step.questionId, step]));
-    expect(byId.get('suma')).toMatchObject({ correct: true, chosen: 'a' });
-    expect(byId.get('buscar')).toMatchObject({ correct: false, chosen: 'b', correctOption: 'a' });
-    expect(byId.get('buscar')!.feedback).toMatch(/Ctrl \+ B/);
-    expect(byId.get('filtro')).toMatchObject({ correct: false, chosen: null });
+    expect(graded.body.data).toMatchObject({ score: 12.5, passed: false });
+    expect(graded.body.data.steps).toHaveLength(EXERCISES.length);
+    const retry = await agent.post(`/api/training/office/excel/activity/${activity.id}/attempts`).set(ORIGIN);
+    expect(retry.status).toBe(201); expect(retry.body.data.number).toBe(2);
   });
 
   it('valida el cuerpo y no deja calificar el intento de otro asesor', async () => {
@@ -73,7 +87,9 @@ describe('evaluación de Excel', () => {
     expect(invalid.status).toBe(400);
     const extra = await owner.agent.post(`/api/training/office/excel/activity/${activity.id}/submit`).set(ORIGIN).send({ attemptId: started.attemptId, answers: [], nota: 100 });
     expect(extra.status).toBe(400);
-    const stolen = await other.agent.post(`/api/training/office/excel/activity/${activity.id}/submit`).set(ORIGIN).send({ attemptId: started.attemptId, answers: [] });
+    const stale = await owner.agent.post(`/api/training/office/excel/activity/${activity.id}/actions`).set(ORIGIN).send({ attemptId: started.attemptId, revision: 50, action: { type: 'skip' } });
+    expect(stale.status).toBe(409);
+    const stolen = await other.agent.post(`/api/training/office/excel/activity/${activity.id}/submit`).set(ORIGIN).send({ attemptId: started.attemptId, revision: 0 });
     expect(stolen.status).toBe(404);
   });
 });
@@ -199,7 +215,7 @@ describe('medios privados y administración del contenido', () => {
     const summary = (await admin.get('/api/admin/metrics/summary').query({ limit: 5 })).body.data;
     expect(summary.dictation.results).toBeGreaterThan(0);
     expect(summary.dictation.topErrors.length).toBeGreaterThan(0);
-    expect(summary.excel.steps.length).toBe(EXCEL_QUIZ.length);
+    expect(summary.excel.steps.length).toBeGreaterThanOrEqual(EXERCISES.length);
     expect(summary.typing.avgCorrectCpm).toBeTruthy();
   });
 });

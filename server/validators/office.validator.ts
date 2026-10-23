@@ -15,10 +15,26 @@ export const typingCompleteBody = z.object({
 }).strict();
 export type TypingCompleteBody = z.infer<typeof typingCompleteBody>;
 
-// Evaluación de Excel: una opción (a–d) por pregunta.
+const excelCell = z.object({ row: z.string().regex(/^c[1-5]$/), column: z.enum(['cliente', 'documento', 'saldo', 'mora', 'estado', 'observacion']) }).strict();
+const method = z.enum(['shortcut', 'button']);
+export const excelActionBody = z.object({
+  attemptId: uuid,
+  revision: z.number().int().nonnegative(),
+  action: z.discriminatedUnion('type', [
+    z.object({ type: z.literal('filter'), value: z.enum(['Todos', 'Pendiente', 'Pagado']) }).strict(),
+    z.object({ type: z.literal('edit'), cell: excelCell, value: z.string().max(200) }).strict(),
+    z.object({ type: z.enum(['undo', 'open-search', 'save']), method }).strict(),
+    z.object({ type: z.literal('sort'), direction: z.enum(['asc', 'desc']) }).strict(),
+    z.object({ type: z.enum(['copy', 'paste']), cell: excelCell, method }).strict(),
+    z.object({ type: z.literal('search'), query: z.string().max(100) }).strict(),
+    z.object({ type: z.enum(['reset', 'next', 'skip', 'review']) }).strict(),
+  ]),
+}).strict();
+export type ExcelActionBody = z.infer<typeof excelActionBody>;
+// La nota se calcula desde las acciones persistidas; nunca se recibe del navegador.
 export const excelSubmitBody = z.object({
   attemptId: uuid,
-  answers: z.array(z.object({ questionId: z.string().regex(/^[a-z]+$/, 'Pregunta inválida.').max(40), optionId: z.enum(['a', 'b', 'c', 'd']) }).strict()).max(30),
+  revision: z.number().int().nonnegative(),
 }).strict();
 export type ExcelSubmitBody = z.infer<typeof excelSubmitBody>;
 

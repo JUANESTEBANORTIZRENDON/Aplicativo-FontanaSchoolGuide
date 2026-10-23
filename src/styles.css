@@ -860,19 +860,19 @@ button, input { scroll-margin-top: calc(var(--path-height) + 16px); }
 }
 .path-label strong { display: block; font-size: 21px; font-weight: 650; color: var(--navy); letter-spacing: -.4px; }
 .learning-path ol { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 36px; width: 100%; min-width: 0; list-style: none; margin: 0; padding: 0; }
-.learning-path li { position: relative; display: flex; align-items: center; gap: 13px; min-width: 0; font-size: 14px; font-weight: 600; line-height: 1.4; }
+.learning-path li { position: relative; display: flex; align-items: center; gap: 13px; min-width: 0; font-size: 16px; font-weight: 600; line-height: 1.5; }
 .learning-path li+li::before { content: ''; position: absolute; left: -29px; top: 50%; width: 22px; height: 1px; background: linear-gradient(90deg, #d4af3760, #c6bfaf); }
 .path-number { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%; border: 1px solid #d7d3c8; background: #ffffff80; color: #777568; font-size: 12px; font-weight: 600; }
 .path-current { color: var(--navy); }
 .path-current .path-number { background: linear-gradient(145deg, #f3dda0, #d4af37); border-color: #c8a032; color: #1f2a37; box-shadow: 0 0 0 5px #d4af3712, 0 3px 9px #b08c2720, inset 0 1px 0 #fff5cf; }
-.learning-path small { display: block; font-size: 11px; font-weight: 400; margin-top: 4px; color: #72746f; }
+.learning-path small { display: block; font-size: 14px; font-weight: 400; line-height: 1.6; margin-top: 4px; color: #526072; overflow-wrap: anywhere; }
 .path-current small { color: #8b1538; }
 .path-upcoming { color: #686b71; }
 @media(max-width:980px) {
   .learning-path { gap: 24px; padding: 22px; }
   .path-label { flex-basis: 135px; }
   .learning-path ol { gap: 26px; }
-  .learning-path li { gap: 9px; font-size: 13px; }
+  .learning-path li { gap: 9px; font-size: 15px; }
   .learning-path li+li::before { left: -20px; width: 14px; }
 }
 @media(max-width:760px) {
@@ -887,8 +887,13 @@ button, input { scroll-margin-top: calc(var(--path-height) + 16px); }
 @media(max-width:400px) {
   .learning-path { padding: 20px 16px; }
   .learning-path ol { gap: 15px; }
-  .learning-path li { font-size: 12px; }
+  .learning-path li { font-size: 14px; }
   .learning-path li+li::before { left: -13px; width: 9px; }
+}
+@media(max-width:480px) {
+  .learning-path ol { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .learning-path li { flex-direction: row; align-items: center; }
+  .learning-path li+li::before { content: none; }
 }
 
 /* 9. FRASE Y FIRMA DEL BANNER: fuentes locales para funcionar sin internet. */

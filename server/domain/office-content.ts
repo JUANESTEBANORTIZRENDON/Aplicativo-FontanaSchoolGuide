@@ -29,7 +29,7 @@ export const WELCOME = {
   expectedMinutes: { min: 15, max: 20 },
   steps: [
     { key: 'mecanografia', title: 'Mecanografía', text: 'Una prueba corta de escritura con un texto de atención al cliente.' },
-    { key: 'excel', title: 'Excel para cobranzas', text: 'Cuatro microlecciones y una evaluación de opción múltiple con casos ilustrados.' },
+    { key: 'excel', title: 'Excel para cobranzas', text: 'Cuatro microlecciones y ocho ejercicios individuales: un comando por ejercicio en una hoja simulada. Puedes volver a practicar sin límite.' },
     { key: 'ortografia', title: 'Ortografía aplicada', text: 'Lecciones breves y un dictado corto con corrección inmediata.' },
   ],
   note: 'Al aprobar las tres partes recibes el sello del módulo y se habilita la Inducción a las cobranzas. Si algo no sale a la primera, puedes repetir según los intentos disponibles.',

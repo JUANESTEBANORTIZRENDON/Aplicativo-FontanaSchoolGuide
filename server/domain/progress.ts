@@ -72,11 +72,11 @@ export type Availability = {
 
 // Los intentos sin overrideId consumen el cupo base (maxAttempts); los que llevan overrideId
 // consumen el cupo de esa excepción. Así una excepción consumida o revocada no devuelve intentos.
-export function computeAvailability(evaluation: EvaluationLite, attempts: AttemptLite[], overrides: OverrideLite[], now: Date): Availability {
+export function computeAvailability(evaluation: EvaluationLite, attempts: AttemptLite[], overrides: OverrideLite[], now: Date, unlimitedPractice = false): Availability {
   const counted = attempts.filter((attempt) => attempt.status !== 'CANCELLED');
   const passed = counted.some((attempt) => attempt.status === 'PASSED');
   const open = counted.find((attempt) => attempt.status === 'IN_PROGRESS') ?? null;
-  const baseRemaining = Math.max(0, evaluation.maxAttempts - counted.filter((attempt) => !attempt.overrideId).length);
+  const baseRemaining = unlimitedPractice ? Number.MAX_SAFE_INTEGER : Math.max(0, evaluation.maxAttempts - counted.filter((attempt) => !attempt.overrideId).length);
   const grants = overrides
     .filter((override) => GRANT_ACTIONS.includes(override.action) && isOverrideActive(override, now))
     .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
@@ -87,7 +87,7 @@ export function computeAvailability(evaluation: EvaluationLite, attempts: Attemp
     .filter((attempt) => attempt.status === 'FAILED' && attempt.submittedAt)
     .sort((a, b) => b.submittedAt!.getTime() - a.submittedAt!.getTime())[0];
   const resetWait = overrides.find((override) => override.action === 'RESET_WAIT' && isOverrideActive(override, now)) ?? null;
-  let waitUntil = lastFailed && evaluation.waitMinutes > 0 ? new Date(lastFailed.submittedAt!.getTime() + evaluation.waitMinutes * 60_000) : null;
+  let waitUntil = !unlimitedPractice && lastFailed && evaluation.waitMinutes > 0 ? new Date(lastFailed.submittedAt!.getTime() + evaluation.waitMinutes * 60_000) : null;
   if (waitUntil && (waitUntil <= now || resetWait)) waitUntil = null;
   const exhausted = !passed && !open && remaining === 0;
   return {

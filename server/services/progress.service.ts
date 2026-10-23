@@ -121,6 +121,7 @@ export async function loadSnapshot(db: Db, userId: string, now = new Date(), opt
       attempts.filter((attempt) => attempt.evaluation.activityId === activityId),
       overrides.filter((override) => override.activityId === activityId),
       now,
+      modules.some(module => module.activities.some(activity => activity.id === activityId && activity.type === 'EXCEL_PRACTICE')),
     ));
   }
   const views = computeModuleViews(modules.map(toModuleInput), {
@@ -175,7 +176,7 @@ export async function getAccessibleModule(userId: string, slug: string, options:
       status: activity.status, enabled: activity.status === 'ACTIVE',
       blockedReason: activity.status === 'ACTIVE' ? null : 'Actividad no disponible temporalmente',
       waitUntil: snapshot.availability.get(activity.id)?.waitUntil?.toISOString() ?? null,
-      attemptsRemaining: snapshot.availability.get(activity.id)?.remaining ?? null,
+      attemptsRemaining: activity.type === 'EXCEL_PRACTICE' ? null : snapshot.availability.get(activity.id)?.remaining ?? null,
     })),
     content: { status: 'EN_PREPARACION', message: 'Contenido en preparación' },
   };

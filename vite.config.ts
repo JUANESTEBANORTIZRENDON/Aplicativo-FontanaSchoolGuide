@@ -27,7 +27,14 @@ export default defineConfig({
     },
     // Carpetas que no son del frontend: vigilarlas provocaba recargas masivas y reinicios de Vite.
     watch: {
-      ignored: ['**/.mergejuan/**', '**/.mergemain/**', '**/server/**', '**/server-dist/**', '**/prisma/**', '**/dist/**', '**/docs-assets/**', '**/documentacion/**', '**/.env'],
+      ignored: (file) => {
+        const path = file.replace(/\\/g, '/');
+        if (/(?:^|\/)(?:\.mergejuan|\.mergemain|server-dist|prisma|dist|docs-assets|documentacion)(?:\/|$)/.test(path) || /(?:^|\/)\.env$/.test(path)) return true;
+        // Este motor puro también lo importa el simulador: debe actualizarse en el navegador.
+        // Se permite recorrer server/domain, pero se omiten los demás archivos del servidor.
+        const server = /(?:^|\/)server(?:\/(.*))?$/.exec(path);
+        return Boolean(server?.[1] && server[1] !== 'domain' && server[1] !== 'domain/excel-practice.ts');
+      },
     },
   },
 });

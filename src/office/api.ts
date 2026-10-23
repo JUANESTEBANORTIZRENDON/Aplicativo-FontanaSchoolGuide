@@ -1,4 +1,5 @@
 import { api, ApiError } from '../http';
+import type { PracticeAction, PracticeState } from '../../server/domain/excel-practice';
 
 // Cliente del módulo "Ofimática para tus cobranzas". El navegador nunca calcula una nota que cuente:
 // solo muestra lo que el servidor decide.
@@ -32,7 +33,7 @@ export type ModuleState = {
   config: {
     version: number;
     typing: { durationSeconds: number; minCorrectCpm: number; minAccuracy: number; startWindowSeconds: number; maxAttempts: number };
-    excel: { minScore: number; maxAttempts: number };
+    excel: { minScore: number; maxAttempts: number | null };
     dictation: { minScore: number; maxAttempts: number; maxPlays: number };
   };
   typing: { practiceRequired: boolean; openAttempt: { attemptId: string; expiresAt: string; started: boolean } | null };
@@ -72,7 +73,8 @@ export const officeApi = {
 
   excelActivity: () => get<ExcelActivityInfo>('/excel/activity'),
   excelStart: (id: string) => post<ExcelPractice>(`/excel/activity/${id}/attempts`),
-  excelSubmit: (id: string, body: { attemptId: string; answers: { questionId: string; optionId: QuizOptionId }[] }) => post<ExcelResult>(`/excel/activity/${id}/submit`, body),
+  excelAction: (id: string, body: { attemptId: string; revision: number; action: PracticeAction }) => post<ExcelPractice>(`/excel/activity/${id}/actions`, body),
+  excelSubmit: (id: string, body: { attemptId: string; revision: number }) => post<ExcelResult>(`/excel/activity/${id}/submit`, body),
 
   dictationNext: () => get<{ exercise: DictationInfo | null }>('/dictation/next'),
   dictationStart: (id: string) => post<DictationStarted>(`/dictation/${id}/attempts`),
@@ -86,16 +88,13 @@ export type TypingResult = {
   metrics: { correctCpm: number; ppm: number; accuracy: number; errors: number; correctCharacters: number; totalCharacters: number; durationSeconds: number };
 };
 
-// Evaluación de Excel: preguntas de opción múltiple con un caso ilustrado (la respuesta correcta queda en el servidor).
-export type QuizOptionId = 'a' | 'b' | 'c' | 'd';
-export type QuizQuestion = { id: string; lesson: string; image: string; prompt: string; options: { id: QuizOptionId; text: string }[] };
-export type ExcelPractice = { attemptId: string; number: number; resumed: boolean; title: string; questions: QuizQuestion[] };
+export type ExcelPractice = { attemptId: string; number: number; title: string; state: PracticeState; status: string; minScore: number; resumed?: boolean };
 export type ExcelActivityInfo = {
-  id: string; title: string; attemptId: string | null; lessons: Lesson[]; minScore: number; maxAttempts: number; questions?: QuizQuestion[];
+  id: string; title: string; attemptId: string | null; lessons: Lesson[]; minScore: number; maxAttempts: null; practice: ExcelPractice | null;
 };
-export type ExcelResult = {
-  attemptNumber: number; score: number; passed: boolean; minScore: number; attemptsRemaining: number | null;
-  steps: { questionId: string; lesson: string; correct: boolean; awardedScore: number; weight: number; chosen: string | null; correctOption: string; feedback: string }[];
+export type ExcelResult = ExcelPractice & {
+  score: number; passed: boolean;
+  steps: { questionId: string; lesson: string; title: string; correct: boolean; awardedScore: number; weight: number; hint: string }[];
 };
 
 export type DictationStarted = { attemptId: string; number: number; resumed: boolean; exerciseId: string; playsAllowed: number; playsUsed: number; playsRemaining: number };

@@ -165,3 +165,123 @@
 .test-toggle.is-on .test-toggle__track { background: #1e7d4f; }
 .test-toggle.is-on .test-toggle__track span { transform: translateX(16px); }
 @media (prefers-reduced-motion: reduce) { .test-toggle__track, .test-toggle__track span { transition: none; } }
+
+/* Lectura del panel: alcance local para no alterar el curso ni el acceso. */
+.admin-layout, #admin-dialog, #admin-busy {
+  color: #1f2a37;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.admin-content { grid-template-columns: minmax(0, 1fr); }
+.admin-content .admin-card { min-width: 0; max-width: 100%; }
+.admin-content .table-wrap { min-width: 0; max-width: 100%; overflow-x: auto; }
+.admin-content .collections-admin-detail, .admin-content .collections-admin-coaching > section { min-width: 0; }
+.admin-layout .admin-nav { font-size: 15px; line-height: 1.6; }
+.admin-layout .admin-nav strong { font-size: 16px; font-weight: 600; }
+.admin-layout .admin-nav a { font-weight: 500; }
+.admin-layout .admin-nav p { color: #d7deea; font-size: 14px; line-height: 1.6; }
+.admin-content :is(h2, h3, h4) { color: #1f2a37; font-weight: 700; line-height: 1.35; }
+.admin-content .section-title p, .admin-content .file-head p {
+  color: #475569;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.admin-content .secondary-link { font-size: 15px; font-weight: 600; }
+
+.admin-content :is(.admin-form label, .inline-label), #admin-dialog .auth-form label {
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.admin-content :is(.admin-form input, .admin-form select, .filter-grid input, .filter-grid select, .search-form input),
+#admin-dialog :is(input, select, textarea) {
+  color: #1f2a37;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.admin-content input::placeholder, #admin-dialog :is(input, textarea)::placeholder { color: #475569; opacity: 1; }
+.admin-content :is(.primary-action, .filter-grid button, .search-form button, .pagination button, .row-action, .primary-small),
+#admin-dialog :is(.primary-action, .secondary-action) {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.admin-content .row-action { font-size: 14px; }
+.admin-content .test-toggle { font-size: 14px; font-weight: 500; line-height: 1.6; }
+.admin-content .pagination { color: #475569; font-size: 14px; line-height: 1.6; }
+
+.admin-content .table-wrap table { color: #1f2a37; font-size: 15px; font-weight: 400; line-height: 1.6; }
+.admin-content .table-wrap th {
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.admin-content .table-wrap tbody th { color: #1f2a37; font-size: 15px; }
+.admin-content .table-wrap small { color: #475569; font-size: 14px; font-weight: 400; line-height: 1.6; }
+.admin-content .empty-row { color: #475569; }
+.admin-content :is(.status, .tag) { font-size: 14px; font-weight: 600; line-height: 1.6; }
+
+.admin-content .metric-card > span:not(.status), .admin-content .stat > span:first-child {
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.6;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.admin-content :is(.metric-card strong, .stat strong) { color: #1f2a37; font-weight: 700; line-height: 1.35; }
+.admin-content :is(.stat small, .module-title small, .muted, .dialog-note, .loading-note) {
+  color: #475569;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+}
+.admin-content .module-title strong { color: #1f2a37; font-size: 16px; font-weight: 600; line-height: 1.5; }
+.admin-content .module-percent b { color: #475569; font-size: 14px; font-weight: 500; line-height: 1.6; }
+.admin-content .module-order { font-weight: 700; }
+.admin-content .module-note { font-size: 14px; line-height: 1.6; }
+.admin-content :is(.activity-main, .activity-attempts, .activity-empty) { font-size: 15px; font-weight: 400; line-height: 1.6; }
+.admin-content .activity-main strong { color: #1f2a37; font-weight: 600; }
+.admin-content .activity-empty { color: #475569; }
+.admin-content .wait { font-size: 14px; font-weight: 600; line-height: 1.6; }
+.admin-content .history > summary { color: #1f2a37; font-size: 18px; font-weight: 600; line-height: 1.5; }
+.admin-content .audit-list { color: #1f2a37; font-size: 15px; font-weight: 400; line-height: 1.65; }
+.admin-content :is(.feedback, .dialog-error) { font-size: 15px; line-height: 1.6; }
+
+.admin-content .collections-admin-history caption,
+.admin-content .collections-admin-history small { color: #475569; font-size: 14px; font-weight: 400; line-height: 1.6; }
+.admin-content .collections-admin-detail { color: #1f2a37; font-size: 16px; font-weight: 400; line-height: 1.65; }
+.admin-content .collections-admin-report-head h3 { font-size: 22px; font-weight: 700; line-height: 1.35; }
+.admin-content .collections-admin-report-head p { font-size: 14px; font-weight: 600; line-height: 1.6; letter-spacing: normal; }
+.admin-content .collections-admin-report-head span { font-size: 14px; line-height: 1.6; }
+.admin-content .collections-admin-report-head > div:first-child > span { color: #475569; font-size: 15px; }
+.admin-content .collections-admin-report-head strong { font-weight: 700; line-height: 1.35; }
+.admin-content .collections-admin-coaching h4 { color: #70112c; font-size: 17px; font-weight: 600; line-height: 1.5; }
+.admin-content .collections-admin-coaching h4 > span { font-size: 14px; font-weight: 500; }
+.admin-content :is(.collections-admin-skill, .collections-admin-skill p, .collections-admin-responses) {
+  color: #1f2a37;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.65;
+}
+.admin-content :is(.collections-admin-skill summary, .collections-admin-responses summary) { font-weight: 600; line-height: 1.6; }
+.admin-content .collections-admin-skill strong, .admin-content .collections-admin-responses strong { font-weight: 600; }
+.admin-content .collections-admin-skill blockquote { color: #475569; font-size: 15px; font-weight: 400; line-height: 1.65; }
+.admin-content .collections-admin-critical { font-size: 16px; line-height: 1.65; }
+.admin-content .collections-admin-critical h4 { color: #70112c; font-size: 17px; font-weight: 600; }
+.admin-content .collections-admin-critical li, .admin-content .collections-admin-responses article p { line-height: 1.65; }
+.admin-content .collections-admin-detail > .dialog-note { font-size: 15px; line-height: 1.65; }
+
+#admin-dialog h2 { color: #1f2a37; font-size: 22px; font-weight: 700; line-height: 1.35; }
+#admin-dialog p { color: #475569; font-size: 15px; font-weight: 400; line-height: 1.6; }
+#admin-dialog :is(.dialog-hint, .auth-form label small) { color: #475569; font-size: 14px; font-weight: 400; line-height: 1.6; }
+#admin-dialog .dialog-group legend { font-size: 14px; font-weight: 600; line-height: 1.6; letter-spacing: normal; text-transform: none; }
+#admin-dialog .auth-form .check-label { font-size: 15px; font-weight: 500; }
+#admin-dialog .dialog-error { font-weight: 600; }
+#admin-busy p { color: #1f2a37; font-size: 16px; font-weight: 600; line-height: 1.6; }

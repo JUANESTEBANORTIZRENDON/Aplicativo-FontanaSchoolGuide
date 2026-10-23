@@ -1,6 +1,9 @@
 /* Módulo 04 «Tipifica»: pantalla de práctica de Control Next con pantalla completa y explicación de apartados. */
-.tipifica { display: grid; gap: 22px; max-width: 1320px; margin: 0 auto; }
+.tipifica { display: grid; min-width: 0; gap: 22px; max-width: 1320px; margin: 0 auto; }
+.tipifica > *, .tipifica :where(li, li > div, dt, dd) { min-width: 0; }
+.tipifica :where(h2, h3, p, strong, dt, dd) { overflow-wrap: anywhere; }
 .tipifica-head h2 { margin: 4px 0 8px; color: var(--navy); font-size: clamp(30px, 3.4vw, 42px); }
+.tipifica-head .auth-kicker { font-size: 14px; font-weight: 600; line-height: 1.45; letter-spacing: .06em; }
 .tipifica-lead { max-width: 920px; margin: 0; color: #364152; font-size: 17px; line-height: 1.6; }
 .tipifica-lead strong { color: var(--red); }
 
@@ -15,38 +18,38 @@
 .tipifica-screen__frame { position: relative; height: min(78vh, 820px); min-height: 520px; background: #f1f2f4; }
 .tipifica-screen__frame iframe { display: block; width: 100%; height: 100%; border: 0; }
 .tipifica-screen__controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; background: linear-gradient(180deg, #1b2230, #121822); }
-.tipifica-ctl { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 16px; border: 1px solid #ffffff2b; border-radius: 10px; background: #ffffff14; color: #f4f6fb; font: 600 14px/1.2 'Segoe UI', Arial, sans-serif; cursor: pointer; transition: background-color .15s ease; }
+.tipifica-ctl { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-height: 42px; padding: 8px 16px; border: 1px solid #ffffff2b; border-radius: 10px; background: #ffffff14; color: #f4f6fb; font: 600 15px/1.4 'Segoe UI', Arial, sans-serif; overflow-wrap: anywhere; cursor: pointer; transition: background-color .15s ease; }
 .tipifica-ctl:hover { background: #ffffff26; }
 .tipifica-ctl:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 .tipifica-ctl svg { width: 20px; height: 20px; }
 .tipifica-ctl--icon { justify-content: center; width: 40px; padding: 0; font-size: 20px; }
 .tipifica-ctl--full { background: linear-gradient(110deg, #74112e, #a02447); border-color: transparent; }
 .tipifica-ctl--full:hover { background: linear-gradient(110deg, #86163a, #b12a50); }
-.tipifica-count { margin-left: auto; color: #b9f3cf; font: 600 13px/1.3 'Segoe UI', Arial, sans-serif; }
+.tipifica-count { min-width: 0; margin-left: auto; color: #b9f3cf; font: 500 14px/1.5 'Segoe UI', Arial, sans-serif; overflow-wrap: anywhere; }
 .tipifica-screen:fullscreen { width: 100vw; height: 100vh; border: 0; border-radius: 0; box-shadow: none; }
 .tipifica-screen:fullscreen .tipifica-screen__frame { height: auto; min-height: 0; }
 /* Respaldo cuando el navegador no permite la pantalla completa: se amplía dentro de la ventana. */
 .tipifica-screen.is-expanded { position: fixed; inset: 0; z-index: 9999; border-radius: 0; }
 .tipifica-screen.is-expanded .tipifica-screen__frame { height: auto; min-height: 0; }
 body.tipifica-locked { overflow: hidden; }
-.tipifica-hint { margin: -8px 0 0; color: var(--muted); font-size: 14px; }
-.tipifica-hint kbd { padding: 1px 6px; border: 1px solid #c9ced8; border-bottom-width: 2px; border-radius: 4px; background: #fff; font-size: 12px; }
+.tipifica-hint { margin: -8px 0 0; color: #526072; font-size: 15px; line-height: 1.6; }
+.tipifica-hint kbd { padding: 1px 6px; border: 1px solid #c9ced8; border-bottom-width: 2px; border-radius: 4px; background: #fff; font-size: 14px; }
 
 /* Explicaciones */
 .tipifica-block { padding: 22px 24px; border: 1px solid var(--line); border-radius: 18px; background: #fff; }
-.tipifica-block h3 { margin: 0 0 14px; color: var(--navy); font-size: 21px; }
+.tipifica-block h3 { margin: 0 0 14px; color: var(--navy); font-size: 22px; font-weight: 600; line-height: 1.35; }
 .tipifica-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
 .tipifica-cards li { display: grid; gap: 6px; align-content: start; padding: 16px; border: 1px solid #ece3cf; border-radius: 14px; background: linear-gradient(160deg, #fffdf7, #fbf4e4); }
-.tipifica-cards strong { color: var(--navy); font-size: 16px; }
-.tipifica-cards p { margin: 0; color: #4b5563; font-size: 15px; line-height: 1.5; }
+.tipifica-cards strong { color: var(--navy); font-size: 18px; font-weight: 600; line-height: 1.4; }
+.tipifica-cards p { margin: 0; color: #4b5563; font-size: 17px; line-height: 1.6; }
 .tipifica-num { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--red); color: #fff; font-weight: 800; }
 .tipifica-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .tipifica-dl { display: grid; gap: 10px; margin: 0; }
 .tipifica-dl div { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; padding-bottom: 10px; border-bottom: 1px dashed #e5e7ed; }
 .tipifica-dl div:last-child { border-bottom: 0; padding-bottom: 0; }
-.tipifica-dl dt { color: var(--red); font-weight: 700; }
-.tipifica-dl dd { margin: 0; color: #374151; line-height: 1.5; }
-.tipifica-note { margin: 14px 0 0; padding: 10px 12px; border-left: 4px solid var(--gold); background: #fffaf0; color: #5b4a1d; font-size: 14px; }
+.tipifica-dl dt { color: var(--red); font-size: 17px; font-weight: 600; line-height: 1.6; }
+.tipifica-dl dd { margin: 0; color: #374151; font-size: 17px; line-height: 1.6; }
+.tipifica-note { margin: 14px 0 0; padding: 10px 12px; border-left: 4px solid var(--gold); background: #fffaf0; color: #5b4a1d; font-size: 16px; line-height: 1.6; }
 
 @media (max-width: 960px) {
   .tipifica-cards, .tipifica-two { grid-template-columns: minmax(0, 1fr); }
@@ -62,12 +65,12 @@ body.tipifica-locked { overflow: hidden; }
 /* Lo mínimo de una tipificación (arriba del módulo) */
 .tipifica-minimum { padding: 20px 22px; border: 1px solid #e9dcc0; border-left: 5px solid var(--red); border-radius: 18px; background: linear-gradient(135deg, #fffdf7, #fbf3e2); }
 .tipifica-minimum__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; margin-bottom: 12px; }
-.tipifica-minimum__head h3 { margin: 0; color: var(--navy); font-size: 20px; }
-.tipifica-minimum__head p { margin: 0; color: var(--muted); font-size: 14px; }
+.tipifica-minimum__head h3 { margin: 0; color: var(--navy); font-size: 22px; font-weight: 600; line-height: 1.35; }
+.tipifica-minimum__head p { margin: 0; color: #526072; font-size: 16px; line-height: 1.6; }
 .tipifica-minimum__list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
 .tipifica-minimum__list li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; padding: 10px 12px; border-radius: 12px; background: #fff; border: 1px solid #efe5cf; }
-.tipifica-minimum__list strong { color: var(--navy); font-size: 15px; }
-.tipifica-minimum__list p { margin: 2px 0 0; color: #4b5563; font-size: 13.5px; line-height: 1.45; }
+.tipifica-minimum__list strong { color: var(--navy); font-size: 17px; font-weight: 600; line-height: 1.4; }
+.tipifica-minimum__list p { margin: 2px 0 0; color: #4b5563; font-size: 16px; line-height: 1.6; }
 .tipifica-tick { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: #1e7d4f; color: #fff; font-weight: 900; font-size: 14px; }
 .tipifica-result { margin: 12px 0 0; padding: 10px 14px; border-radius: 10px; background: #fff3cd; color: #6b5300; font-weight: 700; }
 .tipifica-result.is-ok { background: #e3f6ea; color: #1e7d4f; }
