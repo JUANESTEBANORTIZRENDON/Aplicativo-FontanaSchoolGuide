@@ -29,7 +29,7 @@ export const WELCOME = {
   expectedMinutes: { min: 15, max: 20 },
   steps: [
     { key: 'mecanografia', title: 'Mecanografía', text: 'Una prueba corta de escritura con un texto de atención al cliente.' },
-    { key: 'excel', title: 'Excel para cobranzas', text: 'Cuatro microlecciones y ocho ejercicios individuales: un comando por ejercicio en una hoja simulada. Puedes volver a practicar sin límite.' },
+    { key: 'excel', title: 'Excel para cobranzas', text: 'Cuatro microlecciones y siete ejercicios en una hoja que se comporta como Excel: filtrar, ordenar, copiar y pegar, buscar, sumar y restar con fórmulas, y guardar. Puedes volver a practicar sin límite.' },
     { key: 'ortografia', title: 'Ortografía aplicada', text: 'Lecciones breves y un dictado corto con corrección inmediata.' },
   ],
   note: 'Al aprobar las tres partes recibes el sello del módulo y se habilita la Inducción a las cobranzas. Si algo no sale a la primera, puedes repetir según los intentos disponibles.',
@@ -52,8 +52,8 @@ export const EXCEL_LESSONS: Lesson[] = [
   },
   {
     key: 'formulas', title: 'Fórmulas básicas', image: 'excel-formulas.webp',
-    summary: 'Suma pagos y calcula faltantes sin hacer cuentas a mano.',
-    rule: 'Toda fórmula empieza con =. =SUMA(B2:B6) suma el rango de B2 a B6 (los dos puntos indican el rango). =C2-D2 resta. El botón Σ Autosuma escribe la suma por ti. El formato Moneda (Inicio › Número) muestra los valores en pesos.',
+    summary: 'Suma y resta valores seleccionando las celdas con el mouse.',
+    rule: 'Toda fórmula empieza con =. Para sumar, escribe =SUMA( y selecciona las celdas arrastrando el mouse. Para restar, escribe =, selecciona la primera celda, escribe - y selecciona la segunda. Pulsa Enter para calcular. Por ejemplo: =SUMA(B2:B4) o =B2-B3.',
     incorrect: 'Escribir el resultado a mano: si un dato cambia, el total queda mal.',
     correct: 'Escribir =SUMA(B2:B6) y dejar que Excel recalcule.',
   },

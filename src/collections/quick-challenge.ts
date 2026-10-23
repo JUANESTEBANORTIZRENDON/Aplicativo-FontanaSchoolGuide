@@ -1,4 +1,5 @@
 import { escapar } from '../http';
+import { decorateTutorFeedback } from '../tutor/feedback';
 
 type Case = { concept: string; prompt: string; choices: readonly { text: string; correct: boolean; feedback: string }[] };
 const ok = (text: string, feedback: string) => ({ text, correct: true, feedback });
@@ -111,6 +112,7 @@ export type QuickChallengeState = { index: number; answers: (number | undefined)
 export function mountQuickChallenge(root: HTMLElement, state: QuickChallengeState, options: { cases: readonly Case[]; continueLabel: string; onContinue: () => void; saving: boolean; error: string }): void {
   const cases = options.cases;
   let timer: number | undefined;
+  let clearTutor: (() => void) | undefined;
 
   function advance(): void {
     window.clearTimeout(timer);
@@ -121,6 +123,7 @@ export function mountQuickChallenge(root: HTMLElement, state: QuickChallengeStat
   }
 
   function render(): void {
+    clearTutor?.();
     const item = cases[state.index]!;
     const selected = state.answers[state.index];
     const answer = selected === undefined ? undefined : item.choices[selected];
@@ -148,6 +151,8 @@ export function mountQuickChallenge(root: HTMLElement, state: QuickChallengeStat
         ? `<span>Lee la corrección y continúa cuando estés listo.</span><button type="button" data-quick-continue class="collections-primary">${state.index === cases.length - 1 ? 'Ver resultado' : 'Continuar'} →</button>`
         : `<span>${answer ? 'Pasando al siguiente reto…' : 'Si aciertas, avanzas automáticamente.'}</span>`}</footer>`}
     </section>`;
+    const message = root.querySelector<HTMLElement>(state.finished ? '.collections-quick-finish' : '#quick-challenge-feedback');
+    if (message) clearTutor = decorateTutorFeedback(message, state.finished ? 'complete' : answer?.correct ? 'success' : 'support');
     root.querySelector('[data-concept-continue]')?.addEventListener('click', options.onContinue);
     root.querySelector('[data-quick-continue]')?.addEventListener('click', advance);
     root.querySelectorAll<HTMLButtonElement>('[data-quick-answer]').forEach((button) => button.addEventListener('click', () => {

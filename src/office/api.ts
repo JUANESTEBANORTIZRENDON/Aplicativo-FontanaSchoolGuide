@@ -1,5 +1,5 @@
 import { api, ApiError } from '../http';
-import type { PracticeAction, PracticeState } from '../../server/domain/excel-practice';
+import type { AnyPracticeState, PracticeAction } from '../../server/domain/excel-practice';
 
 // Cliente del módulo "Ofimática para tus cobranzas". El navegador nunca calcula una nota que cuente:
 // solo muestra lo que el servidor decide.
@@ -88,7 +88,7 @@ export type TypingResult = {
   metrics: { correctCpm: number; ppm: number; accuracy: number; errors: number; correctCharacters: number; totalCharacters: number; durationSeconds: number };
 };
 
-export type ExcelPractice = { attemptId: string; number: number; title: string; state: PracticeState; status: string; minScore: number; resumed?: boolean };
+export type ExcelPractice = { attemptId: string; number: number; title: string; state: AnyPracticeState; status: string; minScore: number; resumed?: boolean };
 export type ExcelActivityInfo = {
   id: string; title: string; attemptId: string | null; lessons: Lesson[]; minScore: number; maxAttempts: null; practice: ExcelPractice | null;
 };

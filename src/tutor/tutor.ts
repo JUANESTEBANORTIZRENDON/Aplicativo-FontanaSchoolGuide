@@ -1,5 +1,5 @@
 import './tutor.css';
-import { BLINK, FRAME_GEOMETRY, IDLE_BLINK_INTERVAL_MS, IDLE_FRAME, frameUrl, type FrameId } from './manifest';
+import { BLINK, EXPRESSIONS, FRAME_GEOMETRY, IDLE_BLINK_INTERVAL_MS, IDLE_FRAME, frameUrl, type FrameId, type TutorExpression } from './manifest';
 
 // Tutor pixel art: un componente reutilizable que muestra cuadros PNG por estado. No usa CSS para deformar la imagen
 // (solo respira y entra con pequeños desplazamientos). Quien lo usa decide qué cuadro mostrar (por ejemplo, el
@@ -11,6 +11,9 @@ export type Tutor = {
   hold(id: FrameId): void;
   // Vuelve al reposo (sonrisa con parpadeo ocasional).
   rest(): void;
+  react(expression: TutorExpression): void;
+  // Detiene gestos mientras se escribe; el contenido y la validación no dependen del avatar.
+  pauseAmbient(paused: boolean): void;
   destroy(): void;
 };
 
@@ -28,9 +31,11 @@ function loadFrame(id: FrameId): Promise<void> {
 }
 const ensure = (ids: readonly FrameId[]): Promise<void> => Promise.all(ids.map(loadFrame)).then(() => undefined);
 
-export function createTutor(host: HTMLElement): Tutor {
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+export function createTutor(host: HTMLElement, options: { ambient?: boolean } = {}): Tutor {
+  const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const ambient = options.ambient !== false;
   host.classList.add('tutor');
+  host.classList.toggle('is-quiet', !ambient);
   host.style.setProperty('--tutor-ratio', `${FRAME_GEOMETRY.width} / ${FRAME_GEOMETRY.height}`);
   host.setAttribute('aria-hidden', 'true'); // acompaña al contenido; toda la información está en texto normal
   host.innerHTML = '<div class="tutor-figure"></div>';
@@ -41,6 +46,8 @@ export function createTutor(host: HTMLElement): Tutor {
   let run = 0;
   let destroyed = false;
   let wake: (() => void) | null = null;
+  let paused = false;
+  let mode: 'idle' | 'held' | 'reacting' = 'idle';
 
   // Un <img> por cuadro, apilados: cambiar de cuadro es alternar visibilidad (sin recargas ni parpadeo).
   function show(id: FrameId): void {
@@ -73,31 +80,72 @@ export function createTutor(host: HTMLElement): Tutor {
   // Reposo con parpadeo ocasional: un único temporizador activo (no se acumulan bucles).
   async function idle(token: number): Promise<void> {
     show(IDLE_FRAME);
-    if (reduced) return;
+    if (motion.matches || paused || document.hidden) return;
+    let blinks = 0;
     while (token === run && !destroyed) {
       const [min, max] = IDLE_BLINK_INTERVAL_MS;
       if (!(await wait(min + Math.random() * (max - min), token))) return;
       if (document.hidden) continue;
       for (const step of BLINK) { show(step.frame); if (!(await wait(step.ms, token))) return; }
       show(IDLE_FRAME);
+      if (ambient && ++blinks % 3 === 0) {
+        if (!(await wait(1200, token))) return;
+        show(blinks % 2 === 0 ? 'rest-look-right' : 'rest-tilt');
+        if (!(await wait(650, token))) return;
+        show(IDLE_FRAME);
+      }
     }
   }
-  const startIdle = (): void => { void idle(cancel()); };
-
-  const ready = ensure([IDLE_FRAME, ...BLINK.map((step) => step.frame)]).then(() => {
+  const startIdle = (): void => { mode = 'idle'; delete host.dataset.expression; void idle(cancel()); };
+  function react(expression: TutorExpression): void {
     if (destroyed) return;
+    const token = cancel(); mode = 'reacting';
+    const sequence = EXPRESSIONS[expression];
+    void ensure(sequence.map(step => step.frame)).then(async () => {
+      if (destroyed || token !== run || paused || document.hidden) return;
+      host.dataset.expression = expression;
+      if (motion.matches) {
+        show(sequence[0]!.frame);
+        if (!(await wait(1400, token))) return;
+      } else for (const step of sequence) { show(step.frame); if (!(await wait(step.ms, token))) return; }
+      if (token === run) { delete host.dataset.expression; startIdle(); }
+    });
+  }
+  const visibility = () => {
+    if (document.hidden) { cancel(); show(IDLE_FRAME); }
+    else if (mode !== 'held') startIdle();
+  };
+  const preference = () => { if (mode !== 'held') startIdle(); };
+  document.addEventListener('visibilitychange', visibility);
+  motion.addEventListener('change', preference);
+
+  const ambientFrames: FrameId[] = ambient ? ['rest-look-right', 'rest-tilt'] : [];
+  const ready = ensure([IDLE_FRAME, ...BLINK.map((step) => step.frame), ...ambientFrames]).then(() => {
+    if (destroyed) return;
+    if (current === null) show(IDLE_FRAME);
     host.classList.add('is-ready');
-    startIdle();
+    if (run === 0) startIdle();
   });
 
   return {
     async preload(ids) { await ready; await ensure(ids); },
-    hold(id) { if (!destroyed) { cancel(); show(id); } },
+    hold(id) { if (!destroyed) { mode = 'held'; delete host.dataset.expression; cancel(); show(id); } },
     rest() { if (!destroyed) startIdle(); },
+    react,
+    pauseAmbient(next) {
+      if (destroyed || paused === next) return;
+      paused = next;
+      host.classList.toggle('is-quiet', next || !ambient);
+      if (next) { cancel(); show(IDLE_FRAME); }
+      else if (mode !== 'held') startIdle();
+    },
     destroy() {
       destroyed = true; cancel();
+      document.removeEventListener('visibilitychange', visibility);
+      motion.removeEventListener('change', preference);
       host.innerHTML = '';
-      host.classList.remove('tutor', 'is-ready');
+      host.classList.remove('tutor', 'is-ready', 'is-quiet');
+      delete host.dataset.expression;
     },
   };
 }

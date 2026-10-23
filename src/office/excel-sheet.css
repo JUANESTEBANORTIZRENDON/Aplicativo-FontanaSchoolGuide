@@ -1,0 +1,178 @@
+/* Simulador de Excel: marco del aula alrededor de una hoja que imita Excel de escritorio. */
+.office-screen .excel-practice { color: #1f2933; padding: 22px 24px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.excel-practice > * { min-width: 0; }
+.excel-practice :focus-visible { outline: 3px solid #9b7310; outline-offset: 2px; }
+.excel-practice button { font-family: inherit; }
+
+/* Encabezado del aula: título, puntaje y avance */
+.excel-practice .xl-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 16px; align-items: start; }
+.excel-practice .xl-head h1 { margin: 0; font-size: clamp(22px, 2.4vw, 28px); }
+.excel-practice .xl-score { padding: 6px 14px; border: 1px solid #d4af37; border-radius: 12px; color: #8b1538; background: #faf4e5; font-size: 22px; line-height: 1.3; white-space: nowrap; }
+.excel-practice .xl-score small { display: block; color: #425166; font-size: 12.5px; font-weight: 500; }
+.excel-practice .xl-steps { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.excel-practice .xl-steps li { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px 10px; border: 1px solid #cbd1da; border-radius: 10px; background: #f5f6f8; color: #334155; font-size: 14px; line-height: 1.3; }
+.excel-practice .xl-steps span { flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #d9dee6; font-size: 12.5px; font-weight: 700; }
+.excel-practice .xl-steps b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.excel-practice .xl-steps .is-done { border-color: #9cc9ad; background: #e8f4ec; color: #14402a; }
+.excel-practice .xl-steps .is-done span { background: #217346; color: #fff; }
+.excel-practice .xl-steps .is-current { border: 2px solid #b18b21; background: #fff4d5; color: #5b3f00; padding: 5px 9px; }
+.excel-practice .xl-steps .is-current span { background: #b18b21; color: #fff; }
+
+/* Instrucción del paso actual */
+.excel-practice .xl-task { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 16px; border: 1px solid #dbc487; border-radius: 12px; background: #fcf6e4; }
+.excel-practice .xl-task-main { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.excel-practice .xl-task-emblem { display: grid; place-items: center; flex: none; width: 48px; height: 48px; border: 1px solid #dfc77f; border-radius: 14px; background: #fff; color: #8b1538; }
+.excel-practice .xl-task-emblem svg { width: 27px; height: 27px; }
+.excel-practice .xl-task-text { flex: 1 1 320px; min-width: 0; }
+.excel-practice .xl-task-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 10px; margin-bottom: 9px; color: #775810; font-size: 13px; font-weight: 600; }
+.excel-practice .xl-task-state { padding: 2px 8px; border-radius: 20px; background: #8b1538; color: #fff; font-size: 12px; }
+.excel-practice .xl-task-location { padding: 2px 7px; border: 1px solid #d5c697; border-radius: 6px; background: #fff; color: #344458; font-size: 12px; }
+.excel-practice .xl-task-line { margin: 0; color: #67112c; font-size: 18px; line-height: 1.4; }
+.excel-practice .xl-task-line[data-done="true"] { color: #14542f; }
+.excel-practice .xl-task[data-done="true"] { background: linear-gradient(120deg,#f6fcf8,#eaf5ec); border-color: #97bda4; box-shadow: inset 4px 0 #397c52; }
+.excel-practice .xl-task[data-done="true"] .xl-task-emblem { color: #21653f; border-color: #97bda4; }
+.excel-practice .xl-task[data-done="true"] .xl-task-state { background: #21653f; }
+.excel-practice .xl-task-sub { margin: 3px 0 0; color: #4b5563; font-size: 14.5px; line-height: 1.45; }
+.excel-practice .xl-task-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; list-style: none; padding: 0; margin: 12px 0 0; }
+.excel-practice .xl-task-progress li { display: flex; align-items: center; gap: 6px; padding: 3px 9px 3px 4px; border: 1px solid #c7cdd5; border-radius: 20px; background: #fff; color: #526072; font-size: 12px; line-height: 1.5; }
+.excel-practice .xl-task-progress li > span { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #edf0f4; color: #526072; font-size: 11px; font-weight: 700; }
+.excel-practice .xl-task-progress .is-current { border-color: #8b1538; color: #70112c; background: #fff4f6; font-weight: 600; }
+.excel-practice .xl-task-progress .is-current > span { background: #8b1538; color: #fff; }
+.excel-practice .xl-task-progress .is-done { border-color: #97bda4; color: #21653f; background: #f0f8f2; }
+.excel-practice .xl-task-progress .is-done > span { background: #21653f; color: #fff; }
+.excel-practice .xl-task-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.excel-practice .xl-task-actions button { display: inline-flex; justify-content: center; align-items: center; gap: 6px; min-height: 40px; padding: 7px 12px; font-size: 14px; transition: background .2s,border-color .2s; }
+.excel-practice .xl-task-actions button:not(:disabled):hover { border-color: #8b1538; background: #fff0f4; }
+.excel-practice .xl-task-actions .primary:not(:disabled):hover { background: #70112c; }
+.excel-practice .xl-task-help > span { display: inline-grid; place-items: center; width: 19px; height: 19px; border: 1px solid currentColor; border-radius: 50%; font-size: 12px; }
+.excel-practice .xl-task-actions .primary { padding: 6px 18px; }
+.excel-practice .xl-task-hint { padding: 12px 14px; border: 1px solid #bccbd9; border-radius: 10px; background: #f2f6fa; color: #1f2a37; font-size: 14px; line-height: 1.6; }
+.excel-practice .xl-task-hint[hidden] { display: none; }
+.excel-practice .xl-task-hint strong { display: block; color: #344458; }
+.excel-practice .xl-task-hint p { margin: 3px 0 0; }
+.excel-practice .xl-task.is-new-step .xl-task-text { animation: xl-task-enter .28s ease-out; }
+@keyframes xl-task-enter { from { opacity: .55; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .excel-practice .xl-task.is-new-step .xl-task-text { animation: none; } .excel-practice .xl-task-actions button { transition: none; } }
+
+/* Ventana de Excel */
+.excel-practice .xl-window { position: relative; border: 1px solid #8fa398; border-radius: 6px; background: #fff; font-family: 'Segoe UI', Calibri, system-ui, sans-serif; font-size: 14.5px; color: #1f2933; box-shadow: 0 2px 10px rgba(20, 60, 40, .15); }
+.excel-practice .xl-window:focus-within { box-shadow: 0 0 0 3px rgba(33, 115, 70, .28), 0 2px 10px rgba(20, 60, 40, .15); }
+.excel-practice .xl-titlebar { display: flex; align-items: center; gap: 12px; min-height: 38px; padding: 0 12px; border-radius: 5px 5px 0 0; background: #217346; color: #fff; }
+.excel-practice .xl-logo { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 3px; background: #185c37; font-weight: 800; font-size: 14px; }
+.excel-practice .xl-filename { font-weight: 600; font-size: 14.5px; }
+.excel-practice .xl-savestate { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 12px; background: rgba(255, 255, 255, .16); font-size: 13.5px; }
+.excel-practice .xl-savestate::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #c9d6ce; }
+.excel-practice .xl-savestate[data-tone="saved"]::before { background: #7ff0a8; }
+.excel-practice .xl-savestate[data-tone="dirty"]::before { background: #ffb74d; }
+.excel-practice .xl-savestate[data-tone="busy"]::before { background: #ffe082; }
+.excel-practice .xl-badge { margin-left: auto; padding: 1px 9px; border: 1px solid rgba(255, 255, 255, .55); border-radius: 10px; font-size: 12.5px; opacity: .92; }
+.excel-practice .xl-tabs { display: flex; gap: 4px; padding: 0 10px; border-bottom: 1px solid #d0d0d0; background: #f3f3f3; }
+.excel-practice .xl-tabs span { padding: 6px 14px 5px; color: #185c37; font-weight: 600; border-bottom: 3px solid #217346; }
+.excel-practice .xl-ribbon { display: flex; align-items: stretch; overflow-x: auto; padding: 6px 6px 4px; border-bottom: 1px solid #d0d0d0; background: #f3f3f3; }
+.excel-practice .xl-group { display: flex; flex: none; flex-direction: column; align-items: center; padding: 0 8px; border-right: 1px solid #d6d6d6; }
+.excel-practice .xl-group:last-child { border-right: 0; }
+.excel-practice .xl-tools { display: flex; gap: 2px; }
+.excel-practice .xl-tool { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 58px; height: 54px; padding: 2px 6px; border: 1px solid transparent; border-radius: 3px; background: transparent; color: #185c37; font-size: 12.5px; cursor: pointer; }
+.excel-practice .xl-tool span { color: #2b3a33; line-height: 1.1; white-space: nowrap; }
+.excel-practice .xl-tool:hover:not(:disabled) { border-color: #b4cfbf; background: #e1ede6; }
+.excel-practice .xl-tool:active:not(:disabled) { background: #cfe3d8; }
+.excel-practice .xl-tool:disabled { opacity: .4; cursor: not-allowed; }
+.excel-practice .xl-group-name { margin-top: 2px; color: #55605a; font-size: 12px; }
+.excel-practice .xl-formulabar { display: flex; align-items: center; min-height: 32px; border-bottom: 1px solid #d0d0d0; background: #fff; }
+.excel-practice .xl-namebox { width: 88px; height: 28px; margin: 0 4px 0 6px; padding: 0 6px; border: 1px solid #c4c8c6; border-radius: 2px; background: #fff; color: #1f2933; font: 600 14.5px 'Segoe UI', Calibri, sans-serif; text-align: center; }
+.excel-practice .xl-fx { flex: none; width: 34px; color: #55605a; font: italic 700 14px Georgia, serif; text-align: center; border-left: 1px solid #d6d6d6; }
+.excel-practice .xl-bar { flex: 1; min-width: 0; height: 30px; padding: 0 8px; border: 0; border-left: 1px solid #d6d6d6; background: #fff; color: #1f2933; font: 14.5px 'Segoe UI', Calibri, sans-serif; }
+.excel-practice .xl-bar:focus, .excel-practice .xl-namebox:focus { outline: 2px solid #217346; outline-offset: -2px; }
+
+/* Cuadrícula */
+.excel-practice .xl-gridarea { position: relative; }
+.excel-practice .xl-grid { max-height: 372px; overflow: auto; background: #fff; }
+.excel-practice .xl-grid:focus-visible { outline: none; }
+.excel-practice .xl-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; user-select: none; }
+.excel-practice .xl-table th, .excel-practice .xl-table td { height: 28px; padding: 0; border-right: 1px solid #d9dcda; border-bottom: 1px solid #d9dcda; font-weight: 400; }
+.excel-practice .xl-colhead, .excel-practice .xl-corner { position: sticky; top: 0; z-index: 3; height: 24px !important; background: #e9ecea; color: #3b4540; font-size: 13px; text-align: center; border-bottom-color: #c3c8c5 !important; }
+.excel-practice .xl-corner { left: 0; z-index: 5; }
+.excel-practice .xl-colhead.is-active { background: #cfe8da; color: #14402a; font-weight: 700; border-bottom: 2px solid #217346 !important; }
+.excel-practice .xl-rowhead { position: sticky; left: 0; z-index: 2; background: #e9ecea; color: #3b4540; font-size: 13px !important; text-align: center; border-right-color: #c3c8c5 !important; }
+.excel-practice .xl-rowhead.is-active { background: #cfe8da; color: #14402a; font-weight: 700 !important; border-right: 2px solid #217346 !important; }
+.excel-practice .xl-rowhead.is-filtered { color: #1a56b8; }
+.excel-practice .xl-first > th, .excel-practice .xl-first > td { position: sticky; top: 24px; z-index: 2; }
+.excel-practice .xl-first > th { z-index: 4; }
+.excel-practice .xl-cell { position: relative; padding: 0 8px !important; overflow: hidden; color: #1f2933; font-size: 14.5px; line-height: 27px; white-space: nowrap; text-overflow: ellipsis; background: #fff; cursor: cell; }
+.excel-practice .xl-cell.is-num { text-align: right; font-variant-numeric: tabular-nums; }
+.excel-practice .xl-cell.xl-hdr { padding-right: 30px !important; background: #dff0e6; border-bottom: 2px solid #217346; color: #14402a; font-weight: 700; text-align: left; cursor: default; }
+.excel-practice .xl-hdr-text { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.excel-practice .xl-sortmark { margin-left: 5px; color: #217346; font-style: normal; }
+.excel-practice .xl-arrow { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 22px; height: 20px; padding: 0; border: 1px solid #8fa398; border-radius: 2px; background: #fff; color: #2b3a33; font-size: 11px; line-height: 1; cursor: pointer; }
+.excel-practice .xl-arrow:hover, .excel-practice .xl-arrow[aria-expanded="true"] { background: #e1ede6; border-color: #217346; }
+.excel-practice .xl-arrow.is-filtered { background: #c9e8d6; color: #14542f; border-color: #217346; }
+.excel-practice .xl-total .xl-cell { border-top: 2px solid #217346; background: #f4f9f6; font-weight: 700; }
+.excel-practice .xl-total .xl-cell.is-found { background: #fff2a6; }
+.excel-practice .xl-cell.is-active { outline: 2px solid #217346; outline-offset: -2px; z-index: 1; }
+.excel-practice .xl-cell.is-found { background: #fff2a6; box-shadow: inset 0 0 0 2px #d9a400; }
+.excel-practice .xl-cell.is-copied { background-image: linear-gradient(90deg, #217346 50%, transparent 50%), linear-gradient(90deg, #217346 50%, transparent 50%), linear-gradient(0deg, #217346 50%, transparent 50%), linear-gradient(0deg, #217346 50%, transparent 50%); background-repeat: repeat-x, repeat-x, repeat-y, repeat-y; background-size: 8px 2px, 8px 2px, 2px 8px, 2px 8px; background-position: 0 0, 0 100%, 0 0, 100% 0; animation: xl-ants .5s linear infinite; }
+@keyframes xl-ants { to { background-position: 8px 0, -8px 100%, 0 -8px, 100% 8px; } }
+.excel-practice .xl-hint { box-shadow: 0 0 0 2px #e0a800; animation: xl-pulse 1.6s ease-in-out infinite; }
+.excel-practice .xl-cell.xl-hint { background: #fff4cf; box-shadow: inset 0 0 0 2px #e0a800; }
+@keyframes xl-pulse { 50% { box-shadow: 0 0 0 4px rgba(224, 168, 0, .45); } }
+@media (prefers-reduced-motion: reduce) { .excel-practice .xl-cell.is-copied, .excel-practice .xl-hint { animation: none; } }
+.excel-practice .xl-editor { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; box-sizing: border-box; padding: 0 6px; border: 2px solid #217346; border-radius: 0; background: #fff; color: #111827; font: inherit; line-height: normal; outline: none; user-select: text; }
+
+/* Buscador integrado */
+.excel-practice .xl-search { position: absolute; top: 10px; right: 22px; z-index: 8; display: flex; align-items: center; gap: 6px; padding: 6px 8px; border: 1px solid #8fa398; border-radius: 4px; background: #fff; box-shadow: 0 4px 14px rgba(0, 0, 0, .22); }
+.excel-practice .xl-search[hidden] { display: none; }
+.excel-practice .xl-search label { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.excel-practice .xl-search input { width: 190px; height: 30px; padding: 0 8px; border: 1px solid #8fa398; border-radius: 2px; background: #fff; color: #111827; font: 14.5px 'Segoe UI', Calibri, sans-serif; }
+.excel-practice .xl-search input:focus { outline: 2px solid #217346; outline-offset: -1px; }
+.excel-practice .xl-mini { min-height: 30px; padding: 0 10px; border: 1px solid #8fa398; border-radius: 2px; background: #f3f3f3; color: #1f2933; font-size: 14px; cursor: pointer; }
+.excel-practice .xl-mini:hover { background: #e1ede6; }
+
+/* Menú de la flecha del encabezado */
+.excel-practice .xl-menu { position: absolute; z-index: 20; width: 250px; padding: 4px 0; border: 1px solid #8fa398; background: #fff; box-shadow: 0 8px 22px rgba(0, 0, 0, .28); font-size: 14px; }
+.excel-practice .xl-menu [role="menuitem"] { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 32px; padding: 4px 12px; border: 0; background: none; color: #1f2933; font-size: 14px; text-align: left; cursor: pointer; }
+.excel-practice .xl-menu [role="menuitem"]:hover:not(:disabled), .excel-practice .xl-menu [role="menuitem"]:focus-visible { background: #dff0e6; outline: none; }
+.excel-practice .xl-menu [role="menuitem"]:disabled { color: #7d8883; cursor: not-allowed; }
+.excel-practice .xl-menu [role="menuitem"] span { width: 14px; color: #217346; font-weight: 700; }
+.excel-practice .xl-menu hr { margin: 4px 0; border: 0; border-top: 1px solid #d6d6d6; }
+.excel-practice .xl-list { max-height: 150px; overflow: auto; margin: 0 8px; padding: 4px 6px; border: 1px solid #c4c8c6; }
+.excel-practice .xl-list label { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer; }
+.excel-practice .xl-list input { width: 16px; height: 16px; margin: 0; accent-color: #217346; }
+.excel-practice .xl-menu-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 10px 4px; }
+.excel-practice .xl-ok, .excel-practice .xl-cancel { min-height: 30px; padding: 0 16px; border-radius: 2px; font-size: 14px; cursor: pointer; }
+.excel-practice .xl-ok { border: 1px solid #185c37; background: #217346; color: #fff; }
+.excel-practice .xl-ok:disabled { opacity: .5; cursor: not-allowed; }
+.excel-practice .xl-cancel { border: 1px solid #8fa398; background: #fff; color: #1f2933; }
+
+/* Pestaña de hoja y barra de estado */
+.excel-practice .xl-sheettabs { display: flex; align-items: center; gap: 14px; min-height: 34px; padding: 0 10px; border-top: 1px solid #d0d0d0; border-radius: 0 0 5px 5px; background: #f3f3f3; font-size: 13.5px; color: #3b4540; }
+.excel-practice .xl-sheettab { padding: 6px 18px 4px; border-bottom: 3px solid #217346; border-inline: 1px solid #cfcfcf; background: #fff; color: #185c37; font-weight: 600; }
+.excel-practice .xl-keys { margin-left: auto; color: #55605a; font-size: 12.5px; }
+
+/* Devolución al estudiante */
+.excel-practice .xl-feedback { margin: 0; padding: 12px 16px; border-left: 4px solid #27624b; border-radius: 6px; background: #eaf3e5; color: #214326; font-size: 15.5px; line-height: 1.55; }
+.excel-practice .xl-feedback[data-ok="false"] { border-color: #8b1538; background: #fff0ec; color: #75162b; }
+.excel-practice .xl-feedback .office-secondary { min-height: 34px; padding: 4px 12px; font-size: 14px; }
+.office-screen .excel-help { padding: 1rem 1.2rem; border: 1px solid #dbc487; border-radius: 12px; background: #faf5e8; margin-block: 1rem; }
+
+@media (max-width: 860px) { .excel-practice .xl-keys { display: none; } }
+@media (max-width: 700px) {
+  .office-screen .excel-practice { padding: 16px 14px; }
+  .excel-practice .xl-head { grid-template-columns: 1fr; }
+  .excel-practice .xl-score { justify-self: start; }
+  .excel-practice .xl-steps li:not(.is-current) b { display: none; }
+  .excel-practice .xl-steps li:not(.is-current) { justify-content: center; }
+  .excel-practice .xl-steps { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .excel-practice .xl-task { padding: 15px; }
+  .excel-practice .xl-task-emblem { width: 38px; height: 38px; border-radius: 10px; align-self: start; }
+  .excel-practice .xl-task-emblem svg { width: 22px; height: 22px; }
+  .excel-practice .xl-task-text { flex-basis: calc(100% - 52px); }
+  .excel-practice .xl-task-line { font-size: 18px; }
+  .excel-practice .xl-task-actions { width: 100%; }
+  .excel-practice .xl-task-actions button { flex: 1 1 auto; }
+  .excel-practice .xl-badge { display: none; }
+  .excel-practice .xl-search { right: 8px; left: 8px; }
+  .excel-practice .xl-search input { width: 100%; min-width: 0; }
+  .excel-practice .xl-search label { flex: 1; }
+}
+
+.excel-practice .xl-cell.is-formula-reference { background: #e5eefb; box-shadow: inset 0 0 0 2px #285dad; color: #152f53; }

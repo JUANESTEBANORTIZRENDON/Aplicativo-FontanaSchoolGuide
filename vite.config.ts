@@ -33,7 +33,7 @@ export default defineConfig({
         // Este motor puro también lo importa el simulador: debe actualizarse en el navegador.
         // Se permite recorrer server/domain, pero se omiten los demás archivos del servidor.
         const server = /(?:^|\/)server(?:\/(.*))?$/.exec(path);
-        return Boolean(server?.[1] && server[1] !== 'domain' && server[1] !== 'domain/excel-practice.ts');
+        return Boolean(server?.[1] && server[1] !== 'domain' && !/^domain\/excel-(practice|formula)\.ts$/.test(server[1]));
       },
     },
   },

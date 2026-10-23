@@ -1,4 +1,5 @@
 import { escapar } from '../http';
+import { decorateTutorFeedback } from '../tutor/feedback';
 import { icon } from './concepts-slider';
 import { showSelectedCollectionOptions } from './ui';
 import {
@@ -16,6 +17,7 @@ export function mountGuidedCase(root: HTMLElement, state: GuidedCaseState, optio
   const progress = state.progress[options.block];
   let feedback = '';
   let practiceSuccess = '';
+  let clearTutor: (() => void) | undefined;
   function focus(selector: string): void { root.querySelector<HTMLElement>(selector)?.focus(); }
   function input(name: DraftField, label: string, placeholder: string, extra = ''): string {
     return `<label class="collections-plan-field" for="case-${name}">${label}<input id="case-${name}" data-case-field="${name}" value="${escapar(state[name])}" placeholder="${placeholder}" required maxlength="80" ${extra}></label>`;
@@ -91,6 +93,7 @@ export function mountGuidedCase(root: HTMLElement, state: GuidedCaseState, optio
     return `<div class="collections-dossier-complete"><p class="collections-kicker">${guide.steps.length} DE ${guide.steps.length} PASOS COMPLETADOS</p><h4 id="guided-detail-title" tabindex="-1">${guide.doneTitle}</h4><p>${guide.doneText}</p>${summary}<button type="button" data-case-continue class="collections-primary"${options.saving ? ' disabled' : ''}>${options.saving ? 'Guardando…' : guide.nextLabel}</button></div>`;
   }
   function render(): void {
+    clearTutor?.();
     const current = guide.steps[progress.index];
     const fullWidth = options.block === 'alternativas' || options.block === 'seguimiento';
     const stepNav = fullWidth ? '' : `<aside class="collections-plan-actions" aria-label="Pasos de este bloque"><h4>Tu paso a paso</h4><p>Al completar un paso, se abre el siguiente.</p><ol class="collections-plan-slots">${guide.steps.map((step, index) => `<li class="${index < progress.index ? 'is-done' : index === progress.index ? 'is-active' : ''}"${index === progress.index ? ' aria-current="step"' : ''}><span class="collections-plan-number" aria-hidden="true">${index + 1}</span><strong>${step.title}</strong><small>${index < progress.index ? '✓ Completado' : index === progress.index ? 'Estás aquí · ' + step.short : 'Después del paso ' + index}</small></li>`).join('')}</ol></aside>`;
@@ -103,6 +106,11 @@ export function mountGuidedCase(root: HTMLElement, state: GuidedCaseState, optio
       ${options.error ? `<p id="collections-error" class="collections-submit-error" role="alert" tabindex="-1">${escapar(options.error)}</p>` : ''}</section></div>
       <p class="collections-dossier-note">Caso y datos de cliente ficticios · Nombres de entidades tomados del guion de referencia · Grabación, monitoreo e identidad verificada son supuestos del escenario · Guion y condiciones reales pendientes de validación interna.</p>
     </section>`;
+    const message = root.querySelector<HTMLElement>('#guided-feedback')
+      ?? root.querySelector<HTMLElement>('.collections-alternative-success')
+      ?? root.querySelector<HTMLElement>('.collections-plan-success')
+      ?? root.querySelector<HTMLElement>('.collections-case-confirmation');
+    if (message) clearTutor = decorateTutorFeedback(message, feedback ? 'support' : progress.finished ? 'complete' : 'success');
     root.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('[data-case-field]').forEach((field) => field.addEventListener('input', () => {
       state[field.dataset.caseField as DraftField] = field.value;
       const preview = root.querySelector('[data-case-preview]');

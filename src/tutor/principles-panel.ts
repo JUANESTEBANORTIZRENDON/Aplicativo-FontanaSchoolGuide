@@ -5,6 +5,8 @@ import { createTutor } from './tutor';
 // Pestaña «Principios de trabajo»: cinco opciones. Al elegir una, el tutor la explica con voz y mueve la boca con ella.
 // El texto completo de lo que dice el tutor siempre está visible (HTML normal); el personaje acompaña, no reemplaza.
 export type PrinciplesOptions = {
+  // La lectura completada pertenece al perfil; al repasar no se exige repetir los audios.
+  completed?: boolean;
   // Un principio se completa únicamente cuando termina su audio.
   onProgress?: (state: { reviewed: number; total: number }) => void;
 };
@@ -50,21 +52,30 @@ export function mountPrinciples(host: HTMLElement, options: PrinciplesOptions = 
   let index = 0;
   let visible = false;
   let finished = false;
-  let highestUnlocked = 0;
-  const reviewed = new Set<string>();
+  let reviewMode = Boolean(options.completed);
+  let highestUnlocked = reviewMode ? PRINCIPLES.length - 1 : 0;
+  const reviewed = new Set<string>(reviewMode ? PRINCIPLES.map(principle => principle.id) : []);
 
   const speaker = createSpeaker(tutor, {
     state(state) {
       const playing = state === 'playing' || state === 'loading';
       tutorHost.classList.toggle('is-talking', state === 'playing');
       playButton.textContent = playing ? 'Pausar explicación' : state === 'paused' ? 'Continuar explicación' : 'Escuchar explicación';
-      playButton.hidden = finished;
+      playButton.hidden = finished && !reviewMode;
       playButton.setAttribute('aria-label', playing ? 'Pausar la explicación' : state === 'paused' ? 'Continuar la explicación' : 'Escuchar la explicación');
-      q('#principle-status').textContent = STATUS[state];
+      q('#principle-status').textContent = reviewMode && state === 'idle'
+        ? 'Ya completaste los cinco principios. Elige cualquiera para repasar sin repetir el recorrido.'
+        : STATUS[state];
+      if (state === 'error') tutor.react('support');
     },
     progress() {},
     ended() {
       if (!visible || finished) return;
+      if (reviewMode) {
+        finished = true;
+        q('#principle-status').textContent = 'Repaso finalizado. Puedes elegir cualquier principio; tu avance se conserva.';
+        return;
+      }
       const principle = PRINCIPLES[index]!;
       if (!reviewed.has(principle.id)) {
         reviewed.add(principle.id);
@@ -74,8 +85,10 @@ export function mountPrinciples(host: HTMLElement, options: PrinciplesOptions = 
       if (index + 1 < PRINCIPLES.length) select(index + 1, true);
       else {
         finished = true;
+        reviewMode = true;
         playButton.hidden = true;
         q('#principle-status').textContent = 'Terminaste de escuchar los cinco principios.';
+        tutor.react('complete');
       }
     },
   });
@@ -83,6 +96,7 @@ export function mountPrinciples(host: HTMLElement, options: PrinciplesOptions = 
   function select(next: number, autoplay: boolean): void {
     if (next < 0 || next > highestUnlocked) return;
     finished = false;
+    playButton.hidden = false;
     index = next;
     const principle = PRINCIPLES[index]!;
     buttons.forEach((button, position) => {
@@ -106,11 +120,15 @@ export function mountPrinciples(host: HTMLElement, options: PrinciplesOptions = 
   }));
   playButton.addEventListener('click', () => { void speaker.toggle(); });
   select(0, false);
-  options.onProgress?.({ reviewed: 0, total: PRINCIPLES.length });
+  if (reviewMode) {
+    finished = true;
+    q('#principle-status').textContent = 'Ya completaste los cinco principios. Elige cualquiera para repasar sin repetir el recorrido.';
+  }
+  options.onProgress?.({ reviewed: reviewed.size, total: PRINCIPLES.length });
 
   return {
-    show() { if (visible) return; visible = true; if (!finished) void speaker.toggle(); },
-    hide() { if (visible) { visible = false; speaker.stop(); } },
+    show() { if (visible) return; visible = true; tutor.pauseAmbient(false); if (!reviewMode && !finished) void speaker.toggle(); },
+    hide() { if (visible) { visible = false; speaker.stop(); tutor.pauseAmbient(true); } },
     destroy() { visible = false; speaker.destroy(); tutor.destroy(); host.innerHTML = ''; },
   };
 }

@@ -1,0 +1,15 @@
+.xl-saving-dialog { box-sizing: border-box; width: min(420px, calc(100% - 32px)); max-height: calc(100dvh - 40px); overflow: auto; padding: 28px; border: 1px solid #d4af37; border-radius: 22px; background: radial-gradient(ellipse at 50% 0, #ead28f55, transparent 70%), #fffaf0; box-shadow: 0 24px 80px #11182740; color: #1f2a37; text-align: center; font-family: 'DM Sans','Segoe UI',sans-serif; }
+.xl-saving-dialog::backdrop { background: #1f2a3770; backdrop-filter: blur(4px); }
+.xl-saving-dialog img { display: block; width: 64px; height: 64px; margin: 0 auto 8px; object-fit: contain; }
+.xl-saving-dialog .xl-saving-brand { margin: 0 0 18px; color: #8b1538; font-size: 12px; font-weight: 700; letter-spacing: .13em; }
+.xl-saving-indicator { display: block; box-sizing: border-box; width: 30px; height: 30px; margin: auto; border: 3px solid #d4af374d; border-top-color: #8b1538; border-radius: 50%; animation: xl-saving-spin 1.1s linear infinite; }
+.xl-saving-dialog.is-confirmed .xl-saving-indicator { display: grid; place-items: center; border: 0; background: #e4f2e9; color: #21653f; animation: none; }
+.xl-saving-dialog.is-confirmed .xl-saving-indicator::after { content: '✓'; font: 700 22px/1 'Segoe UI',sans-serif; }
+.xl-saving-dialog h2 { margin: 18px 0 8px; font: 700 23px/1.3 'Manrope','Segoe UI',sans-serif; color: #70112c; }
+.xl-saving-dialog h2:focus { outline: none; }
+.xl-saving-dialog > p { margin: 0; font-size: 15px; line-height: 1.6; overflow-wrap: anywhere; }
+.xl-saving-dialog #xl-saving-reminder { margin-top: 18px; padding: 13px; border: 1px solid #d4af3766; border-radius: 12px; background: #f5ecd9; }
+.xl-saving-dialog #xl-saving-reminder strong { display: block; color: #70112c; }
+@keyframes xl-saving-spin { to { transform: rotate(360deg); } }
+@media (max-width: 480px) { .xl-saving-dialog { padding: 22px 18px; } }
+@media (prefers-reduced-motion: reduce) { .xl-saving-indicator { animation: none; } }

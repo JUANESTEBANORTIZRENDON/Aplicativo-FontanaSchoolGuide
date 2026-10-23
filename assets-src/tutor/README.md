@@ -2,6 +2,13 @@
 
 Aparece en la pestaña **«Principios de trabajo»** de la bienvenida (`/induccion`): cinco opciones; al elegir una, el tutor
 la explica **con voz** y mueve la boca con ella.
+También acompaña los mensajes de la práctica de cobranzas, sin intervenir en la validación ni en el progreso.
+
+## Expresiones e interacción
+- `src/tutor/manifest.ts` define secuencias breves de orientación, aprobación, reflexión y celebración, reutilizando los PNG existentes.
+- `src/tutor/speech-motion.ts` combina la señal de voz con pequeñas pausas de boca y parpadeos durante silencios en reposo.
+- `src/tutor/feedback.ts` añade un avatar compacto a los mensajes existentes y detiene sus gestos mientras se escribe. Libera los eventos y temporizadores al abandonar la actividad.
+- El reposo incluye parpadeos espaciados y movimientos ocasionales de cabeza. Con movimiento reducido se muestran poses estáticas, sin bucles animados.
 
 ## Qué hay aquí
 - `referencias/` — las **láminas originales** (solo referencia, no se publican):

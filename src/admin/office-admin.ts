@@ -97,7 +97,7 @@ async function drawConfig(body: HTMLElement, helpers: AdminHelpers, redraw: () =
   const current = data.config;
   body.innerHTML = `
     <section class="auth-card admin-card"><div class="section-title"><div><h2>Versión vigente: v${current.version}</h2>
-      <p>Solo se envían los valores que cambies. El motivo es obligatorio.</p><p>Excel práctico: ocho ejercicios individuales, aprobación con 80 puntos y reintentos sin límite. Los valores de Excel del historial corresponden a la configuración anterior.</p></div></div>
+      <p>Solo se envían los valores que cambies. El motivo es obligatorio.</p><p>Excel práctico: siete ejercicios (100 puntos repartidos), aprobación con 80 puntos y reintentos sin límite. Los valores de Excel del historial corresponden a la configuración anterior.</p></div></div>
       <form id="office-config" class="admin-form">
         ${CONFIG_FIELDS.map((field) => `<label>${escapar(field.label)} <small>${escapar(field.hint)}</small><input name="${field.key}" type="number" step="${field.step ?? '1'}" required value="${current[field.key]}"></label>`).join('')}
         <label>Motivo del cambio <small>Obligatorio</small><textarea name="reason" required minlength="5" maxlength="500" rows="2"></textarea></label>

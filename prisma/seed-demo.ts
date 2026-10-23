@@ -197,14 +197,13 @@ export async function runDemoSeed(log: (line: string) => void = console.log): Pr
     const seed = seedCursor++;
     let practice = newPractice();
     const actions: import('../server/domain/excel-practice.js').PracticeAction[][] = [
-      [{ type: 'filter', value: 'Pendiente' }],
-      [{ type: 'undo', method: 'shortcut' }],
-      [{ type: 'sort', direction: 'asc' }],
-      [{ type: 'sort', direction: 'desc' }],
-      [{ type: 'copy', cell: { row: 'c1', column: 'cliente' }, method: 'shortcut' }],
-      [{ type: 'paste', cell: { row: 'c2', column: 'observacion' }, method: 'shortcut' }],
+      [{ type: 'filter', column: 'estado', values: ['Pendiente'] }, { type: 'edit', cell: { row: 'c1', column: 'saldo' }, value: '450000' }, { type: 'undo', method: 'shortcut' }],
+      [{ type: 'sort', column: 'saldo', direction: 'asc' }, { type: 'sort', column: 'saldo', direction: 'desc' }],
+      [{ type: 'copy', cell: { row: 'c1', column: 'cliente' }, method: 'shortcut' }, { type: 'paste', cell: { row: 'c2', column: 'observacion' }, method: 'shortcut' }],
       [{ type: 'open-search', method: 'shortcut' }, { type: 'search', query: 'Laura Méndez' }],
-      [{ type: 'save', method: 'shortcut' }],
+      [{ type: 'edit', cell: { row: 'total', column: 'saldo' }, value: '=SUMA(C2:C4)' }],
+      [{ type: 'edit', cell: { row: 'total', column: 'saldo' }, value: '=C2-C3' }],
+      [{ type: 'edit', cell: { row: 'c1', column: 'observacion' }, value: 'Prometió pagar el viernes' }, { type: 'save', method: 'shortcut' }],
     ];
     for (let i = 0; i < actions.length; i++) {
       if (i < actions.length - drop) for (const action of actions[i]!) practice = applyPracticeAction(practice, action, at);

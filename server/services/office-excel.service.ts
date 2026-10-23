@@ -2,23 +2,24 @@ import { randomInt } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { ConflictError, NotFoundError } from '../domain/errors.js';
-import { applyPracticeAction, EXCEL_PASS_SCORE, EXERCISES, isPractice, newPractice, practiceScore, practiceSteps, upgradePractice, type PracticeState } from '../domain/excel-practice.js';
+import { applyPracticeAction, EXCEL_PASS_SCORE, EXCEL_PRACTICE_VERSION, EXERCISES, isPractice, newPractice, practiceScore, practiceSteps, upgradePractice, type AnyPracticeState, type PracticeState } from '../domain/excel-practice.js';
 import { EXCEL_LESSONS, OFFICE_IMAGES } from '../domain/office-content.js';
 import { officeActivities } from '../repositories/office.repository.js';
 import { startAttemptTx, submitAttemptTx } from './attempt.service.js';
 import type { ExcelActionBody, ExcelSubmitBody } from '../validators/office.validator.js';
 
 const TITLE = 'Excel para cobranzas · práctica interactiva';
-type Snapshot = Record<string, unknown> & { practice?: PracticeState };
+type Snapshot = Record<string, unknown> & { practice?: AnyPracticeState };
 const snapshotOf = (value: unknown): Snapshot => value && typeof value === 'object' ? value as Snapshot : {};
-const stateOf = (value: unknown, upgrade = true) => { const state = snapshotOf(value).practice; return isPractice(state) ? upgrade ? upgradePractice(state) : state : newPractice(); };
+// Un intento cerrado conserva su forma original (upgrade = false); uno abierto se convierte a la versión actual.
+const stateOf = (value: unknown, upgrade = true): AnyPracticeState => { const state = snapshotOf(value).practice; return isPractice(state) ? upgrade ? upgradePractice(state) : state : newPractice(); };
 const json = (value: unknown) => value as Prisma.InputJsonValue;
 async function activityOf(db: Prisma.TransactionClient = prisma) {
   const activity = (await officeActivities(db))?.bySection.excel;
   if (!activity || activity.status !== 'ACTIVE') throw new ConflictError('La práctica de Excel no está disponible.', 'EXCEL_UNAVAILABLE');
   return activity;
 }
-const view = (attemptId: string, number: number, state: PracticeState, status = 'IN_PROGRESS') => ({ attemptId, number, title: TITLE, state, exercises: EXERCISES, status, minScore: EXCEL_PASS_SCORE });
+const view = (attemptId: string, number: number, state: AnyPracticeState, status = 'IN_PROGRESS') => ({ attemptId, number, title: TITLE, state, exercises: EXERCISES, status, minScore: EXCEL_PASS_SCORE });
 
 export async function getActivity(userId: string) {
   const activity = await activityOf();
@@ -48,7 +49,7 @@ export async function startPractice(userId: string, excelId: string, now = new D
     const state = stateOf(result?.configSnapshot);
     if (result) {
       // Un intento abierto de la evaluación anterior se convierte sin borrar su historial cerrado.
-      if (snapshotOf(result.configSnapshot).practice?.version !== 2) await tx.excelAttemptResult.update({ where: { attemptId: attempt.id }, data: { configSnapshot: json({ ...snapshotOf(result.configSnapshot), excelMinScore: EXCEL_PASS_SCORE, practice: state }), stepResults: json(practiceSteps(state)) } });
+      if (snapshotOf(result.configSnapshot).practice?.version !== EXCEL_PRACTICE_VERSION) await tx.excelAttemptResult.update({ where: { attemptId: attempt.id }, data: { configSnapshot: json({ ...snapshotOf(result.configSnapshot), excelMinScore: EXCEL_PASS_SCORE, practice: state }), stepResults: json(practiceSteps(state)) } });
     } else {
       await tx.excelAttemptResult.create({ data: { attemptId: attempt.id, excelActivityId: scenario!.id, excelVersion: scenario!.version, seed: randomInt(1, 2147483647), configSnapshot: json({ excelMinScore: EXCEL_PASS_SCORE, practice: state }), stepResults: json(practiceSteps(state)) } });
     }
@@ -76,10 +77,10 @@ export async function submitPractice(userId: string, excelId: string, input: Exc
     const attempt = await tx.attempt.findUnique({ where: { id: input.attemptId }, include: { excelResult: true } });
     if (!attempt || attempt.userId !== userId || attempt.excelResult?.excelActivityId !== excelId) throw new NotFoundError('Intento no encontrado.', 'ATTEMPT_NOT_FOUND');
     if (attempt.status !== 'IN_PROGRESS') throw new ConflictError('La práctica ya fue finalizada.', 'ATTEMPT_CLOSED');
-    const state = stateOf(attempt.excelResult.configSnapshot);
+    const state = upgradePractice(stateOf(attempt.excelResult.configSnapshot));
     if (state.revision !== input.revision) throw new ConflictError('Recarga para recuperar el avance actualizado.', 'PRACTICE_STALE');
-    if (!state.visited.every(Boolean)) throw new ConflictError('Recorre los ocho ejercicios antes de finalizar.', 'PRACTICE_INCOMPLETE');
-    if (state.dirty) throw new ConflictError('Tienes una observación sin guardar. Guárdala o reinicia este ejercicio antes de finalizar.', 'UNSAVED_CHANGES');
+    if (!state.visited.every(Boolean)) throw new ConflictError('Recorre los cinco ejercicios antes de finalizar.', 'PRACTICE_INCOMPLETE');
+    if (state.dirty) throw new ConflictError('Tienes cambios sin guardar. Guárdalos con Ctrl+G o reinicia este ejercicio antes de finalizar.', 'UNSAVED_CHANGES');
     const score = practiceScore(state); const passed = score >= EXCEL_PASS_SCORE; const steps = practiceSteps(state);
     await tx.excelAttemptResult.update({ where: { attemptId: attempt.id }, data: { score, passed, stepResults: json(steps), completedAt: now } });
     await submitAttemptTx(tx, userId, attempt.id, { score, passed, now, answers: steps.map(step => ({ questionId: step.questionId, isCorrect: step.correct, awardedScore: step.awardedScore })) });

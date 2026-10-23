@@ -10,7 +10,15 @@ export const frameUrl = (id: FrameId): string => `/tutor/frames/${id}.png`;
 // Reposo: sonrisa natural y parpadeo ocasional (medio cierre, cierre y reapertura).
 export const IDLE_FRAME: FrameId = 'rest';
 export const BLINK: readonly { frame: FrameId; ms: number }[] = [{ frame: 'rest-blink-half', ms: 70 }, { frame: 'rest-blink', ms: 90 }, { frame: 'rest-blink-half', ms: 70 }];
-export const IDLE_BLINK_INTERVAL_MS = [2600, 5400] as const;
+export const IDLE_BLINK_INTERVAL_MS = [3600, 6600] as const;
+
+export type TutorExpression = 'guidance' | 'success' | 'support' | 'complete';
+export const EXPRESSIONS: Record<TutorExpression, readonly { frame: FrameId; ms: number }[]> = {
+  guidance: [{ frame: 'point-turn', ms: 350 }, { frame: 'point', ms: 900 }],
+  success: [{ frame: 'affirm', ms: 380 }, { frame: 'affirm-nod', ms: 220 }, { frame: 'affirm', ms: 550 }],
+  support: [{ frame: 'think', ms: 1000 }, { frame: 'rest-tilt', ms: 500 }],
+  complete: [{ frame: 'celebrate-grin', ms: 850 }, { frame: 'affirm-nod', ms: 240 }, { frame: 'affirm', ms: 600 }],
+};
 
 // Gestos del cuerpo al hablar. Cada uno tiene dos cuadros con el mismo cuerpo: boca cerrada y boca abierta.
 export type TalkBase = 'rest' | 'explain' | 'point' | 'fist';

@@ -1,6 +1,7 @@
-import { baseAt, framesOf, talkFrame, type FrameId } from './manifest';
+import { baseAt, framesOf, IDLE_FRAME, talkFrame, type FrameId } from './manifest';
 import type { Principle } from './principles';
 import type { Tutor } from './tutor';
+import { createSpeechMotion } from './speech-motion';
 
 // El tutor «habla»: reproduce la voz y, en cada fotograma de pantalla, mira en qué punto va el audio para elegir
 // el cuadro: el gesto según la coreografía y la boca abierta o cerrada según la línea de boca (volumen real de la voz).
@@ -20,7 +21,8 @@ export type Speaker = {
 };
 
 export function createSpeaker(tutor: Tutor, events: SpeakerEvents): Speaker {
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const speech = createSpeechMotion();
   const audio = new Audio();
   audio.preload = 'none';
   let principle: Principle | null = null;
@@ -34,13 +36,13 @@ export function createSpeaker(tutor: Tutor, events: SpeakerEvents): Speaker {
   function frameAt(positionMs: number): FrameId {
     const p = principle!;
     const open = p.audio.mouth[Math.floor(positionMs / p.audio.stepMs)] === '1';
-    return talkFrame(baseAt(p.choreography, positionMs / p.audio.durationMs), open);
+    return speech.frame(baseAt(p.choreography, positionMs / p.audio.durationMs), open, positionMs);
   }
   // Con «reducir movimiento» el tutor se queda en una pose estable: solo suena la voz.
   function paint(positionMs: number, mouth = true): void {
     if (!principle) return;
     events.progress(positionMs, principle.audio.durationMs);
-    if (reduced) return;
+    if (motion.matches) { if (lastFrame !== IDLE_FRAME) { lastFrame = IDLE_FRAME; tutor.hold(IDLE_FRAME); } return; }
     const frame = mouth ? frameAt(positionMs) : talkFrame(baseAt(principle.choreography, positionMs / principle.audio.durationMs), false);
     if (frame !== lastFrame) { lastFrame = frame; tutor.hold(frame); }
   }
@@ -71,7 +73,7 @@ export function createSpeaker(tutor: Tutor, events: SpeakerEvents): Speaker {
   }
   function halt(): void {
     playback++;
-    stopLoop(); lastFrame = null;
+    stopLoop(); lastFrame = null; speech.reset();
     if (!audio.paused) audio.pause();
     audio.currentTime = 0;
     tutor.rest();
@@ -91,7 +93,7 @@ export function createSpeaker(tutor: Tutor, events: SpeakerEvents): Speaker {
       if (state === 'playing' || state === 'loading') { playback++; audio.pause(); stopLoop(); paint(audio.currentTime * 1000, false); set('paused'); return; }
       await play();
     },
-    async restart() { if (!principle) return; audio.currentTime = 0; await play(); },
+    async restart() { if (!principle) return; speech.reset(); audio.currentTime = 0; await play(); },
     stop: halt,
     destroy() { destroyed = true; halt(); audio.removeAttribute('src'); audio.load(); },
   };

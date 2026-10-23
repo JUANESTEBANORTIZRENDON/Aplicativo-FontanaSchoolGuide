@@ -3,14 +3,14 @@ import type { SpeakerEvents } from './speaker';
 import { PRINCIPLES } from './principles';
 
 const mocks = vi.hoisted(() => ({
-  select: vi.fn(), toggle: vi.fn(), stop: vi.fn(), destroy: vi.fn(),
+  select: vi.fn(), toggle: vi.fn(), stop: vi.fn(), destroy: vi.fn(), react: vi.fn(), pauseAmbient: vi.fn(),
   events: null as SpeakerEvents | null,
 }));
 vi.mock('./speaker', () => ({ createSpeaker: (_tutor: unknown, events: SpeakerEvents) => {
   mocks.events = events;
   return mocks;
 } }));
-vi.mock('./tutor', () => ({ createTutor: () => ({ destroy: vi.fn() }) }));
+vi.mock('./tutor', () => ({ createTutor: () => ({ destroy: vi.fn(), react: mocks.react, pauseAmbient: mocks.pauseAmbient }) }));
 import { mountPrinciples } from './principles-panel';
 
 function host() {
@@ -32,6 +32,42 @@ function host() {
 describe('narración automática de principios', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it('restaura los cinco principios del perfil sin reproducir ni exigir el recorrido', () => {
+    const element = host();
+    const progress = vi.fn();
+    const panel = mountPrinciples(element as unknown as HTMLElement, { completed: true, onProgress: progress });
+    const buttons = element.querySelectorAll();
+    expect(buttons.every(button => !button.disabled)).toBe(true);
+    expect(progress).toHaveBeenCalledExactlyOnceWith({ reviewed: 5, total: 5 });
+    panel.show();
+    expect(mocks.toggle).not.toHaveBeenCalled();
+    expect(element.querySelector('#principle-status').textContent).toContain('Ya completaste');
+    // Elegir un tema reproduce solo ese repaso, sin encadenar otra vez los cinco.
+    buttons[2]!.addEventListener.mock.calls.find(([name]) => name === 'click')![1]();
+    expect(mocks.toggle).toHaveBeenCalledTimes(1);
+    const selections = mocks.select.mock.calls.length;
+    mocks.events!.ended!();
+    expect(mocks.select).toHaveBeenCalledTimes(selections);
+    expect(progress).toHaveBeenCalledTimes(1);
+    panel.hide(); panel.show();
+    expect(mocks.toggle).toHaveBeenCalledTimes(1);
+    mocks.events!.state?.('idle');
+    expect(element.querySelector('#principle-status').textContent).toContain('Ya completaste');
+    expect(element.querySelector('#principle-play').hidden).toBe(false);
+  });
+
+  it('al terminar y volver a la pestaña permite repasar sin empezar los audios de nuevo', () => {
+    const element = host();
+    const panel = mountPrinciples(element as unknown as HTMLElement);
+    panel.show();
+    for (let i = 0; i < PRINCIPLES.length; i++) mocks.events!.ended!();
+    panel.hide();
+    const toggles = mocks.toggle.mock.calls.length;
+    panel.show();
+    expect(mocks.toggle).toHaveBeenCalledTimes(toggles);
+    expect(element.querySelectorAll().every(button => !button.disabled)).toBe(true);
+  });
+
   it('empieza al mostrarse, avanza los cinco audios en orden y se detiene al final', () => {
     const element = host();
     const panel = mountPrinciples(element as unknown as HTMLElement);
@@ -44,6 +80,7 @@ describe('narración automática de principios', () => {
     expect(mocks.toggle).toHaveBeenCalledTimes(PRINCIPLES.length);
     expect(element.querySelector('#principle-play').hidden).toBe(true);
     expect(element.querySelector('#principle-status').textContent).toContain('Terminaste');
+    expect(mocks.react).toHaveBeenCalledExactlyOnceWith('complete');
     expect(element.innerHTML).not.toContain('principle-progress');
     expect(element.innerHTML).not.toContain('principle-replay');
   });
@@ -52,6 +89,7 @@ describe('narración automática de principios', () => {
     const panel = mountPrinciples(host() as unknown as HTMLElement);
     panel.show();
     panel.hide();
+    expect(mocks.pauseAmbient).toHaveBeenLastCalledWith(true);
     mocks.events!.ended!();
     expect(mocks.stop).toHaveBeenCalledTimes(1);
     expect(mocks.select).toHaveBeenCalledTimes(1);

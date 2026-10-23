@@ -21,7 +21,7 @@ async function advisorAgent(): Promise<{ agent: Agent; id: string; documento: st
 describe('evaluación de Excel', () => {
   afterAll(() => cleanupSuite(SUITE));
 
-  it('persiste comandos, recupera la hoja y califica ocho ejercicios en el servidor', async () => {
+  it('persiste comandos, recupera la hoja y califica siete ejercicios en el servidor', async () => {
     const { agent, id } = await advisorAgent();
     const activity = await agent.get('/api/training/office/excel/activity');
     expect(activity.status).toBe(200);
@@ -43,7 +43,7 @@ describe('evaluación de Excel', () => {
     }
     const recovered = (await agent.get('/api/training/office/excel/activity')).body.data.practice;
     expect(recovered.state).toEqual(current.state);
-    expect(recovered.state.savedRows[0].observacion).toBe('Cliente solicita llamada mañana.');
+    expect(recovered.state.savedRows[0].observacion).toBe('Prometió pagar el viernes');
     const graded = await agent.post(`/api/training/office/excel/activity/${activity.body.data.id}/submit`).set(ORIGIN).send({ attemptId: current.attemptId, revision: current.state.revision });
     expect(graded.status).toBe(200);
     expect(graded.body.data).toMatchObject({ score: 100, passed: true });
@@ -68,11 +68,14 @@ describe('evaluación de Excel', () => {
       const skipped = await agent.post(`/api/training/office/excel/activity/${activity.id}/actions`).set(ORIGIN).send({ attemptId: started.attemptId, revision, action: { type: 'skip' } });
       expect(skipped.status).toBe(200); revision++;
     }
-    const saved = await agent.post(`/api/training/office/excel/activity/${activity.id}/actions`).set(ORIGIN).send({ attemptId: started.attemptId, revision, action: { type: 'save', method: 'button' } });
-    expect(saved.status).toBe(200); revision++;
+    // Solo el último ejercicio se completa: edita la observación y guarda.
+    for (const value of PRACTICE_ACTIONS[EXERCISES.length - 1]!) {
+      const done = await agent.post(`/api/training/office/excel/activity/${activity.id}/actions`).set(ORIGIN).send({ attemptId: started.attemptId, revision, action: value });
+      expect(done.status).toBe(200); revision++;
+    }
     const graded = await agent.post(`/api/training/office/excel/activity/${activity.id}/submit`).set(ORIGIN).send({ attemptId: started.attemptId, revision });
     expect(graded.status).toBe(200);
-    expect(graded.body.data).toMatchObject({ score: 12.5, passed: false });
+    expect(graded.body.data).toMatchObject({ score: 14.28, passed: false });
     expect(graded.body.data.steps).toHaveLength(EXERCISES.length);
     const retry = await agent.post(`/api/training/office/excel/activity/${activity.id}/attempts`).set(ORIGIN);
     expect(retry.status).toBe(201); expect(retry.body.data.number).toBe(2);

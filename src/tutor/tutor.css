@@ -8,8 +8,9 @@
 .tutor-frame.is-visible { visibility: visible; }
 @keyframes tutor-breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
 /* Al hablar, un balanceo mínimo acompaña a la voz (los cambios de boca y de gesto son cuadros reales). */
-.tutor.is-talking .tutor-figure { animation: tutor-talk 0.62s ease-in-out infinite; }
-@keyframes tutor-talk { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.tutor.is-talking .tutor-figure { animation: tutor-talk 3.8s ease-in-out infinite; }
+@keyframes tutor-talk { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
+.tutor.is-quiet .tutor-figure { animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .tutor { transition: none; transform: none; }
   .tutor-figure, .tutor.is-talking .tutor-figure { animation: none; }
@@ -38,3 +39,13 @@
 
 .principle-pause { align-self: flex-start; margin-top: 16px; padding: 8px 0; border: 0; background: none; color: var(--red); font: inherit; font-size: 14px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .principle-pause:focus-visible, .principle-options .step:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+
+/* El gesto acompaña al mensaje existente sin tapar la hoja ni robar el foco. */
+.tutor-feedback { display: grid; grid-template-columns: 94px minmax(0, 1fr); align-items: center; gap: 14px; margin-block: 12px; }
+.tutor-feedback .tutor-feedback-avatar { --tutor-width: 94px; align-self: end; }
+.tutor-feedback > :last-child { min-width: 0; margin-block: 0; }
+.tutor-feedback .tutor-figure { -webkit-mask-image: linear-gradient(to bottom, #000 86%, transparent 100%); mask-image: linear-gradient(to bottom, #000 86%, transparent 100%); }
+@media (max-width: 480px) {
+  .tutor-feedback { grid-template-columns: 68px minmax(0, 1fr); gap: 8px; }
+  .tutor-feedback .tutor-feedback-avatar { --tutor-width: 68px; }
+}
