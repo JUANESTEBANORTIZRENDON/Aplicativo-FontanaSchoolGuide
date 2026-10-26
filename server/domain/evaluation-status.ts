@@ -20,7 +20,7 @@ export const EVALUATION_STATUS_LABEL: Record<EvaluationStatus, string> = {
   NO_APROBADO: 'No aprobado',
   SIN_INTENTOS: 'Sin intentos disponibles',
   REACTIVACION_SOLICITADA: 'Reactivación solicitada',
-  REACTIVADO: 'Reactivado por el administrador',
+  REACTIVADO: 'Nuevo intento habilitado',
   COMPLETADO: 'Completado',
 };
 

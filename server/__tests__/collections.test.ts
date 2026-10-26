@@ -113,7 +113,7 @@ describe('módulo 02: práctica de cobranzas', () => {
     expect(await prisma.seal.count({ where: { userId: user.id, moduleId: modules.induction.id, status: 'ACTIVE' } })).toBe(1);
     await resumed.agent.post(`${BASE}/blocks/seguimiento`).set(ORIGIN).send({ answers: correct(4) });
     expect(await prisma.seal.count({ where: { userId: user.id, moduleId: modules.induction.id, status: 'ACTIVE' } })).toBe(1);
-    expect((await resumed.agent.get('/api/advisor/modules')).body.data.find((m: { slug: string }) => m.slug === 'induccion-cobranzas')).toMatchObject({ status: 'PASSED', progressPercent: '100.00', enabled: true });
+    expect((await resumed.agent.get('/api/advisor/modules')).body.data.find((m: { slug: string }) => m.slug === 'induccion-cobranzas')).toMatchObject({ status: 'PASSED', progressPercent: '100.00', enabled: false });
   });
 
   it('guarda cada pregunta, conserva aciertos y mantiene cerrado el bloque siguiente hasta resolver todas', async () => {

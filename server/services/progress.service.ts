@@ -1,5 +1,6 @@
 import { Prisma, type Evaluation, type ProgressStatus } from '@prisma/client';
 import { prisma, type Db } from '../config/prisma.js';
+import { initialEvaluation } from '../domain/evaluation-retry.js';
 import { CERTIFICATE_MODULE_SLUG } from '../domain/enums.js';
 import { assignedExerciseNumbers } from '../domain/tipifica/assignment.js';
 import { ForbiddenError, NotFoundError } from '../domain/errors.js';
@@ -43,14 +44,16 @@ export type TrainingSnapshot = {
 
 // Certificado activo, última decisión del administrador y fecha del último avance (intento enviado o sello).
 async function loadCertificationFacts(db: Db, userId: string) {
-  const [certificate, decision, attempt, seal] = await Promise.all([
+  const [certificate, decision, attempt, seal, restart] = await Promise.all([
     db.certificate.findFirst({ where: { userId, status: 'ACTIVE' }, select: { id: true } }),
     db.certificationDecision.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' }, select: { decision: true, reason: true, createdAt: true } }),
     db.attempt.findFirst({ where: { userId, submittedAt: { not: null } }, orderBy: { submittedAt: 'desc' }, select: { submittedAt: true } }),
     db.seal.findFirst({ where: { userId, status: 'ACTIVE' }, orderBy: { issuedAt: 'desc' }, select: { issuedAt: true } }),
+    db.reactivationRequest.findFirst({ where: { userId, restartCourse: true, status: 'APPROVED' }, orderBy: { decidedAt: 'desc' }, select: { decidedAt: true } }),
   ]);
   const times = [attempt?.submittedAt, seal?.issuedAt].filter((value): value is Date => Boolean(value)).map((value) => value.getTime());
-  return { certificateId: certificate?.id ?? null, decision, lastProgressAt: times.length ? new Date(Math.max(...times)) : null };
+  const currentDecision = decision && (!restart?.decidedAt || decision.createdAt > restart.decidedAt) ? decision : null;
+  return { certificateId: certificate?.id ?? null, decision: currentDecision, lastProgressAt: times.length ? new Date(Math.max(...times)) : null };
 }
 
 // Datos crudos del estado de formación de un usuario, con las fechas ya convertidas.
@@ -149,13 +152,15 @@ export async function loadSnapshot(db: Db, userId: string, now = new Date(), opt
     lastProgressAt: facts.lastProgressAt,
   });
   const availability = new Map<string, Availability>();
+  // El cupo inicial es único; los adicionales se conceden con excepciones auditadas.
+  for (const activityId of attemptLimits.keys()) attemptLimits.set(activityId, 1);
   for (const [activityId, evaluation] of evaluations) {
+    evaluations.set(activityId, initialEvaluation(evaluation));
     availability.set(activityId, computeAvailability(
-      { ...evaluation, maxAttempts: attemptLimits.get(activityId) ?? evaluation.maxAttempts },
+      initialEvaluation(evaluation),
       attempts.filter((attempt) => attempt.evaluation.activityId === activityId),
       overrides.filter((override) => override.activityId === activityId),
       now,
-      modules.some(module => module.activities.some(activity => activity.id === activityId && activity.type === 'EXCEL_PRACTICE')),
     ));
   }
   const views = computeModuleViews(modules.map(toModuleInput), {
@@ -265,7 +270,6 @@ export async function completeModule(db: Db, userId: string, moduleId: string, e
       unlocked.push(dependent.slug);
     }
   }
-  // Ya no se emite el certificado al completar los sellos: lo emite la aprobación del administrador
-  // (certification.service). Así lo exige la validación final.
+  // La emisión se verifica al enviar el examen general, después de guardar su resultado y sello.
   return { sealIssued, unlocked };
 }

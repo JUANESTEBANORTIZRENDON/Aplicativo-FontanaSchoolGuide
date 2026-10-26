@@ -1,0 +1,16 @@
+.fontana-progress-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px 24px; }
+.fontana-progress-row > :first-child { min-width: 0; }
+.fontana-progress-guide { box-sizing: border-box; display: flex; align-items: center; flex: 0 0 auto; gap: 8px; width: fit-content; max-width: 100%; margin-left: auto; color: #70112c; text-decoration: none; border-radius: 14px; }
+.fontana-progress-guide > img { display: block; width: 96px; height: 110px; object-fit: contain; flex-shrink: 0; mask-image: linear-gradient(to bottom, #000 85%, transparent 100%); }
+.fontana-progress-sign { box-sizing: border-box; position: relative; display: flex; align-items: center; gap: 10px; width: 184px; padding: 14px 16px; border: 1px solid #c6a257; border-radius: 14px; background: #fffaf0; box-shadow: 0 5px 16px #71521912; font-size: 16px; font-weight: 600; line-height: 1.5; }
+.fontana-progress-sign::before { content: ''; position: absolute; left: -7px; top: calc(50% - 7px); width: 12px; height: 12px; border-left: 1px solid #c6a257; border-bottom: 1px solid #c6a257; background: #fffaf0; transform: rotate(45deg); }
+.fontana-progress-sign > span { flex-shrink: 0; font-size: 21px; }
+.fontana-progress-guide:focus-visible { outline: 3px solid #d4af37; outline-offset: 4px; }
+@media (hover: hover) {
+  .fontana-progress-guide:hover .fontana-progress-sign,
+  .fontana-progress-guide:hover .fontana-progress-sign::before { background: #f5ecd9; }
+}
+@media (max-width: 760px) {
+  .fontana-progress-guide > img { width: 76px; height: 87px; }
+  .fontana-progress-sign { width: 174px; padding: 12px 14px; font-size: 15px; }
+}

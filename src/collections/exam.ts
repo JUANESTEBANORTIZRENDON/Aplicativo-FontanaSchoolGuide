@@ -1,9 +1,10 @@
 import { escapar } from '../http';
 import { showSelectedCollectionOptions } from './ui';
 import { isLowScore, lowScoreAlertHtml } from '../low-score';
+import { bindReactivation, reactivationNotice } from '../reactivation';
 
 export type ExamContent = ReturnType<typeof import('../../server/domain/collections-exam').publicExam>;
-export type ExamResult = ReturnType<typeof import('../../server/domain/collections-exam').gradeExam>;
+export type ExamResult = import('../../server/domain/advisor-results').AdvisorDiagnosticResult;
 export type ExamDraft = { version: number; sectionIndex: number; answers: Record<string, string>; status: 'in-progress' | 'submitted' };
 export type ExamState = {
   required: boolean; enabled: boolean; passed: boolean; presented: boolean; attempts: number; activityId: string | null;
@@ -38,13 +39,13 @@ export function mountExam(root: HTMLElement, options: ExamOptions): void {
   function introHtml(): string {
     const last = options.exam.lastResult;
     return `<section class="collections-exam-intro"><p class="collections-kicker">DEL CASO A LA DECISIÓN</p><h3 id="exam-title" tabindex="-1">Tu diagnóstico</h3>
-      <p>Resuelve situaciones de Camila con lo que ya sabes de cobranzas. Elige cómo actuar y redacta respuestas cortas. Tienes <strong>un solo intento</strong>; su resultado se guarda y luego continúas con la teoría del módulo.</p>
+      <p>Resuelve situaciones de Camila con lo que ya sabes de cobranzas. Elige cómo actuar y redacta respuestas cortas. Tienes un intento inicial y puedes activar <strong>un único reintento</strong> si no apruebas. El resultado se guarda y luego continúas con la teoría del módulo.</p>
       <ul class="collections-exam-facts"><li><strong>7</strong><span>secciones en orden</span></li><li><strong>100</strong><span>puntos posibles</span></li><li><strong>${content.minScore}</strong><span>mínimo para aprobar</span></li></ul>
       <ol class="collections-exam-outline">${content.sections.map((section) => `<li><span>${escapar(section.title)}</span><strong>${section.points} pts</strong></li>`).join('')}</ol>
       <p>Avanza al responder, aunque tengas dudas. Al continuar se guarda la sección; las respuestas enviadas quedan cerradas. No verás soluciones ni puntajes hasta finalizar.</p>
       <details class="collections-exam-policy"><summary>Criterios de aprobación y errores críticos</summary><p>Resultado «Apto»: al menos ${content.minScore}/100 y ningún error crítico. Son criterios didácticos pendientes de validación interna.</p><ul>${content.criticalRules.map((rule) => `<li>${escapar(rule)}</li>`).join('')}</ul></details>
       ${assessmentNote}
-      ${last ? `<p class="collections-exam-last">Intento anterior: ${last.score}/100 · ${escapar(last.verdict)}. El administrador autorizó un nuevo intento.</p>` : ''}
+      ${last ? `<p class="collections-exam-last">Intento anterior: ${last.score}/100 · ${escapar(last.verdict)}. Tienes un nuevo intento habilitado.</p>` : ''}
       ${errorHtml()}<div class="collections-actions"><button type="button" data-exam-start class="collections-primary"${saving ? ' disabled' : ''}>${saving ? 'Abriendo…' : options.exam.draft ? 'Retomar evaluación →' : 'Comenzar evaluación →'}</button></div></section>`;
   }
 
@@ -70,26 +71,21 @@ export function mountExam(root: HTMLElement, options: ExamOptions): void {
 
   function resultHtml(): string {
     const data = result!;
-    const review = data.sections.flatMap((section) => section.results.filter((q) => !q.correct).map((q) => ({ ...q, section: section.title })));
-    const question = (key: string) => content.sections.flatMap((s) => s.questions).find((q) => q.key === key);
-    const selected = (key: string, answer: string) => {
-      const q = question(key);
-      return q?.kind === 'text' ? answer : q?.options?.find((o) => o.id === answer)?.text ?? answer;
-    };
     return `<section class="collections-exam-result ${data.passed ? 'is-correct' : 'is-wrong'}"><div class="collections-exam-score" aria-hidden="true">${data.score}<small>/100</small></div><h3 id="exam-title" tabindex="-1">${escapar(data.verdict)}</h3>
       ${isLowScore(data.score) ? lowScoreAlertHtml('el examen final') : ''}
-      <p role="status">${data.passed ? 'Alcanzaste el mínimo y no registraste errores críticos en esta evaluación.' : `Necesitas al menos ${data.minScore}/100 y ningún error crítico. ${data.criticalErrors.length ? 'Debes reforzar las decisiones críticas señaladas.' : 'Repasa las secciones con menor puntaje.'}`}</p>
+      <p role="status">${data.passed ? 'Alcanzaste los requisitos de esta evaluación.' : `Necesitas al menos ${data.minScore}/100 y cumplir los criterios de la evaluación. Repasa las lecciones de los temas con menor puntaje.`}</p>
       <div class="collections-exam-breakdown"><table><caption>Puntaje por sección</caption><thead><tr><th scope="col">Sección</th><th scope="col">Puntaje</th></tr></thead><tbody>${data.sections.map((section) => `<tr><th scope="row">${escapar(section.title)}</th><td>${section.score}/${section.maxScore}</td></tr>`).join('')}</tbody></table></div>
       <div class="collections-exam-feedback"><section><h4>Fortalezas</h4>${data.strengths.length ? `<ul>${data.strengths.map((s) => `<li>${escapar(s)}</li>`).join('')}</ul>` : '<p>Aún necesitas practicar las decisiones de los casos.</p>'}</section><section><h4>Para mejorar</h4>${data.improvements.length ? `<ul>${data.improvements.map((s) => `<li>${escapar(s)}</li>`).join('')}</ul>` : '<p>Mantén estas prácticas y valida su aplicación con tu líder.</p>'}</section></div>
-      ${data.criticalErrors.length ? `<div class="collections-submit-error"><h4>Errores críticos</h4><ul>${data.criticalErrors.map((item) => `<li>${escapar(item.section)}: ${escapar(item.reason)}</li>`).join('')}</ul></div>` : ''}
       ${assessmentNote}
-      ${review.length ? `<details class="collections-exam-review"><summary>Revisar respuestas y criterios de mejora</summary>${review.map((item) => `<article><h4>${escapar(question(item.key)?.prompt ?? item.section)}</h4><p>Tu respuesta: ${escapar(selected(item.key, item.selected))}</p><p>Puntaje: ${item.points}/${item.maxPoints}.</p><p>${escapar(item.feedback)}</p>${item.criteria.length ? `<ul>${item.criteria.map((c) => `<li>${c.met ? '✓' : 'Pendiente:'} ${escapar(c.label)}</li>`).join('')}</ul>` : ''}<p>Referencia: ${escapar(item.expected)}</p></article>`).join('')}</details>` : ''}
+      <p class="collections-exam-note">La evaluación está cerrada. Las respuestas no están disponibles después del envío.</p>
       <p class="collections-exam-note">Este es un examen diagnóstico: su resultado queda registrado para tu líder, pero no reemplaza la teoría ni el examen general.</p>
+      ${!data.passed && options.exam.activityId ? reactivationNotice({ activityId: options.exam.activityId, status: options.exam.status }) : ''}
       ${errorHtml()}<div class="collections-actions"><button type="button" data-exam-theory class="collections-primary">Continuar con la teoría →</button>${options.exam.enabled ? `<button type="button" data-exam-start class="collections-secondary">${options.exam.draft ? 'Retomar intento autorizado' : 'Presentar el intento autorizado'}</button>` : ''}</div></section>`;
   }
 
   function render(): void {
     root.innerHTML = screen === 'intro' ? introHtml() : screen === 'section' ? sectionHtml() : screen === 'ready' ? readyHtml() : resultHtml();
+    bindReactivation(root, () => location.reload());
     root.querySelectorAll('[data-exam-start]').forEach((button) => button.addEventListener('click', async () => {
       if (saving) return;
       saving = true; error = ''; (button as HTMLButtonElement).disabled = true;

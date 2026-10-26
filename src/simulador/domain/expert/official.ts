@@ -16,7 +16,7 @@ export interface OfficialResult {
   score: string | null;
   passed: boolean;
   submittedAt: string | null;
-  typification?: { metCount: number; unmetCount: number; checks: OfficialCheck[]; fields: Partial<TypificationDraft> | null };
+  typification?: { metCount: number; unmetCount: number };
 }
 export interface OfficialExercise {
   number: number;
@@ -133,14 +133,14 @@ export function notifyOpened(number: number): void {
 
 /** Convierte el resultado del servidor al formato de los checkmarks del clon. */
 export function toEvaluation(result: OfficialResult): Evaluation {
-  const checks = result.typification?.checks ?? [];
-  const passed = checks.filter((check) => check.ok).length;
+  const passed = result.typification?.metCount ?? 0;
+  const total = passed + (result.typification?.unmetCount ?? 0);
   return {
-    items: checks.map((check) => ({ id: check.id, label: check.label ?? check.id, ok: check.ok, detail: check.detail })),
+    items: [],
     passed,
-    total: checks.length,
+    total,
     score: Math.round(Number(result.score ?? 0)),
     // Solo para el color de la retroalimentación: todos los puntos coinciden con la llamada. No es aprobación.
-    approved: checks.length > 0 && passed === checks.length,
+    approved: total > 0 && passed === total,
   };
 }

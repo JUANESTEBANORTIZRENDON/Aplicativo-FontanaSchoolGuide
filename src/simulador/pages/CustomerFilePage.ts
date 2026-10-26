@@ -150,7 +150,8 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
       applied = true;
       practice?.refreshOfficial();
       if (official.result && !official.canSubmit) {
-        if (official.result.typification?.fields) form.fill(official.result.typification.fields);
+        ctx.store.clearOfficialManagements(customerId);
+        form.reset();
         form.setLocked(true);
       } else if (official.canSubmit) notifyOpened(exercise.number);
     };
@@ -212,8 +213,8 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
     form.setLocked(true);
     try {
       const { result, alreadySubmitted } = await submitOfficial(exercise.number, draft);
-      if (!alreadySubmitted) save(draft);
-      else if (result.typification?.fields) form.fill(result.typification.fields);
+      ctx.store.clearOfficialManagements(customerId);
+      form.reset();
       const info = officialExercise(exercise.number);
       practice.showEvaluation(toEvaluation(result), info);
       form.setLocked(!info?.canSubmit);

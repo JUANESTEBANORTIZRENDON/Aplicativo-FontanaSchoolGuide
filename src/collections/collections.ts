@@ -1,5 +1,6 @@
 import './collections.css';
 import './collections-ui.css';
+import { progressGuide } from '../progress-guide';
 import { playSeal } from '../seal-animation';
 import { api, escapar } from '../http';
 import { mountConceptsSlider } from './concepts-slider';
@@ -102,7 +103,7 @@ export async function mountCollections(container: HTMLElement, backHref: string)
     if (!onExam && (!block?.content || !block.enabled)) return;
     const index = block ? state.blocks.indexOf(block) : -1;
     const subtitle = state.diagnosticFirst ? 'Muestra lo que ya sabes con el examen diagnóstico; después recorrerás la teoría del módulo.' : 'Acompaña el caso ficticio de Camila: comprende, decide y aprende.';
-    container.innerHTML = `<section class="collections-course collections-course--induction" aria-labelledby="collections-title"><header class="collections-heading"><div><p class="collections-kicker">MÓDULO 02 · ${state.experienced ? 'PARA ASESORES CON EXPERIENCIA' : 'PARA ASESORES NUEVOS'}</p><h1 id="collections-title">Inducción a las cobranzas</h1><p>${escapar(subtitle)}</p></div><a href="${escapar(backHref)}" class="collections-back">Ver mi progreso del aula →</a></header>
+    container.innerHTML = `<section class="collections-course collections-course--induction" aria-labelledby="collections-title"><header class="collections-heading fontana-progress-row"><div><p class="collections-kicker">MÓDULO 02 · ${state.experienced ? 'PARA ASESORES CON EXPERIENCIA' : 'PARA ASESORES NUEVOS'}</p><h1 id="collections-title">Inducción a las cobranzas</h1><p>${escapar(subtitle)}</p></div>${progressGuide(backHref)}</header>
       <div class="collections-progress"><div><strong>${escapar(progressLabel())}</strong><span>${state.percent} %</span></div><progress max="100" value="${state.percent}" aria-label="Avance del módulo 02">${state.percent} %</progress></div>
       ${state.complete ? `<div class="collections-complete" role="status"><strong>¡Completaste la inducción a las cobranzas!</strong><p>Ya tienes habilitado el módulo «Enfréntate a la objeción». Puedes repasar lo aprendido cuando quieras.</p>${state.simulatorRoute ? `<a class="collections-primary" href="${escapar(state.simulatorRoute)}">Ir a «Enfréntate a la objeción» →</a>` : ''}</div>` : ''}
       <div class="collections-layout">${navHtml()}

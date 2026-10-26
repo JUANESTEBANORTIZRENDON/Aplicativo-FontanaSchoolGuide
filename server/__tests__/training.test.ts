@@ -141,7 +141,7 @@ describe('progreso e intentos', () => {
     const again = await loginAgent(user.numeroDocumento, 'asesor');
     const data = (await again.agent.get('/api/advisor/modules')).body.data;
     // El módulo 1 tiene pantalla de resultado: aprobado sigue abierto para repasarlo.
-    expect(data[0]).toMatchObject({ status: 'PASSED', actionLabel: 'Completado', progressPercent: '100.00', enabled: true });
+    expect(data[0]).toMatchObject({ status: 'PASSED', actionLabel: 'Completado', progressPercent: '100.00', enabled: false });
     expect(data[1]).toMatchObject({ status: 'AVAILABLE', enabled: true, actionLabel: 'Continuar' });
     expect(data[2]).toMatchObject({ status: 'BLOCKED', blockedReason: 'Aprueba Inducción a las cobranzas para continuar' });
     const summary = (await again.agent.get('/api/advisor/progress')).body.data;

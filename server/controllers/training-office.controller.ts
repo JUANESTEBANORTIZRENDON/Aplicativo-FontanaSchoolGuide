@@ -7,6 +7,7 @@ import * as moduleService from '../services/office-module.service.js';
 import * as typingService from '../services/office-typing.service.js';
 import { getAccessibleModule } from '../services/progress.service.js';
 import type { DictationSubmitBody, ExcelActionBody, ExcelSubmitBody, TypingCompleteBody } from '../validators/office.validator.js';
+import { advisorDictationResult, advisorExcelActivity, advisorExcelResult } from '../domain/advisor-results.js';
 
 // El acceso lo decide el servidor en cada solicitud: un módulo bloqueado responde 403 con su motivo
 // también al entrar por URL directa. Un módulo aprobado sigue abierto para ver el resultado.
@@ -31,7 +32,8 @@ export async function registerView(request: Request, response: Response): Promis
 }
 
 export async function result(request: Request, response: Response): Promise<void> {
-  response.json({ data: await moduleService.getResult(request.usuario!.id, new Date(), response.locals.snapshot) });
+  const data = await moduleService.getResult(request.usuario!.id, new Date(), response.locals.snapshot);
+  response.json({ data: { ...data, reinforce: ['Repasa las lecciones de los apartados que necesitan refuerzo.'] } });
 }
 
 export async function typingPrepare(request: Request, response: Response): Promise<void> {
@@ -63,7 +65,7 @@ export async function typingPracticeTexts(_request: Request, response: Response)
 
 // ---- Excel ----
 export async function excelActivity(request: Request, response: Response): Promise<void> {
-  response.json({ data: await excelService.getActivity(request.usuario!.id) });
+  response.json({ data: advisorExcelActivity(await excelService.getActivity(request.usuario!.id)) });
 }
 
 export async function excelStart(request: Request, response: Response): Promise<void> {
@@ -74,7 +76,7 @@ export async function excelStart(request: Request, response: Response): Promise<
 export async function excelSubmit(request: Request, response: Response): Promise<void> {
   const { id } = validParams<{ id: string }>(request);
   const body = validBody<ExcelSubmitBody>(request);
-  response.json({ data: await excelService.submitPractice(request.usuario!.id, id, body) });
+  response.json({ data: advisorExcelResult(await excelService.submitPractice(request.usuario!.id, id, body)) });
 }
 
 export async function excelAction(request: Request, response: Response): Promise<void> {
@@ -111,5 +113,5 @@ export async function dictationPlay(request: Request, response: Response): Promi
 export async function dictationSubmit(request: Request, response: Response): Promise<void> {
   const { id } = validParams<{ id: string }>(request);
   const body = validBody<DictationSubmitBody>(request);
-  response.json({ data: await dictationService.submitDictation(request.usuario!.id, id, body, { requestId: request.requestId }) });
+  response.json({ data: advisorDictationResult(await dictationService.submitDictation(request.usuario!.id, id, body, { requestId: request.requestId })) });
 }

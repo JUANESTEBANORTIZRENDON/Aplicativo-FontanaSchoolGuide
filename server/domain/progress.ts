@@ -6,11 +6,11 @@ import { CERTIFICATE_MODULE_SLUG } from './enums.js';
 // desde el área del asesor, el panel administrativo y las métricas.
 
 export const MODULE_INACTIVE_REASON = 'Módulo no disponible temporalmente';
-export const EXHAUSTED_REASON = 'Agotaste los intentos disponibles. Solicita una reactivación al administrador.';
-// Módulos con pantalla de resultados: al aprobarlos siguen abiertos para repasar su resumen.
-// Los demás se habilitan cuando tengan su pantalla de resultados.
+export const EXHAUSTED_REASON = 'Revisa tu resultado para activar tu reintento o solicitar acompañamiento.';
+// Un módulo completado se cierra: el asesor no puede volver a ver sus preguntas ni respuestas.
+// Solo se reabre con el modo repaso del certificado activo o con una reapertura del administrador.
 export const RESULT_SCREEN_AVAILABLE = false;
-export const RESULT_SCREEN_SLUGS: ReadonlySet<string> = new Set(["ofimatica-mecanografia", "induccion-cobranzas", "simulador-cobranzas", "tipificacion-llamadas", "examen-general"]);
+export const RESULT_SCREEN_SLUGS: ReadonlySet<string> = new Set();
 // Módulos guiados por bloques: mientras no tengan sello muestran el avance guardado de sus bloques.
 const GUIDED_BLOCK_SLUGS: ReadonlySet<string> = new Set(["induccion-cobranzas", "simulador-cobranzas"]);
 

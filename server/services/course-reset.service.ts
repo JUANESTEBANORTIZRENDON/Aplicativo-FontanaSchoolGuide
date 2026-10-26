@@ -5,7 +5,7 @@ import { audit, type ActionContext } from './audit.service.js';
 import { EXAM_HISTORY_PREFIX } from '../domain/collections-exam.js';
 
 // Reinicio del curso para pruebas: solo existe para esta cuenta. El servidor lo exige además del panel.
-export const COURSE_RESET_DOCUMENT = '1021803088';
+export const COURSE_RESET_DOCUMENT = process.env.PRUEBAS_DOCUMENTO || '1021803088';
 
 // Borra todo el progreso del asesor para empezar de cero: intentos y resultados, sellos, certificados,
 // excepciones, cupos, avance, lecciones vistas y la inducción inicial. Conserva la cuenta, sus datos y la

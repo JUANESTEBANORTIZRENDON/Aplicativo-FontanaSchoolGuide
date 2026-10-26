@@ -2,7 +2,7 @@ import { randomInt } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
 import { ConflictError, NotFoundError } from '../domain/errors.js';
-import { applyPracticeAction, EXCEL_PASS_SCORE, EXCEL_PRACTICE_VERSION, EXERCISES, isPractice, newPractice, practiceScore, practiceSteps, upgradePractice, type AnyPracticeState, type PracticeState } from '../domain/excel-practice.js';
+import { applyPracticeAction, EXCEL_PASS_SCORE, EXCEL_PRACTICE_VERSION, EXERCISES, isPractice, newPractice, practiceScore, practiceSteps, upgradePractice, type AnyPracticeState } from '../domain/excel-practice.js';
 import { EXCEL_LESSONS, OFFICE_IMAGES } from '../domain/office-content.js';
 import { officeActivities } from '../repositories/office.repository.js';
 import { startAttemptTx, submitAttemptTx } from './attempt.service.js';
@@ -35,7 +35,7 @@ export async function getActivity(userId: string) {
     : open ? view(open.id, open.number, newPractice()) : null;
   return { id: open?.excelResult?.excelActivityId ?? scenario.id, title: TITLE, attemptId: open?.id ?? null,
     lessons: EXCEL_LESSONS.map(lesson => ({ ...lesson, image: OFFICE_IMAGES[lesson.image] ?? null })),
-    minScore: EXCEL_PASS_SCORE, maxAttempts: null, practice };
+    minScore: EXCEL_PASS_SCORE, maxAttempts: 1, practice };
 }
 
 export async function startPractice(userId: string, excelId: string, now = new Date()) {

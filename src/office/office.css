@@ -186,6 +186,3 @@ button.office-secondary:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Acceso a la vista de progreso del aula desde cualquier sección del módulo. */
 .office-progress-bar { display: flex; justify-content: flex-end; margin: 0 0 14px; }
-.office-progress-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 20px; border: 1px solid #cfb88d; border-radius: 24px; background: #fffcf5; color: #8b1538; font-weight: 700; font-size: 15px; text-decoration: none; transition: background-color .18s ease, border-color .18s ease; }
-.office-progress-link:hover { background: #f6ebd3; border-color: #b18b32; }
-.office-progress-link:focus-visible { outline: 3px solid #d4af37; outline-offset: 2px; }

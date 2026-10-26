@@ -1,0 +1,155 @@
+/* Presentación del módulo 03: estructura del aula, con reglas limitadas a su raíz. */
+body:has(.obx-course) .auth-main { max-width: 1420px; padding: 20px 28px 64px; }
+.obx-course { --obx-wine: #8b1538; --obx-ink: #1f2a37; --obx-gold: #d4af37; --obx-line: #e4d5bb; --fc-muted: #475569; color: var(--obx-ink); font-size: 17px; line-height: 1.65; color-scheme: light; }
+.obx-course *, .obx-course *::before, .obx-course *::after { box-sizing: border-box; }
+.obx-course :is(h1,h2,h3,p,li,button,a,small,blockquote,label,summary) { overflow-wrap: anywhere; }
+.obx-course .collections-heading p:not(.collections-kicker) { display: block; max-width: 65ch; font-size: 17px; }
+.obx-course .collections-heading h1 { font: 600 clamp(30px, 3.4vw, 44px)/1.25 Georgia, 'Times New Roman', serif; }
+.obx-course .collections-heading { padding-bottom: 16px; }
+.obx-course .collections-kicker { font-size: 14px; letter-spacing: .04em; line-height: 1.6; }
+.obx-course .collections-back { border-color: #9c8090; border-radius: 12px; background: #fff; color: #70112c; font-size: 16px; padding: 12px 18px; }
+.obx-layout { max-width: 1160px; margin-inline: auto; }
+.obx-layout--intro { max-width: 860px; }
+.obx-course .obx-layout--intro .obx-workspace { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.obx-layout > * { min-width: 0; }
+.obx-course .obx-workspace { container-type: inline-size; padding: clamp(16px, 1.7vw, 24px); border-radius: 22px; background: linear-gradient(145deg, #fffdf8, #fbf5e9); box-shadow: 0 14px 40px #7152190c; }
+.obx-workspace :is(p,li) { font-size: 17px; line-height: 1.7; }
+.obx-workspace .obx-eyebrow { font-size: 13px; }
+.obx-workspace .collections-kicker { font-size: 14px; }
+.obx-course button, .obx-course textarea { font-family: inherit; }
+.obx-course button { cursor: pointer; }
+.obx-course .obx-navigation button, .obx-review button, .obx-result-body > button { border: 1px solid #9c8090; background: #fff; color: #70112c; border-radius: 12px; padding: 12px 18px; min-height: 48px; font-size: 16px; font-weight: 600; line-height: 1.5; }
+.obx-course button:disabled { opacity: 1; color: #647184; background: #edf0f4; border-color: #dae0e8; cursor: default; box-shadow: none; }
+.obx-course button:focus-visible, .obx-course a:focus-visible, .obx-course summary:focus-visible { outline: 3px solid #d4af37; outline-offset: 4px; }
+.obx-course h2 { font: 600 clamp(25px, 2.7vw, 34px)/1.3 Georgia, serif; color: #70112c; margin: 8px 0 20px; }
+.obx-course #obx-title:focus { outline: none; }
+.obx-panel { min-width: 0; }
+.obx-intro-stage { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 8px; align-items: center; }
+.obx-intro-stage > .obx-slide { grid-column: 2; grid-row: 1; }
+.obx-intro-stage .fontana-concept-arrow { position: static; top: auto; margin: 0; transform: none; justify-self: center; width: 44px; height: 44px; }
+.obx-intro-stage .fontana-concept-arrow--left { grid-column: 1; grid-row: 1; }
+.obx-intro-stage .fontana-concept-arrow--right { grid-column: 3; grid-row: 1; }
+.obx-intro-stage .fontana-concept-arrow:disabled { opacity: .35; color: #76112f; background: #fff5d9; border-color: #e5c46e8c; }
+.obx-intro-footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; padding: 10px 8px 0; text-align: center; color: #475569; font-size: 13px; }
+.obx-intro-footer p { margin: 0; line-height: 1.5; font-size: 13px; }
+.obx-slide { min-width: 0; padding: 20px 24px; border: 1px solid #d7c69d; border-top: 4px solid #831336; border-radius: 20px; background: linear-gradient(180deg, #fffaf0, #fff 36%); box-shadow: 0 10px 28px #7152190c; animation: obx-enter .3s ease both; }
+.obx-slide-topline { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; color: #745316; font-size: 11px; font-weight: 650; letter-spacing: .06em; }
+.obx-case-number { color: #8b1538; font-size: 12px; letter-spacing: .03em; }
+.obx-illustration { display: grid; justify-items: center; gap: 3px; margin: 0 auto 10px; }
+.obx-illustration > svg { display: block; width: 84px; height: 63px; }
+.obx-illustration figcaption { color: #745316; text-align: center; font-size: 12px; font-weight: 600; line-height: 1.5; }
+.obx-slide-content { padding: 0; text-align: center; }
+.obx-course .obx-slide-content h2 { margin: 0 0 8px; font-size: clamp(24px, 2.3vw, 29px); }
+.obx-workspace .obx-slide-content .obx-lead { max-width: 55ch; margin: 0 auto 16px; font-size: 16px; line-height: 1.5; }
+.obx-eyebrow { color: #745316; font-size: 13px; letter-spacing: .05em; font-weight: 650; margin: 0 0 12px; }
+.obx-lead { font-size: 17px; line-height: 1.65; margin-bottom: 22px; max-width: 65ch; }
+.obx-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 0; list-style: none; margin: 0; }
+.obx-steps li { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0 6px; color: #233247; }
+.obx-step-icon { position: relative; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: #f5ecd9; color: #8b1538; }
+.obx-step-icon svg { width: 21px; height: 21px; }
+.obx-step-icon small { position: absolute; right: -4px; bottom: -4px; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid #d4af37; background: #fff; color: #745316; font-size: 11px; line-height: 1; }
+.obx-steps strong { color: #70112c; font-size: 14px; font-weight: 600; line-height: 1.4; }
+.obx-course .obx-avoid, .obx-course .obx-example-visible { margin: 16px 0 0; background: #faf5e9; border-left: 3px solid #d4af37; border-radius: 0 10px 10px 0; padding: 16px 18px; font-size: 16px; line-height: 1.65; }
+.obx-course .obx-example-visible { background: #f2f5f8; color: #1f2a37; border-left-color: #8b1538; }
+.obx-slide-notes { display: grid; gap: 10px; padding: 0; margin-top: 18px; }
+.obx-course .obx-slide-notes :is(.obx-avoid,.obx-example-visible) { margin: 0; padding: 12px 14px; font-size: 15px; line-height: 1.5; }
+.obx-course .obx-slide-notes .obx-example-visible { background: #f5ecd9; border-left-color: #d4af37; }
+.obx-course .obx-slide-notes .obx-avoid { padding: 8px 0 0; border: 0; border-radius: 0; border-top: 1px solid #e4d5bb; background: transparent; color: #526072; font-size: 14px; }
+.obx-example-visible > b { display: block; color: #70112c; margin-bottom: 6px; }
+.obx-example summary { color: #8b1538; cursor: pointer; font-size: 14px; font-weight: 600; }
+.obx-example p { font-size: 15px; line-height: 1.7; padding: 12px 0 0; }
+.obx-navigation { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 24px; border-top: 1px solid var(--obx-line); }
+.obx-navigation > span { color: #647184; font-size: 13px; }
+.obx-course .obx-primary, .obx-course .obx-navigation .obx-primary { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #8b1538; border-radius: 12px; background: #8b1538; color: white; font-size: 16px; font-weight: 600; line-height: 1.5; padding: 13px 22px; text-decoration: none; transition: transform .2s ease, box-shadow .2s ease; }
+.obx-course .obx-primary:disabled { color: #526071; background: #edf0f4; border: 1px dashed #7c899c; box-shadow: none; }
+.obx-exam-start { padding: 4px 0; max-width: 900px; margin: 0 auto; }
+.obx-exam-start > p { line-height: 1.7; }
+.obx-big-icon { display: grid; place-items: center; background: #f5ecd9; color: #8b1538; width: 64px; height: 64px; border-radius: 18px; font-size: 35px; margin-bottom: 24px; }
+.obx-rubric { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 26px 0; }
+.obx-rubric > div { display: grid; align-content: start; gap: 6px; border: 1px solid #e6d9bf; border-radius: 14px; padding: 18px; background: #fcf7ec; }
+.obx-rubric b { color: #8b1538; font-size: 22px; }
+.obx-rubric span { font-size: 13px; color: #526072; }
+.obx-course .obx-muted { color: #475569; font-size: 16px; line-height: 1.7; }
+.obx-writing, .obx-review, .obx-results { padding: 4px 0; }
+.obx-writing-heading { display: flex; gap: 16px; justify-content: space-between; align-items: center; }
+.obx-points { flex-shrink: 0; padding: 7px 12px; border-radius: 30px; background: #f5ecd9; color: #775a10; font-size: 13px; }
+.obx-client { margin: 16px 0; border-left: 4px solid #d4af37; border-radius: 0 14px 14px 0; padding: 20px 24px; font-size: clamp(18px, 2vw, 22px); line-height: 1.6; color: #8b1538; background: #f8f1df; }
+.obx-course .obx-context { margin: 16px 0 24px; padding: 16px 18px; border: 1px solid #d8c58f; border-radius: 12px; background: #fffaf0; font-size: 16px; line-height: 1.7; }
+.obx-label { display: block; font-size: 16px; font-weight: 600; color: #1f2a37; margin-top: 18px; }
+.obx-course textarea { width: 100%; max-width: 100%; min-width: 0; resize: vertical; min-height: 190px; border: 1.5px solid #7c899c; border-radius: 10px; padding: 18px; color: #111827; background: white; font-size: 17px; line-height: 1.75; }
+.obx-course textarea:focus { outline: 3px solid #d4af3740; border-color: #b18b1e; }
+.obx-autosave-error { padding: 12px 16px; border-left: 3px solid #8b1538; background: #fcf1f4; color: #791735; }
+.obx-writing > .obx-primary { margin-top: 16px; }
+.obx-writing .obx-navigation { padding: 20px 0 0; flex-wrap: wrap; justify-content: flex-end; }
+.obx-review > article { border-top: 1px solid #e6d9bf; padding: 24px 0; }
+.obx-review > article > div { display: flex; gap: 12px; justify-content: space-between; align-items: center; }
+.obx-review h3 { font-size: 18px; margin: 0; }
+.obx-review > article > p, .obx-original { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; line-height: 1.8; color: #1f2a37; }
+.obx-result-summary { display: flex; align-items: center; gap: 24px; justify-content: space-between; border-bottom: 1px solid #e6d9bf; padding-bottom: 24px; margin-bottom: 24px; }
+.obx-result-summary p { line-height: 1.7; margin-bottom: 0; }
+.obx-result-summary.is-ok { display: grid; grid-template-columns: 170px minmax(0, 1fr) auto; padding: 24px; border: 1px solid #d4af3777; border-radius: 20px; background: linear-gradient(135deg, #fffefa, #f5ecd9); }
+.obx-result-seal { width: 170px; aspect-ratio: 1; }
+.obx-result-seal svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 6px 8px #3f0a1b30); transform: rotate(-8deg); }
+.obx-result-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin: 24px 0 32px; }
+.obx-result-detail-title { font-size: 18px; color: #1f2a37; margin: 0; }
+.obx-total { flex-shrink: 0; color: #8b1538; font-weight: 600; font-size: 56px; }
+.obx-total small { display: block; font-size: 17px; font-weight: 400; color: #526072; text-align: center; }
+.obx-case-results { display: grid; gap: 14px; margin: 24px 0; }
+.obx-case-results > details { border: 1px solid #e6d9bf; border-radius: 16px; overflow: hidden; }
+.obx-case-results summary { display: flex; align-items: center; gap: 14px; justify-content: space-between; background: #faf5e9; padding: 18px; color: #8b1538; font-weight: 600; cursor: pointer; }
+.obx-case-results summary::before { content: '+'; font-size: 20px; }
+.obx-case-results details[open] summary::before { content: '−'; }
+.obx-case-results summary > span { flex: 1; }
+.obx-case-results summary > b { white-space: nowrap; }
+.obx-result-body { padding: 8px 22px 24px; }
+.obx-original { margin: 10px 0 24px; padding: 16px; background: #f2f5f8; border-radius: 12px; }
+.obx-feedback { margin: 24px 0; }
+.obx-feedback-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-bottom: 16px; }
+.obx-feedback-heading > span { font-size: 13px; color: #526072; }
+.obx-checks { padding: 0; margin: 0; list-style: none; display: grid; gap: 10px; }
+.obx-checks > li { display: flex; gap: 12px; border: 1px solid #e1e5e9; border-radius: 12px; padding: 14px; font-size: 14px; }
+.obx-checks li > span { flex-shrink: 0; color: #8b1538; font-size: 19px; }
+.obx-checks li.is-ok > span { color: #287247; }
+.obx-checks li > div { flex: 1; }
+.obx-checks p { margin: 6px 0; line-height: 1.6; }
+.obx-checks small { color: #526072; }
+.obx-checks li > b { white-space: nowrap; }
+.obx-risk, .obx-error { border: 1px solid #e8b6c4; background: #fcf1f4; color: #791735; border-radius: 12px; padding: 16px 18px; line-height: 1.65; }
+.obx-legacy { padding: 14px 18px; border: 1px solid #dac380; border-radius: 12px; background: #fcf5df; color: #655017; font-size: 14px; line-height: 1.65; }
+.obx-operation { min-height: 24px; color: #526072; font-size: 13px; margin: 12px 0 0; }
+.obx-operation:empty { display: none; }
+.obx-view-links { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin-top: 20px; }
+.obx-view-links:empty { display: none; }
+.obx-view-links button { min-height: 44px; padding: 8px 0; border: 0; background: transparent; color: #8b1538; font-size: 15px; font-weight: 600; text-align: left; text-decoration: underline; text-underline-offset: 4px; }
+@keyframes obx-enter { from { opacity: .3; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+@media (hover: hover) { .obx-course .obx-primary:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 8px 18px #8b153824; } }
+@media (max-width: 560px) { .obx-rubric { grid-template-columns: 1fr; gap: 8px; } .obx-rubric > div { display: flex; align-items: center; justify-content: space-between; padding: 12px; gap: 20px; } .obx-rubric span { max-width: 55%; text-align: right; } .obx-navigation { padding: 18px 0; flex-wrap: wrap; } .obx-navigation > span { width: 100%; text-align: center; order: -1; } .obx-navigation button { flex: 1; } .obx-writing-heading, .obx-result-summary { align-items: flex-start; } .obx-total { font-size: 42px; } .obx-points { font-size: 12px; padding: 7px; } .obx-course textarea { font-size: 16px; padding: 14px; } .obx-result-body { padding: 8px 12px 20px; } .obx-case-results summary { padding: 14px 10px; font-size: 14px; } }
+@media (prefers-reduced-motion: reduce) { .obx-slide { animation: none; } .obx-course .obx-primary { transition: none; } }
+@media (hover: hover) { .obx-intro-stage .fontana-concept-arrow:not(:disabled):hover { transform: none; } }
+@media (max-width: 560px) {
+  .obx-intro-stage { grid-template-columns: 64px minmax(0, 1fr) 64px; row-gap: 16px; padding-bottom: 16px; }
+  .obx-intro-stage > .obx-slide { grid-column: 1 / -1; }
+  .obx-intro-stage .fontana-concept-arrow { grid-row: 2; }
+}
+@media (prefers-reduced-motion: reduce) { .obx-intro-stage .fontana-concept-arrow { transition: none; } }
+@media (max-width: 760px) {
+  .obx-result-summary.is-ok { grid-template-columns: minmax(0, 1fr) auto; padding: 20px; gap: 20px; }
+  .obx-result-seal { grid-column: 1 / -1; justify-self: center; width: 155px; }
+  .obx-result-actions > a { width: 100%; justify-content: center; text-align: center; box-sizing: border-box; }
+}
+@media (max-width: 1150px) {
+  .obx-result-summary.is-ok { grid-template-columns: minmax(0, 1fr) auto; }
+  .obx-result-seal { grid-column: 1 / -1; justify-self: center; width: 150px; }
+}
+@media (max-width: 560px) {
+  body:has(.obx-course) .auth-main { padding: 16px 14px 48px; }
+  .obx-course .collections-heading { display: block; }
+  .obx-course .collections-heading h1 { font-size: 30px; }
+  .obx-course .collections-back { margin-top: 16px; }
+  .obx-course .obx-workspace { padding: 18px 14px; border-radius: 16px; }
+}
+@container (max-width: 420px) {
+  .obx-slide { padding: 16px; }
+  .obx-steps { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .obx-steps li { flex-direction: row; padding: 0; text-align: left; }
+}

@@ -29,7 +29,7 @@ async function access(db: Db, userId: string) {
   const snapshot = await loadSnapshot(db, userId);
   const view = snapshot.views.find((item) => item.slug === COLLECTIONS_SLUG);
   if (!view) throw new NotFoundError('El módulo de inducción a las cobranzas no está configurado.', 'MODULE_NOT_FOUND');
-  if (!view.enabled) throw new ForbiddenError(view.blockedReason ?? 'Módulo no disponible.', 'MODULE_BLOCKED');
+  if (!view.enabled && view.status !== 'PASSED') throw new ForbiddenError(view.blockedReason ?? 'Módulo no disponible.', 'MODULE_BLOCKED');
   const module = snapshot.modules.find((item) => item.id === view.moduleId)!;
   if (!module.activities.some((activity) => activity.isRequired && activity.status === 'ACTIVE') || module.activities.some((activity) => activity.isRequired && activity.status !== 'ACTIVE')) {
     throw new ForbiddenError('La práctica del módulo no está disponible temporalmente.', 'ACTIVITY_INACTIVE');

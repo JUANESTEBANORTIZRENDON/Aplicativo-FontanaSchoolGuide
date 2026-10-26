@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { OBJECTIONS_BLOCKS, OBJECTIONS_KEYS } from '../../server/domain/objections';
+import { OBJECTIONS_BLOCKS } from '../../server/domain/objections';
 import { OBJECTION_DECKS } from './content';
 
-// Contenido pedagógico del módulo 03 (vive en el cliente: diapositivas).
-describe('diapositivas del módulo 03', () => {
+// Biblioteca anterior conservada como referencia; el recorrido activo usa los cinco casos escritos.
+describe('biblioteca de referencia de objeciones', () => {
   const textOf = (value: unknown) => JSON.stringify(value);
 
   it('cada bloque tiene diapositivas con título e ícono, y ninguna evaluación', () => {
-    for (const key of OBJECTIONS_KEYS) {
+    for (const key of Object.keys(OBJECTION_DECKS)) {
       const deck = OBJECTION_DECKS[key]!;
       expect(deck.length).toBeGreaterThanOrEqual(5);
       for (const slide of deck) {

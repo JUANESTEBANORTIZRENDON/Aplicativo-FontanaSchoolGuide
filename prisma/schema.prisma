@@ -604,7 +604,8 @@ model AdminAuditLog {
 }
 
 // Solicitud del asesor para volver a presentar una evaluación oficial no aprobada. Una sola PENDING por asesor y
-// actividad (índice único parcial uq_reactivacion_pendiente, SQL manual). Aprobarla crea la excepción REACTIVATE.
+// actividad (índice único parcial uq_reactivacion_pendiente, SQL manual). Las nuevas solicitudes archivan y
+// reinician el recorrido; las históricas crean una excepción REACTIVATE para una actividad.
 model ReactivationRequest {
   id             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId         String                @map("user_id") @db.Uuid
@@ -612,6 +613,10 @@ model ReactivationRequest {
   attemptId      String?               @map("attempt_id") @db.Uuid
   status         ReactivationStatus    @default(PENDING)
   advisorNote    String?               @map("advisor_note") @db.VarChar(500)
+  // Las solicitudes nuevas reinician el recorrido completo; las históricas conservan su alcance.
+  restartCourse  Boolean               @default(false) @map("restart_course")
+  report         Json?
+  courseArchive  Json?                 @map("course_archive")
   decisionReason String?               @map("decision_reason")
   decidedById    String?               @map("decided_by_id") @db.Uuid
   decidedAt      DateTime?             @map("decided_at") @db.Timestamptz(6)
@@ -662,7 +667,7 @@ model TrainingCompletionSummary {
   startedAt          DateTime?   @map("started_at") @db.Timestamptz(6)
   completedAt        DateTime?   @map("completed_at") @db.Timestamptz(6)
   certifiedAt        DateTime    @map("certified_at") @db.Timestamptz(6)
-  approvedById       String      @map("approved_by_id") @db.Uuid
+  approvedById       String?     @map("approved_by_id") @db.Uuid
   certificateId      String      @unique @map("certificate_id") @db.Uuid
   certificateCode    String      @map("certificate_code") @db.VarChar(40)
   // [{ slug, name, completedAt }] y [{ key, title, score, passed, attempts }]
@@ -676,7 +681,7 @@ model TrainingCompletionSummary {
   reactivations      Int
   createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   user               Usuario     @relation("ResumenUsuario", fields: [userId], references: [id], onDelete: Restrict)
-  approvedBy         Usuario     @relation("ResumenAprobador", fields: [approvedById], references: [id], onDelete: Restrict)
+  approvedBy         Usuario?    @relation("ResumenAprobador", fields: [approvedById], references: [id], onDelete: Restrict)
   certificate        Certificate @relation(fields: [certificateId], references: [id], onDelete: Restrict)
 
   @@unique([userId, cycle])

@@ -1,6 +1,7 @@
 // "Tu camino en Fontana": la misma barra en la bienvenida y en la práctica. Los pasos ya
 // desbloqueados son enlaces para ir y volver sin perder el avance.
 export type PasoCamino = 'empresa' | 'practica';
+export const TEAM_WELCOME_ROUTE = '/induccion/bienvenida-equipo';
 
 type Paso = { numero: string; titulo: string; detalle: string; estado: 'current' | 'completed' | 'available' | 'upcoming'; href?: string };
 
@@ -9,6 +10,11 @@ function paso({ numero, titulo, detalle, estado, href }: Paso): string {
   const status = estado === 'completed' ? 'completed' : estado === 'available' ? 'available' : 'pending';
   const contenido = `<span class="path-number">${estado === 'completed' ? '✓' : numero}</span><span>${titulo}<small>${detalle}</small></span>`;
   return `<li${clase} data-status="${status}">${href && estado !== 'current' ? `<a class="path-link" href="${href}">${contenido}</a>` : contenido}</li>`;
+}
+
+// Paso 03 desbloqueado: el examen general está aprobado y la bienvenida ya se puede abrir.
+export function pasoEquipoDisponible(): string {
+  return paso({ numero: '03', titulo: 'Trabaja con nosotros', detalle: 'Disponible · Tu bienvenida', estado: 'available', href: TEAM_WELCOME_ROUTE });
 }
 
 // rutaPractica es null mientras el asesor no responda la pregunta de experiencia.
@@ -22,6 +28,6 @@ export function pasosCamino(actual: PasoCamino, rutaPractica: string | null): st
       : rutaPractica
         ? { numero: '02', titulo: 'Practica', detalle: 'Disponible · Ir a la práctica', estado: 'available', href: rutaPractica }
         : { numero: '02', titulo: 'Practica', detalle: 'Próximamente', estado: 'upcoming' }),
-    paso({ numero: '03', titulo: 'Evalúate', detalle: 'Próximamente', estado: 'upcoming' }),
+    paso({ numero: '03', titulo: 'Trabaja con nosotros', detalle: 'Próximamente', estado: 'upcoming' }),
   ].join('')}</ol>`;
 }

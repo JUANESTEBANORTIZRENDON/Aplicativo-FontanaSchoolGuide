@@ -1,7 +1,7 @@
 import './final-exam.css';
+import { progressGuide } from '../progress-guide';
 import { api, ApiError, escapar, formatDate } from '../http';
 import { bindReactivation, reactivationNotice, statusChip, type EvaluationStatus } from '../reactivation';
-import { playSeal } from '../seal-animation';
 
 // Módulo 05 «Examen general»: selección múltiple A, B, C y D sobre toda la formación. Un intento: las respuestas se
 // guardan en el servidor al marcarlas (se puede cerrar y retomar) y solo el servidor califica al enviar.
@@ -11,7 +11,6 @@ type Question = { id: string; topicLabel: string; prompt: string; options: { let
 type Grade = {
   score: number; correct: number; total: number; minimumScore: number; passed: boolean;
   topics: { label: string; correct: number; total: number; percent: number }[];
-  review: { id: string; prompt: string; topicLabel: string; selected: Letter | null; selectedText: string | null; correctLetter: Letter; correctText: string; explanation: string }[];
   recommendations: string[];
 };
 type Result = { attemptId: string; number: number; score: string | null; passed: boolean; submittedAt: string | null; finalExam?: Grade };
@@ -21,15 +20,20 @@ type State = {
 };
 
 export async function mountFinalExam(container: HTMLElement, backHref: string, moduleOrder = 5): Promise<void> {
-  container.innerHTML = '<section class="fexam"><p role="status">Cargando el examen general…</p></section>';
-  const root = container.querySelector<HTMLElement>('.fexam')!;
+  container.innerHTML = `<section class="fexam">
+    <div class="fontana-progress-row">
+      <p class="auth-kicker">MÓDULO ${String(moduleOrder).padStart(2, '0')}</p>
+      ${progressGuide(backHref)}
+    </div>
+    <div data-fexam-view><p role="status">Cargando el examen general…</p></div>
+  </section>`;
+  const root = container.querySelector<HTMLElement>('[data-fexam-view]')!;
   let state: State;
   let questions: { question: Question; selected: Letter | null }[] = [];
   let index = 0;
   let saving = false;
   let error = '';
 
-  const kicker = `<p class="auth-kicker">MÓDULO ${String(moduleOrder).padStart(2, '0')}</p>`;
   const back = `<a class="secondary-link" href="${escapar(backHref)}">← Volver a tu ruta</a>`;
 
   async function load(): Promise<void> {
@@ -38,20 +42,20 @@ export async function mountFinalExam(container: HTMLElement, backHref: string, m
       renderIntro();
     } catch (cause) {
       const reason = cause instanceof ApiError && typeof cause.details?.blockedReason === 'string' ? cause.details.blockedReason : (cause as Error).message;
-      root.innerHTML = `${kicker}<h2>Examen general</h2><p class="feedback feedback-error">${escapar(reason)}</p>${back}`;
+      root.innerHTML = `<h2>Examen general</h2><p class="feedback feedback-error">${escapar(reason)}</p>${back}`;
     }
   }
 
   function renderIntro(): void {
     const result = state.result?.finalExam ? state.result : null;
     if (result && !state.canStart) return renderResult(result, false);
-    root.innerHTML = `${kicker}
+    root.innerHTML = `
       <h2>Examen general</h2>
       <p class="fexam-lead">Evaluación integral de tu formación: institución, cobranza, comunicación, objeciones, acuerdos, registro, tipificación, Control Next y ofimática.</p>
       <ul class="fexam-facts">
         <li><strong>${state.questionCount}</strong><span>preguntas A, B, C o D</span></li>
         <li><strong>${state.minimumScore}</strong><span>puntos mínimos de 100</span></li>
-        <li><strong>1</strong><span>intento</span></li>
+        <li><strong>1 + 1</strong><span>intento inicial y un reintento que tú activas</span></li>
       </ul>
       <div class="fexam-rules">
         <p><strong>Antes de empezar</strong></p>
@@ -63,7 +67,7 @@ export async function mountFinalExam(container: HTMLElement, backHref: string, m
         </ul>
       </div>
       ${state.reviewMode ? '<p class="fexam-note">Ya estás certificado: tu examen general quedó registrado y no se vuelve a presentar.</p>' : ''}
-      ${result ? '<p class="fexam-note">El administrador autorizó un nuevo intento. Tu resultado anterior se conserva en tu historial.</p>' : ''}
+      ${result ? '<p class="fexam-note">Tienes un nuevo intento habilitado. Tu resultado anterior se conserva en tu historial.</p>' : ''}
       <p class="fexam-error" role="alert" ${error ? '' : 'hidden'} id="fexam-error">${escapar(error)}</p>
       ${state.canStart ? `<button type="button" class="primary-action fexam-start" data-start>${state.inProgress ? `Retomar examen (${state.inProgress.answered} de ${state.inProgress.total} respondidas) →` : 'Comenzar el examen →'}</button>` : ''}
       ${back}`;
@@ -150,7 +154,7 @@ export async function mountFinalExam(container: HTMLElement, backHref: string, m
       <p>${answered()} de ${questions.length} preguntas respondidas.</p>
       ${missing.length ? `<div class="eval-notice eval-notice--warn"><strong>Te faltan ${missing.length} ${missing.length === 1 ? 'pregunta' : 'preguntas'}</strong><p>Sin responder: ${missing.join(', ')}. Una pregunta sin responder cuenta como incorrecta.</p></div>` : ''}
       <div class="fexam-confirm">
-        <p><strong>Este es tu único intento.</strong> Al enviar, el examen se califica y queda cerrado.</p>
+        <p><strong>Al enviar se cierra este intento.</strong> Si no apruebas, puedes activar un único reintento. Después necesitarás acompañamiento del administrador.</p>
         <label class="fexam-check"><input type="checkbox" data-confirm> Entiendo que no podré cambiar mis respuestas.</label>
       </div>
       <p class="fexam-error" role="alert" ${error ? '' : 'hidden'}>${escapar(error)}</p>
@@ -172,9 +176,9 @@ export async function mountFinalExam(container: HTMLElement, backHref: string, m
     button.textContent = 'Calificando…';
     try {
       const { result } = (await api<{ data: { result: Result } }>('/training/final-exam/submit', { method: 'POST', body: '{}' })).data;
+      questions = []; index = 0;
       state = (await api<{ data: State }>('/training/final-exam')).data;
       saving = false;
-      if (result.passed) await playSeal({ moduleName: 'Examen general', moduleNumber: moduleOrder, label: 'APROBADO', nextName: 'Validación del administrador' });
       renderResult(result, true);
     } catch (cause) {
       saving = false;
@@ -185,7 +189,7 @@ export async function mountFinalExam(container: HTMLElement, backHref: string, m
 
   function renderResult(result: Result, fresh: boolean): void {
     const grade = result.finalExam!;
-    root.innerHTML = `${kicker}
+    root.innerHTML = `
       <section class="fexam-result ${grade.passed ? 'is-ok' : 'is-bad'}">
         <div class="fexam-score" aria-hidden="true">${Math.round(grade.score)}<small>/100</small></div>
         <div>
@@ -194,14 +198,22 @@ export async function mountFinalExam(container: HTMLElement, backHref: string, m
           ${statusChip(state.status, state.statusLabel)}
         </div>
       </section>
-      ${grade.passed ? '<div class="eval-notice"><strong>Siguiente paso: validación del administrador</strong><p>Completaste las evaluaciones. El administrador revisará tu expediente; cuando apruebe tu certificación verás tu certificado.</p></div>' : reactivationNotice({ activityId: state.activityId, status: state.status, requestedAt: state.reactivationRequestedAt })}
+      ${grade.passed ? '<div id="fexam-welcome" aria-label="Tu bienvenida"><p role="status">Preparando tu bienvenida…</p></div>' : reactivationNotice({ activityId: state.activityId, status: state.status, requestedAt: state.reactivationRequestedAt })}
       <section class="fexam-topics"><h3>Resultado por tema</h3>
         <ul>${grade.topics.map((topic) => `<li><span>${escapar(topic.label)}</span><span class="fexam-topic-bar"><i style="width:${topic.percent}%"></i></span><strong>${topic.correct}/${topic.total}</strong></li>`).join('')}</ul>
       </section>
       <section class="fexam-reco"><h3>Recomendaciones</h3><ul>${grade.recommendations.map((item) => `<li>${escapar(item)}</li>`).join('')}</ul></section>
-      ${grade.review.length ? `<details class="fexam-review"><summary>Revisar las ${grade.review.length} preguntas que fallaste</summary>${grade.review.map((item) => `<article><p class="fexam-topic">${escapar(item.topicLabel)}</p><h4>${escapar(item.prompt)}</h4><p>Tu respuesta: ${item.selected ? `${item.selected}. ${escapar(item.selectedText)}` : 'sin responder'}</p><p>Respuesta correcta: <strong>${item.correctLetter}. ${escapar(item.correctText)}</strong></p><p class="fexam-why">${escapar(item.explanation)}</p></article>`).join('')}</details>` : ''}
+      <p class="fexam-note">La evaluación está cerrada. Las respuestas no están disponibles después del envío.</p>
       ${back}`;
     bindReactivation(root, () => { void load(); });
+    if (grade.passed) {
+      const host = root.querySelector<HTMLElement>('#fexam-welcome')!;
+      void import('../welcome/team-welcome').then(({ mountTeamWelcome }) => {
+        if (root.contains(host)) mountTeamWelcome(host, { backHref });
+      }).catch(() => {
+        if (root.contains(host)) host.innerHTML = '<p role="alert">No pudimos cargar tu bienvenida.</p><a href="/induccion/certificado">Consultar mi certificado →</a>';
+      });
+    }
     if (fresh) root.querySelector<HTMLElement>('#fexam-result')?.focus();
   }
 

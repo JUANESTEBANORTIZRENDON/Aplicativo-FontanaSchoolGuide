@@ -134,10 +134,8 @@ function resultTemplate(evaluation: Evaluation, isLast: boolean, attempts: numbe
     return `
     <div class="sim-expert-result is-feedback" role="status">
       <p class="sim-expert-result__title">${icon('ClipboardList')} Retroalimentación de tu tipificación: ${evaluation.passed} de ${evaluation.total} puntos (${evaluation.score} %)</p>
-      ${missing.length ? `<p class="sim-expert-result__lead">Puntos que no coincidieron con la llamada:</p><ul class="sim-expert-result__list">${missing.map((i) => `<li><strong>✗ ${esc(i.label)}.</strong> ${esc(i.detail)}</li>`).join('')}</ul>` : '<p>Tu tipificación coincide con todos los puntos de esta llamada.</p>'}
-      <p class="sim-expert-result__note">Tu ejercicio quedó registrado y no se repite. Tu conocimiento se confirma en el examen general.</p>
+      <p class="sim-expert-result__note">Tu ejercicio quedó registrado. Las respuestas y su corrección no están disponibles después del envío.</p>
       <div class="sim-expert-result__actions">
-        <button type="button" class="sim-btn sim-btn--ghost sim-btn--sm" data-practice="checks">${icon('ClipboardList')} Ver los checkmarks</button>
         ${nextButton(isLast, ' sim-btn--sm')}
       </div>
     </div>`;
@@ -199,7 +197,8 @@ export function mountPracticePanel(host: HTMLElement, ctx: SimContext, exercise:
 
   const render = (evaluation: Evaluation, officialInfo: OfficialExercise | null | undefined, attempts: number): void => {
     shown = evaluation;
-    checks().innerHTML = checklistTemplate(exercise, evaluation);
+    checks().innerHTML = officialInfo ? '' : checklistTemplate(exercise, evaluation);
+    qs<HTMLElement>(host, '.sim-practice__checks').hidden = Boolean(officialInfo);
     qs(host, '[data-progress]').innerHTML = progressTemplate(ctx, exercise);
     score().innerHTML = scoreLine(evaluation, officialInfo, attempts);
     qs<HTMLElement>(host, '[data-practice="retry"]').hidden = evaluation.approved || Boolean(officialInfo);

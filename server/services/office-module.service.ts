@@ -59,8 +59,8 @@ export async function getModuleState(userId: string, now = new Date(), preloaded
     return {
       key, title: SECTION_TITLE[key], activityId: activity?.id ?? null, graded, status,
       route: activity?.route ?? null,
-      attemptsRemaining: graded && key !== 'excel' ? availability?.remaining ?? null : null,
-      maxAttempts: graded && key !== 'excel' ? (activity ? snapshot.attemptLimits.get(activity.id) : undefined) ?? evaluation?.maxAttempts ?? null : null,
+      attemptsRemaining: graded ? availability?.remaining ?? null : null,
+      maxAttempts: graded ? evaluation?.maxAttempts ?? 1 : null,
       waitUntil: availability?.waitUntil?.toISOString() ?? null,
       lessonsViewed: key === 'excel' || key === 'ortografia' ? viewedKeys(key) : [],
       lessonsTotal: key === 'excel' ? EXCEL_LESSON_KEYS.length : key === 'ortografia' ? SPELLING_LESSON_KEYS.length : 0,
@@ -82,10 +82,10 @@ export async function getModuleState(userId: string, now = new Date(), preloaded
       version: config.version,
       typing: {
         durationSeconds: config.typingDurationSeconds, minCorrectCpm: config.typingMinCorrectCpm, minAccuracy: config.typingMinAccuracy,
-        startWindowSeconds: config.typingStartWindowSeconds, maxAttempts: config.typingMaxAttempts,
+        startWindowSeconds: config.typingStartWindowSeconds, maxAttempts: 1,
       },
-      excel: { minScore: EXCEL_PASS_SCORE, maxAttempts: null },
-      dictation: { minScore: config.dictationMinScore, maxAttempts: config.dictationMaxAttempts, maxPlays: config.dictationMaxPlays },
+      excel: { minScore: EXCEL_PASS_SCORE, maxAttempts: 1 },
+      dictation: { minScore: config.dictationMinScore, maxAttempts: 1, maxPlays: config.dictationMaxPlays },
     },
     typing: {
       practiceRequired,

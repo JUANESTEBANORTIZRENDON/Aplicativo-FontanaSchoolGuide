@@ -1,4 +1,6 @@
 /* Certificado y felicitación (identidad Fontana School: vino, dorado y marfil). */
+.cert-page, .cert-celebration { --red: #8b1538; --gold: #d4af37; --ink: #111827; --muted: #526072; --line: #dfd3be; }
+.cert-page { color: #1f2a37; }
 .cert-page { max-width: 900px; margin: 24px auto; padding: 24px; background: #fff; border-radius: 20px; border: 1px solid var(--line); }
 .cert-page__actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
 .cert-page__actions .primary-action, .cert-page__actions .secondary-action { width: auto; text-decoration: none; }

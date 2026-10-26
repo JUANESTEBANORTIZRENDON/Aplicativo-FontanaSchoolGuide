@@ -1,6 +1,7 @@
 import '../styles.css';
 import '../practice.css';
 import './office.css';
+import { progressGuide } from '../progress-guide';
 import { playSeal } from '../seal-animation';
 import { mountHeaderAccount } from '../header-account';
 import { api, escapar } from '../http';
@@ -20,6 +21,11 @@ export type OfficeContext = {
   refresh: () => Promise<ModuleState>;
   backHref: string;
 };
+
+export function mountOfficeRetry(ctx: OfficeContext, activityId: string, onReady = () => { void ctx.reload(); }): void {
+  ctx.view.insertAdjacentHTML('afterbegin', reactivationNotice({ activityId, status: 'NO_APROBADO' }));
+  bindReactivation(ctx.view, onReady);
+}
 
 const BASE_PATH = '/induccion/modulos/ofimatica-mecanografia';
 const TITLES: Record<SectionKey, string> = {
@@ -99,7 +105,7 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
   root.innerHTML = `
     <header><a class="brand" href="${escapar(backHref)}" aria-label="Fontana, volver a tu ruta de formación"><span class="brand-image"><img src="/imagenes/fontana-logo.webp" alt=""><strong class="brand-name">FONTANA</strong></span></a><span class="header-divider"></span><span class="platform">AULA DE FORMACIÓN</span></header>
     <main class="office-main">
-      <div class="office-progress-bar"><a class="office-progress-link" href="${escapar(backHref)}">Ver mi progreso del aula <span aria-hidden="true">→</span></a></div>
+      <div class="office-progress-bar">${progressGuide(backHref)}</div>
       <nav class="office-steps" aria-label="Secciones del módulo"></nav>
       <section id="office-view" class="office-view" tabindex="-1" aria-live="polite">${loadingCard('Cargando tu módulo…')}</section>
       <footer><span>Fontana · Aula de formación</span><span>Módulo 01</span></footer>
@@ -159,6 +165,7 @@ export async function mountOffice(nombre: string, initial: SectionKey | null, ba
   async function noticeIfExhausted(): Promise<void> {
     const section = state.sections.find((item) => item.key === current);
     if (section?.status !== 'NO_ATTEMPTS' || !section.activityId) return;
+    if (view.querySelector('[data-reactivation]')) return;
     const requests = await api<{ data: { status: string; createdAt: string; activity: { id: string } }[] }>('/training/reactivation-requests').then((response) => response.data).catch(() => []);
     const pending = requests.find((request) => request.activity.id === section.activityId && request.status === 'PENDING');
     view.insertAdjacentHTML('afterbegin', reactivationNotice({ activityId: section.activityId, status: pending ? 'REACTIVACION_SOLICITADA' : 'NO_APROBADO', requestedAt: pending?.createdAt ?? null, title: `${TITLES[current]}: actividad no aprobada` }));

@@ -6,7 +6,7 @@ import { ConflictError, NotFoundError } from '../domain/errors.js';
 import { activeSealsForUser } from '../repositories/progress.repository.js';
 import { audit, type ActionContext } from './audit.service.js';
 
-// Certificados. Solo los emite la aprobación del administrador (certification.service): tener todos los sellos no basta.
+// Certificados: emisión automática tras el examen o aprobación administrativa de expedientes anteriores.
 // El PDF se genera al descargarlo (utils/certificate-pdf.ts); fileUrl queda nulo.
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

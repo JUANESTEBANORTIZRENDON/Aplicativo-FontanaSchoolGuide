@@ -6,6 +6,8 @@ import {
   listPrerequisiteEdges, replacePrerequisites, updateActivityStatus, updateModuleStatus,
 } from '../repositories/catalog.repository.js';
 import { audit, type ActionContext } from './audit.service.js';
+import { OBJECTIONS_SLUG } from '../domain/objections.js';
+import { OBJECTIONS_EXPERT_VERSION } from '../domain/objections-expert.js';
 
 export function listModules() {
   return listAllModulesForAdmin();
@@ -53,7 +55,8 @@ export async function createEvaluationVersion(activityId: string, input: Evaluat
     const evaluation = await createEvaluation(tx, {
       activityId, version, title: input.title ?? null, status: 'ACTIVE',
       minimumScore: new Prisma.Decimal(input.minimumScore), maxAttempts: input.maxAttempts, waitMinutes: input.waitMinutes,
-      questionCount: input.questionCount ?? null, contentVersion: input.contentVersion ?? null,
+      questionCount: input.questionCount ?? null,
+      contentVersion: activity.type === 'SIMULATOR' && activity.module?.slug === OBJECTIONS_SLUG ? OBJECTIONS_EXPERT_VERSION : input.contentVersion ?? null,
     });
     if (context) await audit(tx, context, { action: 'EVALUATION_VERSION_CREATED', entityType: 'Evaluation', entityId: evaluation.id, after: { ...evaluation }, reason: input.reason });
     return evaluation;

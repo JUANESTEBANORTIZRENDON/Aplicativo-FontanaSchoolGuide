@@ -8,6 +8,7 @@ import {
   findModuleProgress, lockActivityProgress, overridesForUser, upsertActivityProgress, upsertModuleProgress,
 } from '../repositories/progress.repository.js';
 import { formatLocal } from '../utils/time.js';
+import { initialEvaluation } from '../domain/evaluation-retry.js';
 import { completeModule, loadSnapshot, refreshModulePercent } from './progress.service.js';
 
 // Intentos de las evaluaciones oficiales. El cupo (un intento por defecto), las excepciones del administrador y el
@@ -22,14 +23,13 @@ export async function assertNotCertified(db: Tx | typeof prisma, userId: string)
   }
 }
 
-async function availabilityFor(tx: Tx, userId: string, activityId: string, evaluation: Parameters<typeof computeAvailability>[0] & { id: string }, now: Date, unlimitedPractice = false): Promise<Availability> {
-  const [attempts, overrides, limit] = await Promise.all([
+async function availabilityFor(tx: Tx, userId: string, activityId: string, evaluation: Parameters<typeof computeAvailability>[0] & { id: string }, now: Date): Promise<Availability> {
+  const [attempts, overrides] = await Promise.all([
     // Todas las versiones de la evaluación: un cambio de configuración no reinicia los intentos usados.
     tx.attempt.findMany({ where: { userId, evaluation: { activityId } }, select: { id: true, number: true, status: true, overrideId: true, submittedAt: true, startedAt: true } }),
     overridesForUser(tx, userId).then((rows) => rows.filter((row) => row.activityId === activityId)),
-    tx.userAttemptLimit.findUnique({ where: { userId_activityId: { userId, activityId } }, select: { maxAttempts: true } }),
   ]);
-  return computeAvailability({ ...evaluation, maxAttempts: limit?.maxAttempts ?? evaluation.maxAttempts }, attempts, overrides, now, unlimitedPractice);
+  return computeAvailability(initialEvaluation(evaluation), attempts, overrides, now);
 }
 
 export async function startAttempt(userId: string, activityId: string, options: { now?: Date } = {}) {
@@ -59,7 +59,7 @@ export async function startAttemptTx(tx: Tx, userId: string, activityId: string,
     const evaluation = (await activeEvaluations(tx, [activityId])).get(activityId);
     if (!evaluation) throw new ConflictError('La actividad todavía no tiene una evaluación configurada.', 'NO_EVALUATION');
 
-    const availability = await availabilityFor(tx, userId, activityId, evaluation, now, activity.type === 'EXCEL_PRACTICE');
+    const availability = await availabilityFor(tx, userId, activityId, evaluation, now);
     if (availability.openAttemptId) {
       return { attempt: await tx.attempt.findUniqueOrThrow({ where: { id: availability.openAttemptId } }), resumed: true };
     }
@@ -140,7 +140,7 @@ export async function submitAttemptTx(tx: Tx, userId: string, attemptId: string,
     });
 
     const activity = attempt.evaluation.activity;
-    const availability = await availabilityFor(tx, userId, activity.id, attempt.evaluation, now, activity.type === 'EXCEL_PRACTICE');
+    const availability = await availabilityFor(tx, userId, activity.id, attempt.evaluation, now);
     const activityProgress = await tx.userActivityProgress.findUnique({ where: { userId_activityId: { userId, activityId: activity.id } } });
     await upsertActivityProgress(tx, userId, activity.id, {
       status: passed ? 'PASSED' : availability.exhausted ? 'FAILED' : 'IN_PROGRESS',

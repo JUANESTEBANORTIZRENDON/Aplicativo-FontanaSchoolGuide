@@ -59,7 +59,7 @@ describe('escenarios demo', () => {
 
   it('1000000103 · aprobado M1: completado, M2 disponible, M3 bloqueado', async () => {
     const { modules } = await advisor('1000000103');
-    expect(modules[0]).toMatchObject({ status: 'PASSED', actionLabel: 'Completado', hasSeal: true, enabled: true });
+    expect(modules[0]).toMatchObject({ status: 'PASSED', actionLabel: 'Completado', hasSeal: true, enabled: false });
     expect(modules[1]).toMatchObject({ status: 'AVAILABLE', enabled: true });
     expect(modules[2]).toMatchObject({ status: 'BLOCKED', blockedReason: 'Aprueba Inducción a las cobranzas para continuar' });
   });

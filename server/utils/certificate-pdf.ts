@@ -128,3 +128,56 @@ function circle(cx: number, cy: number, r: number, rgb: readonly number[], width
     `${cx - r} ${cy - k} ${cx - k} ${cy - r} ${cx} ${cy - r} c ${cx + k} ${cy - r} ${cx + r} ${cy - k} ${cx + r} ${cy} c S`,
   ];
 }
+
+// Documento de refuerzo, deliberadamente diferente del diploma. Paginación y ajuste por métrica real
+// para nombres largos, notas y recomendaciones; comparte fuentes WinAnsi y construcción PDF existente.
+export function retryReportPdf(lines: string[]): Buffer {
+  const wrapped: string[] = [];
+  for (const paragraph of lines) {
+    let line = '';
+    for (const word of paragraph.split(/\s+/)) {
+      if (line && textWidth(`${line} ${word}`, 11, false) > 475) { wrapped.push(line); line = ''; }
+      // También divide identificadores o palabras muy largas.
+      for (const char of word) {
+        if (textWidth(line + char, 11, false) > 475) { wrapped.push(line); line = ''; }
+        line += char;
+      }
+      line += ' ';
+    }
+    wrapped.push(line.trimEnd());
+  }
+  const pages: string[][] = [];
+  for (let i = 0; i < wrapped.length; i += 33) pages.push(wrapped.slice(i, i + 33));
+  const objects: string[] = [
+    '<< /Type /Catalog /Pages 2 0 R >>', '',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
+  ];
+  const pageIds: number[] = [];
+  pages.forEach((rows, index) => {
+    const pageId = objects.length + 1;
+    pageIds.push(pageId);
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ${pageId + 1} 0 R >>`);
+    const text = (value: string, x: number, y: number, size = 11, bold = false, rgb: readonly number[] = INK) =>
+      `BT /${bold ? 'F2' : 'F1'} ${size} Tf ${color(rgb)} ${x} ${y} Td (${literal(value)}) Tj ET`;
+    const content = [
+      `${color([0.996, 0.988, 0.969])} 0 0 595 842 re f`,
+      `${color(RED)} 0 832 595 10 re f`,
+      text('FONTANA SCHOOL', 60, 786, 13, true, RED),
+      text('CONSTANCIA DE EVALUACIÓN', 60, 749, 20, true),
+      text('Requiere refuerzo - Solicitud de reintento', 60, 724, 12, true, RED),
+      `${color(GOLD, true)} 1 w 60 706 m 535 706 l S`,
+      ...rows.map((line, i) => text(line, 60, 680 - i * 17)),
+      text('Este documento no acredita aprobación ni certificación de la formación.', 60, 66, 10, true, RED),
+      text(`Página ${index + 1} de ${pages.length}`, 60, 43, 9, false, MUTED),
+    ].join('\n');
+    objects.push(`<< /Length ${Buffer.byteLength(content, 'latin1')} >>\nstream\n${content}\nendstream`);
+  });
+  objects[1] = `<< /Type /Pages /Kids [${pageIds.map(id => `${id} 0 R`).join(' ')}] /Count ${pages.length} >>`;
+  let body = '%PDF-1.4\n%\xe2\xe3\xcf\xd3\n';
+  const offsets: number[] = [];
+  objects.forEach((object, i) => { offsets.push(Buffer.byteLength(body, 'latin1')); body += `${i + 1} 0 obj\n${object}\nendobj\n`; });
+  const start = Buffer.byteLength(body, 'latin1');
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.map(n => `${String(n).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${start}\n%%EOF\n`;
+  return Buffer.from(body, 'latin1');
+}

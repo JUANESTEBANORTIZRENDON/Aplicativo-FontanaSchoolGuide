@@ -4,6 +4,8 @@ import * as attemptService from '../services/attempt.service.js';
 import { DEFAULT_OFFICE_CONFIG, type OfficeConfigValues } from '../domain/office.js';
 import * as configService from '../services/office-config.service.js';
 import * as typingService from '../services/office-typing.service.js';
+import { activateSelfRetry } from '../services/evaluation-retry.service.js';
+import { approveReactivation, requestReactivation } from '../services/reactivation.service.js';
 import { activityIds, cleanupSuite, createTestUser, loginAgent, newKey, ORIGIN, passOfficeModule } from './helpers.js';
 
 const SUITE = 'off';
@@ -90,7 +92,7 @@ describe('módulo Ofimática: acceso y estado', () => {
     const state = (await agent.get('/api/training/office/module')).body.data;
     expect(state.currentSection).toBe('bienvenida');
     expect(state.sections.map((section: { key: string }) => section.key)).toEqual(['bienvenida', 'mecanografia', 'excel', 'ortografia', 'resultado']);
-    expect(state.config.typing).toMatchObject({ durationSeconds: 60, minCorrectCpm: 150, minAccuracy: 90, maxAttempts: 3 });
+    expect(state.config.typing).toMatchObject({ durationSeconds: 60, minCorrectCpm: 150, minAccuracy: 90, maxAttempts: 1 });
     expect(state.config.excel).toMatchObject({ minScore: 80 });
     expect(state.config.dictation).toMatchObject({ minScore: 85, maxPlays: 6, maxAttempts: 1 });
     // Registrar la bienvenida mueve el punto de reanudación.
@@ -190,8 +192,10 @@ describe('mecanografía interna', () => {
     const first = await typingService.prepareAttempt(user.id, t0);
     await typingService.startOfficial(user.id, first.attemptId, at(t0, 1));
     const failed = await typingService.completeAttempt(user.id, first.attemptId, { nonce: first.nonce, typedText: (await textOf(first.attemptId)).slice(0, 80) }, at(t0, 61));
-    expect(failed).toMatchObject({ passed: false, practiceRequired: true, attemptsRemaining: 2 });
+    expect(failed).toMatchObject({ passed: false, practiceRequired: false, attemptsRemaining: 0 });
     expect(failed.metrics.correctCpm).toBe(80);
+    const ids = await activityIds();
+    await activateSelfRetry(user.id, ids.a1, at(t0, 65));
     await expect(typingService.prepareAttempt(user.id, at(t0, 70))).rejects.toMatchObject({ code: 'PRACTICE_REQUIRED' });
     await typingService.completePractice(user.id, at(t0, 100));
     // Tras la práctica prepara de nuevo, empieza y abandona (no envía nada).
@@ -201,12 +205,15 @@ describe('mecanografía interna', () => {
     // Mientras la ventana siga abierta, no se permiten dos pruebas a la vez.
     await expect(typingService.prepareAttempt(user.id, at(t0, 130))).rejects.toMatchObject({ code: 'TYPING_ATTEMPT_OPEN' });
     // Vencida la ventana (80 s), el intento se cierra como ABANDONED y cuenta como fallido.
-    await expect(typingService.prepareAttempt(user.id, at(t0, 300))).rejects.toMatchObject({ code: 'PRACTICE_REQUIRED' });
+    await expect(typingService.prepareAttempt(user.id, at(t0, 300))).rejects.toMatchObject({ code: 'NO_ATTEMPTS_LEFT' });
     const abandoned = await prisma.typingAttemptResult.findUniqueOrThrow({ where: { attemptId: second.attemptId } });
     expect(abandoned).toMatchObject({ closeReason: 'ABANDONED', passed: false });
     const progress = await prisma.userActivityProgress.findFirstOrThrow({ where: { userId: user.id } });
     expect(progress.attemptsUsed).toBe(2);
     // El intento preparado que nunca se inició vence por su propio TTL (10 minutos).
+    const adminUser = await createTestUser(SUITE, { rol: 'administrador' });
+    const request = await requestReactivation(user.id, ids.a1, 'Necesito acompañamiento.', at(t0, 305));
+    await approveReactivation(request.request.id, 'Se realizó el acompañamiento.', { actorUserId: adminUser.id }, at(t0, 310));
     await typingService.completePractice(user.id, at(t0, 320));
     const third = await typingService.prepareAttempt(user.id, at(t0, 330));
     await expect(typingService.prepareAttempt(user.id, at(t0, 400))).rejects.toMatchObject({ code: 'TYPING_ATTEMPT_OPEN' });
@@ -260,10 +267,11 @@ describe('mecanografía interna', () => {
     const user = await createTestUser(SUITE);
     const ids = await activityIds();
     const t0 = base();
-    for (let index = 0; index < 3; index++) {
+    for (let index = 0; index < 2; index++) {
       const prepared = await typingService.prepareAttempt(user.id, at(t0, index * 600));
       await typingService.startOfficial(user.id, prepared.attemptId, at(t0, index * 600 + 1));
       await typingService.completeAttempt(user.id, prepared.attemptId, { nonce: prepared.nonce, typedText: 'texto corto' }, at(t0, index * 600 + 61));
+      if (index === 0) await activateSelfRetry(user.id, ids.a1, at(t0, 65));
       await typingService.completePractice(user.id, at(t0, index * 600 + 70));
     }
     await expect(typingService.prepareAttempt(user.id, at(t0, 3000))).rejects.toMatchObject({ code: 'NO_ATTEMPTS_LEFT' });
@@ -271,7 +279,7 @@ describe('mecanografía interna', () => {
       .set('Idempotency-Key', newKey()).send({ action: 'EXTRA_ATTEMPT', extraAttempts: 1, reason: 'Falla de conexión en la prueba de mecanografía' });
     expect(response.status).toBe(201);
     const extra = await typingService.prepareAttempt(user.id, at(t0, 3100));
-    expect(extra.number).toBe(4);
+    expect(extra.number).toBe(3);
     // Sin espera configurada, RESET_WAIT no aplica.
     const reset = await adminAgent.post(`/api/admin/advisors/${user.id}/activities/${ids.a1}/reactivate`).set(ORIGIN)
       .set('Idempotency-Key', newKey()).send({ action: 'RESET_WAIT', reason: 'No hay espera en mecanografía' });

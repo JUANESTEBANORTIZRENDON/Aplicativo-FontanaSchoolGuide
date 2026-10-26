@@ -7,6 +7,7 @@ import { FINAL_EXAM_ACTIVITY_TITLE, FINAL_EXAM_DEFAULTS, FINAL_EXAM_NAME, FINAL_
 import { FINAL_EXAM_BANK_VERSION } from '../server/domain/final-exam-bank.js';
 import { EXERCISE_RULES, TIPIFICA_RULES_VERSION, tipificaActivityTitle } from '../server/domain/tipifica/exercises.js';
 import { OBJECTIONS_ACTIVITY_TITLE, OBJECTIONS_NAME, OBJECTIONS_SLUG } from '../server/domain/objections.js';
+import { OBJECTIONS_EXAM_TITLE, OBJECTIONS_EXPERT_VERSION, OBJECTIONS_MIN_SCORE } from '../server/domain/objections-expert.js';
 import { OFFICE_MODULE_SLUG, SECTION_ORDER, SECTION_TITLE } from '../server/domain/office.js';
 import { DICTATIONS, EXCEL_ANSWER_KEY, EXCEL_SCENARIO_DATA, SPELLING_RULES, TYPING_TEXTS } from './seed-office-content.js';
 
@@ -57,15 +58,19 @@ async function seedFinalExam(prisma: PrismaClient, moduleId: string, route: stri
   }
 }
 
-// Módulo 03 «Enfréntate a la objeción» (slug técnico conservado): su única actividad obligatoria es una lección
-// que se aprueba con el examen final. Convierte el marcador de posición anterior sin cambiar su id, así que
-// conserva su historial. Idempotente.
+// Módulo 03: introducción de cinco casos y una evaluación escrita con sistema experto.
 async function seedObjections(prisma: PrismaClient, moduleId: string, route: string): Promise<void> {
   await prisma.activity.upsert({
     where: { moduleId_order: { moduleId, order: 1 } },
     create: { moduleId, order: 1, type: 'LESSON', status: 'ACTIVE', isRequired: true, title: OBJECTIONS_ACTIVITY_TITLE, route },
     update: { type: 'LESSON', status: 'ACTIVE', isRequired: true, title: OBJECTIONS_ACTIVITY_TITLE, route },
   });
+  const exam = await prisma.activity.upsert({ where: { moduleId_order: { moduleId, order: 2 } },
+    create: { moduleId, order: 2, type: 'SIMULATOR', status: 'ACTIVE', isRequired: true, title: OBJECTIONS_EXAM_TITLE, route }, update: {} });
+  if (!await prisma.evaluation.findFirst({ where: { activityId: exam.id } })) {
+    await prisma.evaluation.create({ data: { activityId: exam.id, version: 1, status: 'ACTIVE', title: OBJECTIONS_EXAM_TITLE,
+      minimumScore: OBJECTIONS_MIN_SCORE, maxAttempts: 1, waitMinutes: 0, contentVersion: OBJECTIONS_EXPERT_VERSION } });
+  }
 }
 
 // La teoría es obligatoria para todos; el examen es el diagnóstico del asesor con experiencia (80 %, un intento,

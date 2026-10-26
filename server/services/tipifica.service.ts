@@ -27,7 +27,7 @@ async function access(db: Db, userId: string) {
   const snapshot = await loadSnapshot(db, userId);
   const view = snapshot.views.find((item) => item.slug === TIPIFICA_SLUG);
   if (!view) throw new NotFoundError('El módulo Tipifica no está configurado.', 'MODULE_NOT_FOUND');
-  if (!view.enabled) throw new ForbiddenError(view.blockedReason ?? 'Módulo no disponible.', 'MODULE_BLOCKED');
+  if (!view.enabled && view.status !== 'PASSED') throw new ForbiddenError(view.blockedReason ?? 'Módulo no disponible.', 'MODULE_BLOCKED');
   const module = snapshot.modules.find((item) => item.id === view.moduleId)!;
   const activities = new Map(module.activities.filter((activity) => activity.type === 'TYPIFICATION' && activity.status === 'ACTIVE').map((activity) => [activity.order, activity]));
   return { snapshot, view, activities };

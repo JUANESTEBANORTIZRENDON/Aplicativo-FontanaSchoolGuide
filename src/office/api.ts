@@ -90,12 +90,9 @@ export type TypingResult = {
 
 export type ExcelPractice = { attemptId: string; number: number; title: string; state: AnyPracticeState; status: string; minScore: number; resumed?: boolean };
 export type ExcelActivityInfo = {
-  id: string; title: string; attemptId: string | null; lessons: Lesson[]; minScore: number; maxAttempts: null; practice: ExcelPractice | null;
+  id: string; title: string; attemptId: string | null; lessons: Lesson[]; minScore: number; maxAttempts: number; practice: ExcelPractice | null; result: ExcelResult | null;
 };
-export type ExcelResult = ExcelPractice & {
-  score: number; passed: boolean;
-  steps: { questionId: string; lesson: string; title: string; correct: boolean; awardedScore: number; weight: number; hint: string }[];
-};
+export type ExcelResult = { attemptId: string; number: number; title: string; status: string; minScore: number; score: number; passed: boolean };
 
 export type DictationStarted = { attemptId: string; number: number; resumed: boolean; exerciseId: string; playsAllowed: number; playsUsed: number; playsRemaining: number };
 export type DictationPlay =
@@ -105,8 +102,7 @@ export type Correction = { position: number; type: string; expected: string; wri
 export type Recommendation = { resumen: string; fortalezas: string[]; recomendaciones: string[]; proximoPaso: string };
 export type DictationResult = {
   attemptNumber: number; score: number; passed: boolean; minScore: number; criticalCount: number; wordMatchPercent: number;
-  expectedText: string; typedText: string; corrections: { priority: Correction[]; rest: Correction[] };
-  recommendation: Recommendation; recommendationSource: 'OLLAMA' | 'TEMPLATE'; attemptsRemaining: number | null;
+  recommendation: Recommendation; attemptsRemaining: number | null;
 };
 
 export type ResultView = {

@@ -1,6 +1,6 @@
 import { escapar } from '../http';
 import { ApiError, officeApi, type TypingPrepared, type TypingResult } from './api';
-import { errorMessage, loadingCard, loadingOverlay, showError, type OfficeContext } from './office';
+import { errorMessage, loadingCard, loadingOverlay, mountOfficeRetry, showError, type OfficeContext } from './office';
 
 // Prueba de mecanografía propia. El navegador solo muestra el texto, el temporizador y un avance
 // provisional; las métricas que cuentan las calcula el servidor al cerrar el intento.
@@ -50,7 +50,7 @@ export function renderTyping(ctx: OfficeContext): void {
     ctx.view.innerHTML = `
       <section class="office-card">
         <p class="eyebrow">MECANOGRAFÍA</p><h1>Sin intentos disponibles</h1>
-        <p class="office-error">Agotaste los intentos de la prueba. Solicita una reactivación al administrador para continuar.</p>
+        <p class="office-error">Revisa tu resultado para activar tu reintento o solicitar acompañamiento.</p>
         ${reviewHtml(cfg)}
         <a class="office-secondary" href="${escapar(ctx.backHref)}">Volver a tu ruta de formación</a>
       </section>`;
@@ -247,7 +247,7 @@ function renderResult(ctx: OfficeContext, result: TypingResult): void {
         ? '<p class="office-note">Muy bien. Sigue con la práctica de Excel.</p>'
         : result.attemptsRemaining
           ? `<p class="office-note">Te quedan ${result.attemptsRemaining} intento(s). Antes de repetir haz una práctica breve: no cuenta como intento.</p>`
-          : '<p class="office-error">Agotaste los intentos. Solicita una reactivación al administrador.</p>'}
+          : '<p class="office-note">Consulta las opciones para continuar en el aviso de resultado.</p>'}
       <div class="office-actions">
         ${result.passed ? '<button class="primary" id="typing-next" type="button">Continuar con Excel →</button>'
           : result.attemptsRemaining ? '<button class="primary" id="typing-practice" type="button">Hacer la práctica breve</button>' : ''}
@@ -255,6 +255,10 @@ function renderResult(ctx: OfficeContext, result: TypingResult): void {
     </section>`;
   ctx.view.querySelector('#typing-next')?.addEventListener('click', async () => { await ctx.refresh().catch(() => undefined); ctx.go('excel'); });
   ctx.view.querySelector('#typing-practice')?.addEventListener('click', () => void ctx.reload());
+  if (!result.passed) {
+    const activityId = ctx.state.sections.find(section => section.key === 'mecanografia')?.activityId;
+    if (activityId) mountOfficeRetry(ctx, activityId);
+  }
 }
 
 // Práctica breve obligatoria tras fallar: un texto corto que no se guarda como intento.

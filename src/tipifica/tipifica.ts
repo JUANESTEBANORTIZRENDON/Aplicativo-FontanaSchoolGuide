@@ -1,8 +1,9 @@
+import '../collections/collections.css';
 import './tipifica.css';
+import { progressGuide } from '../progress-guide';
 import { api, escapar } from '../http';
 import { statusChip, type EvaluationStatus } from '../reactivation';
 import { playSeal } from '../seal-animation';
-import { TYPIFICATION_MINIMUM } from '../simulador/domain/expert/minimum';
 
 // Estado oficial de los ejercicios asignados al asesor (lo calcula el servidor; el clon solo lo muestra).
 type ExerciseState = {
@@ -14,41 +15,6 @@ type TipificaState = { reviewMode: boolean; passed: boolean; completedCount: num
 
 // Módulo 04 «Tipifica»: el clon de práctica de Control Next se muestra en una pantalla dentro de la página
 // (iframe /simulador/), con pantalla completa como un video para que la práctica sea inmersiva.
-
-const SECTIONS: { title: string; text: string }[] = [
-  { title: 'Dashboard y campañas', text: 'Tu perfil (nombre, cédula, extensión, teléfono) y las campañas que tienes asignadas. Cada tarjeta es una cartera: al pulsarla entras a sus clientes.' },
-  { title: 'Encabezado', text: 'Reloj con la hora de Bogotá, tu extensión y tu estado (CONECTADO o EN PAUSA), la lista de tareas, los avisos, los pagos, la lupa de búsqueda y tu avatar (Mi Perfil, Pausa, Logout).' },
-  { title: 'Menú lateral', text: 'Solo usamos cuatro opciones: Main (tu perfil y campañas), Dashboard (cifras de la campaña), Productividad y Clientes. «Adm. Pausas» es una opción adicional que no es de nuestro uso: ignórala.' },
-  { title: 'Clientes y filtros', text: 'Filtra por fechas de promesa y de gestión, ciudad, asesor, mejor y último perfil. La tabla muestra identificación, nombre, perfiles, asesor, fecha de gestión y promesas.' },
-  { title: 'Estado de Gestión de Cartera', text: 'El semáforo: cian sin gestión, amarillo menos de 5 días sin gestión, rojo más de 5 días y verde gestionado hoy. Pulsa un color para filtrar.' },
-  { title: 'Buscar por cédula', text: 'La lupa abre el panel «Buscar». Escribes la cédula, pulsas Buscar, Control Next confirma campaña, nombre e identificación y con OK abres la ficha.' },
-  { title: 'Pausas', text: 'Si estás en llamada, termínala primero y guarda la gestión. Luego avatar → Pausa → elige el tipo (BREAK AM, ALMUERZO, BAÑO…) → Enviar. Al volver pulsa Continuar.' },
-  { title: 'Ficha del cliente (G.C)', text: 'Información personal, datos de la obligación (valor vencido, intereses, saldo total, honorarios), el registro de la gestión y el histórico completo.' },
-];
-
-const BUTTONS: { name: string; text: string }[] = [
-  { name: 'Restablecer / Buscar', text: 'Limpian o aplican los filtros de la lista de clientes.' },
-  { name: 'Lupa', text: 'Abre el panel Buscar (cédula, nombre, obligación, teléfono, email o codeudor).' },
-  { name: 'Anterior / Siguiente', text: 'Pasan al cliente anterior o siguiente de tu lista sin volver a la tabla.' },
-  { name: 'ⓘ Referencias', text: 'Muestra las referencias del titular (solo para ubicarlo).' },
-  { name: 'Demográficos', text: 'Datos de contacto del cliente para consultarlos o actualizarlos.' },
-  { name: 'Pagos', text: 'Pagos que el cliente ya hizo: revísalos antes de cobrar.' },
-  { name: 'Remarcar', text: 'Vuelve a llamar al titular (en la práctica la llamada es simulada).' },
-  { name: 'Buzón', text: 'Registra al instante que la llamada cayó a buzón de voz.' },
-  { name: 'Cancelar', text: 'Limpia el formulario de la gestión sin guardar.' },
-  { name: 'Guardar', text: 'Registra la gestión con su tipificación. Si no guardas, la llamada no existió.' },
-  { name: 'Pausa / Continuar', text: 'Pausa (en tu avatar) detiene tus llamadas mientras te levantas; Continuar te deja otra vez CONECTADO.' },
-  { name: 'Micrófono / Audio', text: 'Las llamadas se graban y se escuchan desde el histórico.' },
-];
-
-const TERMS: [string, string][] = [
-  ['Acción', '«Hacer Llamada» si marcaste tú; «Recibir Llamada» si el cliente te llamó.'],
-  ['Contacto', 'Depende de la acción: Directo (titular), Indirecto (un tercero) o Sin Contacto. Si te llamaron no existe «Sin Contacto».'],
-  ['Canal', 'Telefonico, Whatsapp o Correo.'],
-  ['Perfil', 'Depende del contacto. Con el titular: acuerdo de pago total o abono, recordar, volver a llamar, no hubo acuerdo, PQR, paz y salvo… Con un tercero nunca hay acuerdo de pago.'],
-  ['Motivo No Pago', 'Por qué no ha pagado o qué queda por confirmar: confirmar pago, con recibo, no cuenta con el dinero, ocupado, tercero encargado…'],
-  ['TT', 'Titular de la obligación. La gestión se escribe «3001234567 // TT INDICA QUE…».'],
-];
 
 const FULL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
 const EXIT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>';
@@ -66,33 +32,21 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
   container.classList.add('tipifica-host');
   container.innerHTML = `
     <section class="tipifica">
-      <header class="tipifica-head">
-        <p class="auth-kicker">MÓDULO ${String(moduleOrder).padStart(2, '0')}</p>
-        <h2>Tipifica</h2>
-        <p class="tipifica-lead"><strong>Control Next</strong> es el aplicativo de gestión de cobranzas con el que trabajarás cada día: ahí ves tus campañas, buscas a cada cliente, registras lo que pasó en la llamada (<em>la tipificación</em>) y consultas su histórico. Aquí tienes una copia de práctica con clientes ficticios. La <strong>prueba de tipificación</strong> es oficial: cada ejercicio se califica en el servidor y tiene un solo intento.</p>
+      <header class="collections-heading fontana-progress-row">
+        <div>
+          <p class="collections-kicker">MÓDULO ${String(moduleOrder).padStart(2, '0')} · PRACTICA EN CONTROL NEXT</p>
+          <h1>Tipifica</h1>
+          <p>Registra la gestión en una copia de Control Next con clientes ficticios.</p>
+        </div>
+        ${progressGuide(backHref)}
       </header>
 
-      <section class="tipifica-minimum" aria-labelledby="tipifica-minimum-title">
-        <div class="tipifica-minimum__head">
-          <h3 id="tipifica-minimum-title">Lo mínimo que debe tener una tipificación</h3>
-          <p>La prueba de tipificación revisa estos puntos en cada llamada.</p>
-        </div>
-        <ol class="tipifica-minimum__list">
-          ${TYPIFICATION_MINIMUM.map((m) => `<li><span class="tipifica-tick" aria-hidden="true">✓</span><div><strong>${escapar(m.title)}</strong><p>${escapar(m.text)}</p></div></li>`).join('')}
-        </ol>
-      </section>
-
-      <section class="tipifica-official" id="tipifica-official" aria-labelledby="tipifica-official-title" aria-live="polite">
-        <p class="tipifica-official__loading">Cargando el estado de tu prueba oficial…</p>
-      </section>
+      <section class="tipifica-official" id="tipifica-official" aria-labelledby="tipifica-official-title" aria-live="polite" hidden></section>
 
       <div class="tipifica-screen" id="tipifica-screen">
         <div class="tipifica-screen__bar" aria-hidden="true">
           <span class="tipifica-dots"><i></i><i></i><i></i></span>
           <span class="tipifica-url">controlnext · práctica</span>
-        </div>
-        <div class="tipifica-screen__frame">
-          <iframe id="tipifica-frame" title="Control Next (práctica)" src="${escapar(src)}" allow="fullscreen" loading="lazy"></iframe>
         </div>
         <div class="tipifica-screen__controls" role="toolbar" aria-label="Controles de la pantalla de práctica">
           <button type="button" class="tipifica-ctl tipifica-ctl--test" data-tip="prueba">Iniciar prueba de tipificación</button>
@@ -103,28 +57,10 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
           <button type="button" class="tipifica-ctl tipifica-ctl--icon" data-tip="reload" aria-label="Volver a cargar la pantalla" title="Volver a cargar">↻</button>
           <button type="button" class="tipifica-ctl tipifica-ctl--full" data-tip="full" aria-pressed="false">${FULL_ICON}<span>Pantalla completa</span></button>
         </div>
+        <div class="tipifica-screen__frame">
+          <iframe id="tipifica-frame" title="Control Next (práctica)" src="${escapar(src)}" allow="fullscreen" loading="lazy"></iframe>
+        </div>
       </div>
-      <p class="tipifica-hint">Consejo: usa <strong>Pantalla completa</strong> para practicar como si estuvieras en tu puesto. Sal con <kbd>Esc</kbd> o con el mismo botón.</p>
-
-      <section class="tipifica-block" aria-labelledby="tipifica-sections">
-        <h3 id="tipifica-sections">Los apartados de Control Next</h3>
-        <ol class="tipifica-cards">
-          ${SECTIONS.map((s, i) => `<li><span class="tipifica-num">${i + 1}</span><strong>${escapar(s.title)}</strong><p>${escapar(s.text)}</p></li>`).join('')}
-        </ol>
-      </section>
-
-      <div class="tipifica-two">
-        <section class="tipifica-block" aria-labelledby="tipifica-buttons">
-          <h3 id="tipifica-buttons">Los botones</h3>
-          <dl class="tipifica-dl">${BUTTONS.map((b) => `<div><dt>${escapar(b.name)}</dt><dd>${escapar(b.text)}</dd></div>`).join('')}</dl>
-        </section>
-        <section class="tipifica-block" aria-labelledby="tipifica-terms">
-          <h3 id="tipifica-terms">Cómo se tipifica</h3>
-          <dl class="tipifica-dl">${TERMS.map(([t, d]) => `<div><dt>${escapar(t)}</dt><dd>${escapar(d)}</dd></div>`).join('')}</dl>
-          <p class="tipifica-note">Los perfiles y motivos con titular son los de Control Next; los de contacto con tercero y sin contacto son una propuesta de entrenamiento que tu supervisor confirmará.</p>
-        </section>
-      </div>
-
       <a class="secondary-link" href="${escapar(backHref)}">← Volver a tu ruta</a>
     </section>`;
 
@@ -143,16 +79,11 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
     if (!state) return;
     const rows = state.exercises.map((exercise, position) => {
       const score = exercise.result?.score ? `${Math.round(Number(exercise.result.score))} %` : '—';
-      const typification = exercise.result?.typification;
-      const missing = typification?.checks.filter((check) => !check.ok) ?? [];
-      const feedback = typification
-        ? `<details class="tipifica-official__feedback"${missing.length ? ' open' : ''}><summary>Retroalimentación: ${typification.metCount} de ${typification.metCount + typification.unmetCount} puntos coinciden con la llamada</summary>${missing.length ? `<ul>${missing.map((check) => `<li><strong>✗ ${escapar(check.label ?? check.id)}.</strong> ${escapar(check.detail)}</li>`).join('')}</ul>` : '<p>Tu tipificación coincide con todos los puntos de esta llamada.</p>'}</details>`
-        : '';
       return `<li class="tipifica-official__row" data-status="${exercise.status}">
           <span class="tipifica-num">${position + 1}</span>
           <div class="tipifica-official__name"><strong>${escapar(exercise.title)}</strong><small>Coincidencia con la llamada: ${escapar(score)}</small></div>
           ${statusChip(exercise.status, exercise.statusLabel)}
-          ${feedback ? `<div class="tipifica-official__notice">${feedback}</div>` : ''}
+          ${exercise.result ? '<p class="tipifica-official__notice">Ejercicio cerrado. Las respuestas no están disponibles después del envío.</p>' : ''}
         </li>`;
     }).join('');
     const head = state.reviewMode
@@ -176,7 +107,11 @@ export async function mountTipifica(container: HTMLElement, backHref: string, mo
     }
     renderOfficial();
     sendState();
-    if (wasPassed === false && state.passed) await playSeal({ moduleName: 'Tipifica', moduleNumber: moduleOrder, label: 'COMPLETADO', nextName: 'Examen general' });
+    if (wasPassed === false && state.passed) {
+      await playSeal({ moduleName: 'Tipifica', moduleNumber: moduleOrder, label: 'COMPLETADO', nextName: 'Examen general' });
+      // Tras el sello, directo a la ruta del aula, donde espera el examen general.
+      location.assign(backHref);
+    }
   }
 
   // Respuestas al clon: { requestId, ok, data | error, state }.

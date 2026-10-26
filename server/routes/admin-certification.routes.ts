@@ -10,7 +10,7 @@ import {
 } from '../services/certification.service.js';
 import { configureFinalExam, finalExamConfig } from '../services/final-exam.service.js';
 import {
-  approveReactivation, listReactivationRequests, reactivationRequestDetail, rejectReactivation,
+  approveReactivation, listReactivationRequests, reactivationArchive, reactivationRequestDetail, rejectReactivation,
 } from '../services/reactivation.service.js';
 import { certificatePdf } from '../utils/certificate-pdf.js';
 import { idParams, reason, uuid } from '../validators/common.js';
@@ -25,6 +25,9 @@ adminCertificationRouter.get('/reactivation-requests', validate({ query: request
 });
 adminCertificationRouter.get('/reactivation-requests/:id', validate({ params: idParams }), async (request, response) => {
   response.json({ data: await reactivationRequestDetail(validParams<{ id: string }>(request).id) });
+});
+adminCertificationRouter.get('/reactivation-requests/:id/archive', validate({ params: idParams }), async (request, response) => {
+  response.attachment('fontana-recorrido-anterior.json').json(await reactivationArchive(validParams<{ id: string }>(request).id));
 });
 const decisionBody = z.object({ reason: reason(5) }).strict();
 adminCertificationRouter.post('/reactivation-requests/:id/approve', validate({ params: idParams, body: decisionBody }), async (request, response) => {

@@ -1,5 +1,7 @@
 import './advisor.css';
 import { api, ApiError, escapar, formatDate } from '../http';
+import { progressGuide } from '../progress-guide';
+import { pasoEquipoDisponible, TEAM_WELCOME_ROUTE } from '../learning-path';
 
 // Área del asesor: ruta de formación, progreso y acceso a los módulos de contenido.
 
@@ -54,7 +56,7 @@ const MODULE_IMAGES: Record<string, string> = {
   'induccion-cobranzas': '/imagenes/induccion-cobranzas-ilustracion.png',
   'simulador-cobranzas': '/imagenes/enfrentate-objecion-ilustracion.png',
   'tipificacion-llamadas': '/imagenes/tipificacion-llamadas-ilustracion.png',
-  'certificado': '/imagenes/certificado-ilustracion.png',
+  'examen-general': '/imagenes/certificado-ilustracion.png',
 };
 
 function stateIcon(state: CardState): string {
@@ -103,17 +105,25 @@ export async function mountLearningPath(): Promise<void> {
   const section = document.createElement('section');
   section.className = 'training-route';
   section.setAttribute('aria-labelledby', 'training-route-title');
-  section.innerHTML = '<div class="training-route-head"><h2 id="training-route-title">Tu ruta de formación</h2><p>Avanza módulo por módulo. Cada uno se desbloquea al aprobar el anterior.</p></div><p class="training-route-loading">Cargando tus módulos…</p>';
+  section.innerHTML = '<div class="training-route-head"><h2 id="training-route-title" class="training-route-sr">Tu ruta de formación</h2><div class="training-route-summary" data-route-summary hidden></div><p class="training-route-lead">Cinco módulos, una meta: convertirte en asesor certificado. Cada paso se desbloquea al aprobar el anterior.</p></div><p class="training-route-loading">Cargando tus módulos…</p>';
   if (camino) camino.after(section); else main.prepend(section);
   try {
     const [{ data }, certification] = await Promise.all([
       api<{ data: ModuleView[] }>('/advisor/modules'),
       api<{ data: CertificationSummary }>('/advisor/certification').then((response) => response.data).catch(() => null),
     ]);
-    const current = data.find((module) => module.enabled && module.status === 'IN_PROGRESS')
-      ?? data.find((module) => module.enabled && (module.status === 'AVAILABLE' || module.status === 'NOT_STARTED'));
+    // El certificado es el resultado del examen, no una sexta tarjeta del recorrido.
+    const modules = data.filter((module) => module.slug !== 'certificado');
+    const current = modules.find((module) => module.enabled && module.status === 'IN_PROGRESS')
+      ?? modules.find((module) => module.enabled && (module.status === 'AVAILABLE' || module.status === 'NOT_STARTED'));
     section.querySelector('.training-route-loading')!.remove();
-    section.insertAdjacentHTML('beforeend', `${certificationBanner(certification)}<p class="training-route-swipe-hint">Desliza para ver todos los módulos →</p><ol class="path-cards" tabindex="0" aria-label="Módulos de formación">${data.map((module) => card(module, module === current)).join('')}</ol>`);
+    const done = modules.filter((module) => module.status === 'PASSED').length;
+    const summary = section.querySelector<HTMLElement>('[data-route-summary]')!;
+    summary.hidden = false;
+    summary.innerHTML = `<strong>${done}<small> de ${modules.length}</small></strong><span>módulos completados</span><ol aria-hidden="true">${modules.map((module) => `<li${module.status === 'PASSED' ? ' class="is-done"' : ''}></li>`).join('')}</ol>`;
+    // Aprobar el examen general desbloquea el paso 03 de «Tu camino en Fontana».
+    if (examPassed(data)) camino?.querySelector('li:nth-child(3)')?.replaceWith(Object.assign(document.createElement('template'), { innerHTML: pasoEquipoDisponible() }).content);
+    section.insertAdjacentHTML('beforeend', `${certificationBanner(certification)}<p class="training-route-swipe-hint">Desliza para ver todos los módulos →</p><ol class="path-cards" tabindex="0" aria-label="Módulos de formación">${modules.map((module) => card(module, module === current)).join('')}</ol>`);
     // La primera vez después de la aprobación, la felicitación con el certificado. No se espera: el aula se
     // termina de mostrar y la felicitación aparece encima.
     if (certification?.status === 'CERTIFICADO') {
@@ -148,8 +158,28 @@ function experienceFormHtml(): string {
     </form>`;
 }
 
+const examPassed = (modules: ModuleView[]): boolean => modules.some((module) => module.slug === FINAL_EXAM_SLUG && module.status === 'PASSED');
+async function teamWelcomeUnlocked(): Promise<boolean> {
+  return examPassed((await api<{ data: ModuleView[] }>('/advisor/modules')).data);
+}
+
 // Rutas /induccion/modulos/:slug y /induccion/certificado: el servidor valida el acceso.
 export async function renderModulePage(container: HTMLElement, backHref = '/induccion', experience: boolean | null = null): Promise<void> {
+  // Paso 03 «Trabaja con nosotros»: la bienvenida solo se abre con el examen general aprobado.
+  if (location.pathname.replace(/\/$/, '') === TEAM_WELCOME_ROUTE) {
+    container.innerHTML = '<section class="auth-card narrow module-page"><p>Cargando…</p></section>';
+    try {
+      if (!await teamWelcomeUnlocked()) {
+        container.innerHTML = `<section class="auth-card narrow module-page"><h2>Trabaja con nosotros</h2><p>Se desbloquea al aprobar el examen general.</p><a class="secondary-link" href="${escapar(backHref)}">← Volver a tu ruta</a></section>`;
+        return;
+      }
+      const { mountTeamWelcome } = await import('../welcome/team-welcome');
+      mountTeamWelcome(container, { backHref });
+    } catch (error) {
+      container.innerHTML = `<section class="auth-card narrow module-page"><p role="alert">${escapar((error as Error).message)}</p><a class="secondary-link" href="${escapar(backHref)}">← Volver a tu ruta</a></section>`;
+    }
+    return;
+  }
   const slug = location.pathname === '/induccion/certificado' ? 'certificado' : decodeURIComponent(location.pathname.split('/')[3] ?? '');
   // Con la experiencia respondida, el módulo propio decide el camino: teoría y examen, o examen primero.
   if (slug === INDUCTION_SLUG && experience !== null) {
@@ -186,8 +216,13 @@ export async function renderModulePage(container: HTMLElement, backHref = '/indu
       return;
     }
     page.innerHTML = `
+      <div class="fontana-progress-row">
+        <div>
       <p class="auth-kicker">MÓDULO ${String(data.module.order).padStart(2, '0')}</p>
       <h2>${escapar(data.module.name)}</h2>
+        </div>
+        ${progressGuide(backHref)}
+      </div>
       ${slug === INDUCTION_SLUG ? experienceFormHtml() : `<div class="module-placeholder"><strong>${escapar(data.content.message)}</strong><p>Este espacio mostrará las actividades del módulo cuando estén listas.</p></div>`}
       ${slug !== INDUCTION_SLUG && data.activities.length ? `<ul class="module-activities">${data.activities.map((activity) => `<li>${escapar(activity.title)}${activity.enabled ? '' : ` · <em>${escapar(activity.blockedReason)}</em>`}</li>`).join('')}</ul>` : ''}
       <a class="secondary-link" href="${escapar(backHref)}">← Volver a tu ruta</a>`;

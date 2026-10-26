@@ -170,6 +170,12 @@ export function createSimulatorStore(storage: SimulatorStorage) {
       return management;
     },
 
+    clearOfficialManagements(customerId: string): void {
+      if (state.managements.some(item => item.customerId === customerId)) {
+        set(s => ({ managements: s.managements.filter(item => item.customerId !== customerId) }));
+      }
+    },
+
     startCall(customerId: string): void {
       if (state.activeCall) return;
       set({ activeCall: { customerId, startedAt: new Date().toISOString() } });

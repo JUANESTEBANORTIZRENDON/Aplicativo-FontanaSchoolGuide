@@ -1,5 +1,6 @@
 import './certification-admin.css';
 import { api, escapar, formatDate } from '../http';
+import { retryScoreLabel } from '../retry-waiting';
 
 // Panel «Validación y certificaciones»: certificaciones (pendientes, devueltas, certificadas), solicitudes de
 // reactivación, historial consolidado y configuración del examen general. Rutas por hash:
@@ -18,12 +19,15 @@ type CertRow = { userId: string; name: string; document: string; profile: string
 type RequestRow = {
   id: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string; advisorNote: string | null; decisionReason: string | null; decidedAt: string | null; decidedBy: string | null;
   advisor: { id: string; name: string; document: string }; activity: { id: string; title: string; moduleName: string; moduleOrder: number };
+  restartCourse: boolean; hasArchive: boolean;
+  report: { scores: { title: string; score: string | null; minimum: string | null; passed: boolean }[]; recommendations: string[] } | null;
 };
 type Check = { id: string; ok: boolean; detail: string; label?: string; goal?: string };
 type AttemptResult = {
   attemptId: string; number: number; status: string; score: string | null; passed: boolean; submittedAt: string | null; reactivated: boolean;
   typification?: { metCount: number; unmetCount: number; checks: Check[]; fields: Record<string, unknown> | null };
   finalExam?: { score: number; correct: number; total: number; topics: { label: string; correct: number; total: number }[] };
+  objections?: import('../../server/domain/objections-expert').ObjectionsGrade;
 };
 
 const PROFILE_TEXT: Record<string, string> = { NUEVO: 'Asesor nuevo', CON_EXPERIENCIA: 'Con experiencia' };
@@ -75,6 +79,7 @@ async function certificationsSection(view: HTMLElement, helpers: Helpers, status
 }
 
 function checksHtml(result: AttemptResult): string {
+  if (result.objections) return `<details class="cert-written-review"><summary>Revisión de los cinco casos · ${result.objections.score}/100</summary>${result.objections.cases.map(c => `<section><h4>${escapar(c.title)} · ${c.score}/20</h4><p style="white-space:pre-wrap">${escapar(c.answer)}</p><ul>${c.checks.map(check => `<li>${check.ok ? '✓' : '✗'} ${escapar(check.label)} · ${check.points}/${check.id === 'respuesta' ? 20 : 4}${!check.ok ? `: ${escapar(check.feedback)}` : ''}</li>`).join('')}</ul>${c.recommendations.length ? `<p>${c.checks.some(check => check.id === 'respuesta') ? 'Sugerencias sin descuento de puntos' : 'Recomendaciones'}:</p><ul>${c.recommendations.map(r => `<li>${escapar(r)}</li>`).join('')}</ul>` : ''}${c.critical.length ? `<p>Revisión prioritaria: ${escapar(c.critical.join(' '))}</p>` : ''}</section>`).join('')}</details>`;
   if (result.typification) {
     const missing = result.typification.checks.filter((check) => !check.ok);
     return `<small>${result.typification.metCount} cumplidos · ${result.typification.unmetCount} incumplidos</small>${missing.length ? `<ul class="cert-misses">${missing.map((check) => `<li>✗ ${escapar(check.label ?? check.id)}: ${escapar(check.detail)}</li>`).join('')}</ul>` : ''}`;
@@ -155,7 +160,7 @@ async function requestsSection(view: HTMLElement, helpers: Helpers, status: Requ
   const query = new URLSearchParams(status ? { status } : {});
   const { data } = await api<{ data: { items: RequestRow[]; nextCursor: string | null; pendingTotal: number } }>(`/admin/reactivation-requests?${query}`);
   view.innerHTML = `<section class="auth-card admin-card">
-    <div class="section-title"><div><h2>Solicitudes de reactivación</h2><p>Autorizar concede un intento adicional solo para esa actividad; los demás resultados no se tocan.</p></div></div>
+    <div class="section-title"><div><h2>Solicitudes de acompañamiento</h2><p>El asesor ya dispone de un reintento propio. Revisa sus resultados y autoriza un intento adicional solo para la evaluación solicitada. Los módulos aprobados se conservan.</p></div></div>
     ${tabsHtml('#validacion/solicitudes', data.pendingTotal)}
     <div class="cert-filter">${(['PENDING', 'APPROVED', 'REJECTED', ''] as const).map((value) => `<button type="button" data-status="${value}" class="${value === status ? 'selected' : ''}">${value ? REQUEST_TEXT[value] : 'Todas'}</button>`).join('')}</div>
     <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Asesor</th><th>Actividad</th><th>Comentario</th><th>Estado</th><th></th></tr></thead><tbody>
@@ -177,9 +182,12 @@ async function reviewRequest(id: string, helpers: Helpers): Promise<void> {
   }
   const attempts = detail.attempts.map((attempt) => `<li><strong>Intento ${attempt.number}</strong> · ${score(attempt.score)} · ${attempt.passed ? 'aprobado' : 'no aprobado'}${attempt.submittedAt ? ` · ${formatDate(attempt.submittedAt)}` : ''}${attempt.reactivated ? ' · con reactivación' : ''}<br>${checksHtml(attempt)}</li>`).join('');
   const body = `<p><strong>${escapar(detail.advisor.name)}</strong> (${escapar(detail.advisor.document)}) · ${escapar(detail.activity.moduleName)} · ${escapar(detail.activity.title)}</p>
+    <p class="dialog-note"><strong>Un intento adicional en esta evaluación.</strong> Conserva todos los demás resultados y módulos aprobados.${detail.restartCourse && detail.status === 'PENDING' ? ' Esta solicitud del flujo anterior también se resolverá sin reiniciar el recorrido.' : ''}</p>
+    ${detail.report ? `<h3>Constancia de evaluación · Requiere refuerzo</h3><ul>${detail.report.scores.map(s => `<li>${escapar(s.title)}: <strong>${escapar(s.score ?? 'Sin nota')} / 100</strong> · ${escapar(retryScoreLabel(s))}</li>`).join('')}</ul><h3>Refuerzo recomendado</h3><ul>${detail.report.recommendations.map(r => `<li>${escapar(r)}</li>`).join('')}</ul>` : ''}
+    ${detail.hasArchive ? `<a href="/api/admin/reactivation-requests/${encodeURIComponent(id)}/archive">Descargar historial completo del recorrido anterior (JSON)</a>` : ''}
     ${detail.advisorNote ? `<p class="dialog-note">Comentario del asesor: ${escapar(detail.advisorNote)}</p>` : ''}
     <ol class="cert-attempts">${attempts || '<li>Sin intentos enviados.</li>'}</ol>
-    ${detail.status === 'PENDING' ? '<label>Decisión<select name="decision" required><option value="approve">Autorizar un intento adicional</option><option value="reject">Rechazar la solicitud</option></select></label>' : `<p class="dialog-note">Solicitud ${escapar(REQUEST_TEXT[detail.status].toLowerCase())}${detail.decisionReason ? `: ${escapar(detail.decisionReason)}` : ''}.</p>`}`;
+    ${detail.status === 'PENDING' ? `<label>Decisión<select name="decision" required><option value="approve">Autorizar un intento adicional en esta evaluación</option><option value="reject">Rechazar la solicitud</option></select></label>` : `<p class="dialog-note">Solicitud ${escapar(REQUEST_TEXT[detail.status].toLowerCase())}${detail.decisionReason ? `: ${escapar(detail.decisionReason)}` : ''}.</p>`}`;
   if (detail.status !== 'PENDING') {
     await helpers.askForm('Solicitud de reactivación', body, { reason: false, submit: 'Cerrar' });
     return;
@@ -189,7 +197,7 @@ async function reviewRequest(id: string, helpers: Helpers): Promise<void> {
   const approve = form.decision === 'approve';
   await helpers.run(
     () => api(`/admin/reactivation-requests/${id}/${approve ? 'approve' : 'reject'}`, { method: 'POST', body: JSON.stringify({ reason: form.reason }) }),
-    approve ? 'Reactivación autorizada: el asesor tiene un intento adicional en esa actividad.' : 'Solicitud rechazada.',
+    approve ? 'Reactivación autorizada solo para esa evaluación. Los módulos se conservan.' : 'Solicitud rechazada. Se conserva el progreso.',
     helpers.rerender,
   );
 }

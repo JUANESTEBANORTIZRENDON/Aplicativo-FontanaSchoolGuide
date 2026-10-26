@@ -295,7 +295,7 @@ describe('dictado con audio autorizado', () => {
     const result = await agent.post(`/api/training/office/dictation/${exerciseId}/submit`).set(ORIGIN).send({ attemptId: started.attemptId, typedText: typed });
     expect(result.status).toBe(200);
     const data = result.body.data;
-    expect(data).toMatchObject({ passed: false, criticalCount: 1, attemptsRemaining: 2 });
+    expect(data).toMatchObject({ passed: false, criticalCount: 1, attemptsRemaining: 0 });
     expect(data.score).toBe(85);
     expect(data.corrections.priority[0]).toMatchObject({ severity: 'CRITICAL', ruleKey: 'homofona-a-ver-haber', expected: 'haber', written: 'a ver' });
     expect(data.corrections.priority[0].explanation).toMatch(/haber/);

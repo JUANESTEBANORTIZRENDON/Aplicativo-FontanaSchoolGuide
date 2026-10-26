@@ -1,6 +1,6 @@
 import { escapar } from '../http';
 import { isLowScore, lowScoreAlertHtml } from '../low-score';
-import { ApiError, officeApi, type Correction, type DictationInfo, type DictationResult, type Lesson } from './api';
+import { ApiError, officeApi, type DictationInfo, type DictationResult, type Lesson } from './api';
 import { errorMessage, lessonCard, loadingScreen, showError, type OfficeContext } from './office';
 
 // Ortografía aplicada: lecciones cortas y un dictado. La nota la calcula el sistema experto del servidor;
@@ -218,35 +218,20 @@ function renderRunning(ctx: OfficeContext, exercise: DictationInfo, attemptId: s
   });
 }
 
-function correctionItem(correction: Correction): string {
-  return `<li data-severity="${correction.severity}">
-    <strong>${correction.severity === 'CRITICAL' ? 'Error crítico' : 'Corrección'}</strong>
-    <span>${correction.expected ? `Se esperaba «${escapar(correction.expected)}»` : 'Sobra una palabra'}${correction.written ? `; escribiste «${escapar(correction.written)}»` : '; no la escribiste'}.</span>
-    <small>${escapar(correction.explanation)}</small>
-  </li>`;
-}
-
 function renderResult(ctx: OfficeContext, result: DictationResult): void {
-  const { priority, rest } = result.corrections;
   const rec = result.recommendation;
   ctx.view.innerHTML = `
     <section class="office-card" aria-labelledby="dictation-result-title">
       <p class="eyebrow">ORTOGRAFÍA APLICADA · INTENTO ${result.attemptNumber}</p>
       <h1 id="dictation-result-title">${result.passed ? '¡Dictado aprobado!' : 'Dictado presentado: tu ortografía necesita refuerzo'}</h1>
-      ${result.passed ? '' : '<p class="office-warning" role="note">No alcanzaste la meta de ortografía. Puedes continuar con el módulo; revisa las correcciones y repasa las lecciones.</p>'}
+      ${result.passed ? '' : '<p class="office-warning" role="note">Puedes continuar con el módulo. Repasa las lecciones de ortografía.</p>'}
       ${isLowScore(result.score) ? lowScoreAlertHtml('el dictado de ortografía') : ''}
       <div class="office-metrics">
         <div><strong>${result.score.toFixed(0)}</strong><span>puntos de 100</span><small>Mínimo: ${result.minScore}</small></div>
         <div><strong>${result.criticalCount}</strong><span>errores críticos</span><small>Para aprobar: ninguno</small></div>
         <div><strong>${result.wordMatchPercent.toFixed(0)} %</strong><span>palabras acertadas</span></div>
       </div>
-      <div class="office-compare">
-        <p class="office-right"><span>Texto esperado</span>${escapar(result.expectedText)}</p>
-        <p class="office-wrong"><span>Lo que escribiste</span>${escapar(result.typedText)}</p>
-      </div>
-      <h2>Correcciones prioritarias</h2>
-      ${priority.length ? `<ol class="office-corrections">${priority.map(correctionItem).join('')}</ol>` : '<p>No hubo correcciones. ¡Excelente ortografía!</p>'}
-      ${rest.length ? `<details class="office-more"><summary>Ver las ${rest.length} correcciones restantes</summary><ol class="office-corrections">${rest.map(correctionItem).join('')}</ol></details>` : ''}
+      <p class="office-note">El dictado está cerrado. El texto enviado y su corrección no están disponibles después del envío.</p>
       <div class="office-recommendation">
         <h2>Recomendaciones para ti</h2>
         <p>${escapar(rec.resumen)}</p>

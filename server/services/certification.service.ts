@@ -6,6 +6,7 @@ import { CERTIFICATE_MODULE_SLUG, Role } from '../domain/enums.js';
 import { ConflictError, NotFoundError, ValidationError } from '../domain/errors.js';
 import { EVALUATION_STATUS_LABEL, evaluationStatusOf } from '../domain/evaluation-status.js';
 import { FINAL_EXAM_SLUG } from '../domain/final-exam.js';
+import { OBJECTIONS_SLUG } from '../domain/objections.js';
 import { certificationStatusOf, type CertificationStatus } from '../domain/progress.js';
 import { TIPIFICA_SLUG } from './tipifica.service.js';
 import { audit, type ActionContext } from './audit.service.js';
@@ -13,9 +14,8 @@ import { createWithUniqueCode } from './certificate.service.js';
 import { attemptResults } from './evaluation-result.service.js';
 import { loadSnapshot, type TrainingSnapshot } from './progress.service.js';
 
-// Validación final y certificación. El asesor que completa el recorrido queda «Pendiente de validación»; solo el
-// administrador emite el certificado, en una transacción que verifica de nuevo cada requisito, emite un único
-// certificado (índice único parcial uq_certificados_activo) y guarda el resumen compacto del ciclo formativo.
+// La aprobación del examen general emite el certificado al cumplir todos los requisitos.
+// La aprobación administrativa sigue disponible para expedientes anteriores y excepciones.
 
 const COLLECTIONS_SLUG = 'induccion-cobranzas';
 const PAGE_SIZE = 25;
@@ -31,7 +31,7 @@ export async function certificationRequirements(db: Db, userId: string, snapshot
   for (const edge of certificate.prerequisites) {
     const module = snapshot.modules.find((item) => item.id === edge.prerequisite.id);
     const view = snapshot.views.find((item) => item.moduleId === edge.prerequisite.id);
-    if (!module || !view) continue;
+    if (!module || !view) { missing.push(`Prerrequisito sin configurar: ${edge.prerequisite.name}`); continue; }
     if (!view.hasSeal) missing.push(`Sello de «${module.name}»`);
     for (const activity of module.activities.filter((item) => item.status === 'ACTIVE' && item.isRequired)) {
       const availability = snapshot.availability.get(activity.id);
@@ -50,15 +50,17 @@ type AdvisorRow = { id: string; nombreCompleto: string; numeroDocumento: string;
 export async function listCertifications(filter: { status?: CertificationStatus; cursor?: string }) {
   const certificate = await prisma.trainingModule.findUnique({ where: { slug: CERTIFICATE_MODULE_SLUG }, include: { prerequisites: true } });
   const prerequisiteIds = certificate?.prerequisites.map((edge) => edge.prerequisiteModuleId) ?? [];
-  const [sealed, decided, certified] = await Promise.all([
+  const [sealed, decided, certified, restarts] = await Promise.all([
     prerequisiteIds.length
       ? prisma.seal.groupBy({ by: ['userId'], where: { status: 'ACTIVE', moduleId: { in: prerequisiteIds } }, _count: { moduleId: true }, _max: { issuedAt: true } })
       : Promise.resolve([]),
     prisma.certificationDecision.findMany({ distinct: ['userId'], orderBy: [{ userId: 'asc' }, { createdAt: 'desc' }], select: { userId: true, decision: true, reason: true, createdAt: true } }),
     prisma.certificate.findMany({ where: { status: 'ACTIVE' }, select: { userId: true, id: true, code: true, issuedAt: true } }),
+    prisma.reactivationRequest.findMany({ where: { restartCourse: true, status: 'APPROVED' }, distinct: ['userId'], orderBy: [{ userId: 'asc' }, { decidedAt: 'desc' }], select: { userId: true, decidedAt: true } }),
   ]);
   const complete = new Map(sealed.filter((row) => row._count.moduleId === prerequisiteIds.length).map((row) => [row.userId, row._max.issuedAt]));
-  const decisions = new Map(decided.map((row) => [row.userId, row]));
+  const restartedAt = new Map(restarts.map(row => [row.userId, row.decidedAt]));
+  const decisions = new Map(decided.filter(row => !restartedAt.get(row.userId) || row.createdAt > restartedAt.get(row.userId)!).map((row) => [row.userId, row]));
   const certificates = new Map(certified.map((row) => [row.userId, row]));
   const ids = [...new Set([...complete.keys(), ...decisions.keys(), ...certificates.keys()])];
   const users = await prisma.usuario.findMany({ where: { id: { in: ids }, rol: Role.ADVISOR }, select: { id: true, nombreCompleto: true, numeroDocumento: true, tieneExperienciaCobranzasDigitales: true } });
@@ -109,6 +111,7 @@ export async function certificationDossier(userId: string, db: Db = prisma) {
       const submitted = own.filter((attempt) => attempt.submittedAt);
       const last = submitted.at(-1);
       const availability = snapshot.availability.get(activity.id);
+      const legacyObjections = module.slug === OBJECTIONS_SLUG && activity.type === 'SIMULATOR' && own.length === 0 && seals.some(s => s.module.slug === OBJECTIONS_SLUG);
       const status = activity.type === 'TYPIFICATION'
         ? (submitted.length ? 'COMPLETADO' as const : 'PENDIENTE' as const)
         : snapshot.evaluations.has(activity.id)
@@ -116,9 +119,10 @@ export async function certificationDossier(userId: string, db: Db = prisma) {
           : null;
       return {
         activityId: activity.id, moduleSlug: module.slug, moduleName: module.name, title: activity.title, type: activity.type, required: activity.isRequired,
-        evaluated: snapshot.evaluations.has(activity.id), status, statusLabel: status ? EVALUATION_STATUS_LABEL[status] : null,
+        evaluated: snapshot.evaluations.has(activity.id) && !legacyObjections, status: legacyObjections ? 'COMPLETADO' : status,
+        statusLabel: legacyObjections ? 'Completado anteriormente · Sin evaluación escrita' : status ? EVALUATION_STATUS_LABEL[status] : null,
         attempts: submitted.length, reactivations: own.filter((attempt) => attempt.overrideId).length,
-        lastScore: last?.score?.toFixed(2) ?? null, passed: Boolean(availability?.passed),
+        lastScore: last?.score?.toFixed(2) ?? null, passed: legacyObjections || Boolean(availability?.passed),
         result: last ? results.get(last.id) ?? null : null,
       };
     }));
@@ -154,7 +158,7 @@ function presentSummary(summary: Prisma.TrainingCompletionSummaryGetPayload<obje
 
 // Compactación: un registro por ciclo con indicadores y referencias (sin respuestas, notas escritas ni payloads).
 // Idempotente: si el certificado ya tiene resumen, lo devuelve sin crear otro.
-async function compactTraining(tx: Prisma.TransactionClient, userId: string, certificate: { id: string; code: string; issuedAt: Date }, approvedById: string) {
+export async function compactTraining(tx: Prisma.TransactionClient, userId: string, certificate: { id: string; code: string; issuedAt: Date }, approvedById: string | null) {
   const existing = await tx.trainingCompletionSummary.findUnique({ where: { certificateId: certificate.id } });
   if (existing) return existing;
   const dossier = await certificationDossier(userId, tx);
@@ -239,7 +243,7 @@ export async function listTrainingSummaries(cursor?: string) {
   });
   const page = rows.slice(0, PAGE_SIZE);
   return {
-    items: page.map(({ user, approvedBy, ...summary }) => ({ ...presentSummary(summary), advisorName: user.nombreCompleto, advisorDocument: user.numeroDocumento, approvedByName: approvedBy.nombreCompleto })),
+    items: page.map(({ user, approvedBy, ...summary }) => ({ ...presentSummary(summary), advisorName: user.nombreCompleto, advisorDocument: user.numeroDocumento, approvedByName: approvedBy?.nombreCompleto ?? 'Emisión automática' })),
     nextCursor: rows.length > PAGE_SIZE ? page.at(-1)!.id : null,
   };
 }

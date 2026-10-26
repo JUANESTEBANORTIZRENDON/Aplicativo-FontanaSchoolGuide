@@ -25,19 +25,21 @@ function preloadLogo(): Promise<void> {
   });
 }
 
-function stampSvg(label: string): string {
+// El mismo sello puede permanecer en los resultados sin repetir la animación.
+export function stampSvg(label: string, prefix = 'seal'): string {
+  const id = prefix.replace(/[^a-zA-Z0-9_-]/g, '') || 'seal';
   return `<svg viewBox="0 0 240 240" role="presentation" focusable="false">
     <defs>
-      <radialGradient id="seal-wine" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#a02447"/><stop offset=".6" stop-color="#74112e"/><stop offset="1" stop-color="#3f0a1b"/></radialGradient>
-      <linearGradient id="seal-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3d58a"/><stop offset=".5" stop-color="#c79a2c"/><stop offset="1" stop-color="#8a6416"/></linearGradient>
-      <path id="seal-ring" d="M120,120 m-88,0 a88,88 0 1,1 176,0 a88,88 0 1,1 -176,0"/>
+      <radialGradient id="${id}-wine" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#a02447"/><stop offset=".6" stop-color="#74112e"/><stop offset="1" stop-color="#3f0a1b"/></radialGradient>
+      <linearGradient id="${id}-gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3d58a"/><stop offset=".5" stop-color="#c79a2c"/><stop offset="1" stop-color="#8a6416"/></linearGradient>
+      <path id="${id}-ring" d="M120,120 m-88,0 a88,88 0 1,1 176,0 a88,88 0 1,1 -176,0"/>
     </defs>
-    <circle cx="120" cy="120" r="114" fill="url(#seal-wine)" stroke="url(#seal-gold)" stroke-width="7"/>
+    <circle cx="120" cy="120" r="114" fill="url(#${id}-wine)" stroke="url(#${id}-gold)" stroke-width="7"/>
     <circle cx="120" cy="120" r="104" fill="none" stroke="#e5c570" stroke-width="1.5" stroke-dasharray="3 5" opacity=".8"/>
-    <text font-size="14" font-weight="800" fill="#f3d58a" font-family="Segoe UI, Arial, sans-serif"><textPath href="#seal-ring" textLength="548" lengthAdjust="spacing">FONTANA SCHOOL ✦ SELLO DE MÓDULO ✦ AULA DE FORMACIÓN ✦ </textPath></text>
-    <circle cx="120" cy="120" r="70" fill="#fff8e6" stroke="url(#seal-gold)" stroke-width="4"/>
+    <text font-size="14" font-weight="800" fill="#f3d58a" font-family="Segoe UI, Arial, sans-serif"><textPath href="#${id}-ring" textLength="548" lengthAdjust="spacing">FONTANA SCHOOL ✦ SELLO DE MÓDULO ✦ AULA DE FORMACIÓN ✦ </textPath></text>
+    <circle cx="120" cy="120" r="70" fill="#fff8e6" stroke="url(#${id}-gold)" stroke-width="4"/>
     <image href="${LOGO}" x="82" y="64" width="76" height="76" preserveAspectRatio="xMidYMid meet"/>
-    <rect x="70" y="148" width="100" height="26" rx="13" fill="url(#seal-wine)" stroke="url(#seal-gold)" stroke-width="2"/>
+    <rect x="70" y="148" width="100" height="26" rx="13" fill="url(#${id}-wine)" stroke="url(#${id}-gold)" stroke-width="2"/>
     <text x="120" y="166" text-anchor="middle" font-size="13" font-weight="900" letter-spacing="2" fill="#f7e3a8" font-family="Segoe UI, Arial, sans-serif">${escapar(label)}</text>
   </svg>`;
 }

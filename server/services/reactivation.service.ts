@@ -1,5 +1,6 @@
 import { Prisma, type ReactivationStatus } from '@prisma/client';
 import { prisma } from '../config/prisma.js';
+import type { Db } from '../config/prisma.js';
 import { Role } from '../domain/enums.js';
 import { ConflictError, NotFoundError } from '../domain/errors.js';
 import { assertNotCertified } from './attempt.service.js';
@@ -7,12 +8,16 @@ import { audit, type ActionContext } from './audit.service.js';
 import { attemptResults } from './evaluation-result.service.js';
 import { createOverrideTx } from './override.service.js';
 import { loadSnapshot } from './progress.service.js';
+import { jsonSnapshot } from './course-retry.service.js';
+import { selfRetryKey } from '../domain/evaluation-retry.js';
+import { retryReport, type RetryReport } from './retry-report.service.js';
 
-// Solicitudes de reactivación: el asesor que agotó su intento sin aprobar pide otra oportunidad y el administrador
-// la autoriza (crea una excepción REACTIVATE de un intento, solo para esa actividad) o la rechaza con un motivo.
-// Nada se borra: los intentos anteriores, sus resultados y la solicitud quedan en el historial.
+// El acompañamiento reactiva solo la evaluación pendiente y conserva todo el recorrido.
 
 const PAGE_SIZE = 25;
+
+const inTransaction = <T>(db: Db, run: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> =>
+  '$transaction' in db ? db.$transaction(run, { timeout: 60_000 }) : run(db);
 
 const requestInclude = {
   user: { select: { id: true, nombreCompleto: true, numeroDocumento: true } },
@@ -27,17 +32,18 @@ function present(row: RequestRow) {
     id: row.id, status: row.status, createdAt: row.createdAt.toISOString(), advisorNote: row.advisorNote,
     decisionReason: row.decisionReason, decidedAt: row.decidedAt?.toISOString() ?? null, decidedBy: row.decidedBy?.nombreCompleto ?? null,
     attemptId: row.attemptId, overrideId: row.overrideId,
+    restartCourse: row.restartCourse, report: row.report as RetryReport | null, hasArchive: Boolean(row.courseArchive),
     advisor: { id: row.user.id, name: row.user.nombreCompleto, document: row.user.numeroDocumento },
     activity: { id: row.activity.id, title: row.activity.title, type: row.activity.type, moduleSlug: row.activity.module.slug, moduleName: row.activity.module.name, moduleOrder: row.activity.module.order },
   };
 }
 
 // Pide la reactivación de una actividad. Idempotente: si ya hay una pendiente, devuelve esa misma.
-export async function requestReactivation(userId: string, activityId: string, note: string | null, now = new Date()) {
+export async function requestReactivation(userId: string, activityId: string, note: string | null, now = new Date(), db: Db = prisma) {
   try {
-    return await prisma.$transaction(async (tx) => {
+    return await inTransaction(db, async (tx) => {
       await tx.$queryRaw`SELECT id FROM induccion.usuarios WHERE id = ${userId}::uuid FOR UPDATE`;
-      const pending = await tx.reactivationRequest.findFirst({ where: { userId, activityId, status: 'PENDING' }, include: requestInclude });
+      const pending = await tx.reactivationRequest.findFirst({ where: { userId, status: 'PENDING', OR: [{ activityId }, { restartCourse: true }] }, include: requestInclude });
       if (pending) return { request: present(pending), created: false };
       await assertNotCertified(tx, userId);
       const snapshot = await loadSnapshot(tx, userId, now);
@@ -48,9 +54,13 @@ export async function requestReactivation(userId: string, activityId: string, no
       if (!availability?.exhausted) {
         throw new ConflictError(availability?.passed ? 'Ya aprobaste esta actividad.' : 'Todavía tienes un intento disponible en esta actividad.', 'REACTIVATION_NOT_NEEDED');
       }
+      const selfRetry = await tx.userActivityOverride.findUnique({ where: { idempotencyKey: selfRetryKey(userId, activityId) } });
+      if (!selfRetry) throw new ConflictError('Primero activa tu único reintento desde el resultado de la evaluación.', 'SELF_RETRY_AVAILABLE');
       const last = await tx.attempt.findFirst({ where: { userId, evaluation: { activityId }, submittedAt: { not: null } }, orderBy: { submittedAt: 'desc' }, select: { id: true } });
+      const report = await retryReport(userId, activityId, tx, now);
       const created = await tx.reactivationRequest.create({
-        data: { userId, activityId, attemptId: last?.id ?? null, advisorNote: note?.trim() || null, createdAt: now },
+        data: { userId, activityId, attemptId: last?.id ?? null, advisorNote: note?.trim() || null, createdAt: now,
+          restartCourse: false, report: jsonSnapshot(report) },
         include: requestInclude,
       });
       return { request: present(created), created: true };
@@ -89,7 +99,20 @@ export async function reactivationRequestDetail(id: string) {
   if (!row) throw new NotFoundError('Solicitud no encontrada.', 'REACTIVATION_NOT_FOUND');
   const attempts = await prisma.attempt.findMany({ where: { userId: row.userId, evaluation: { activityId: row.activityId } }, orderBy: { number: 'asc' }, select: { id: true } });
   const results = await attemptResults(prisma, attempts.map((attempt) => attempt.id));
-  return { ...present(row), attempts: attempts.map((attempt) => results.get(attempt.id)!) };
+  const report = row.report as RetryReport | null;
+  return { ...present(row), attempts: report?.attempts ?? attempts.map((attempt) => results.get(attempt.id)!) };
+}
+
+export async function reactivationArchive(id: string) {
+  const row = await prisma.reactivationRequest.findUnique({ where: { id }, select: { courseArchive: true } });
+  if (!row?.courseArchive) throw new NotFoundError('No hay un recorrido archivado para esta solicitud.');
+  return row.courseArchive;
+}
+
+export async function myRequestReport(userId: string, id: string) {
+  const row = await prisma.reactivationRequest.findFirst({ where: { id, userId }, select: { id: true, report: true } });
+  if (!row?.report) throw new NotFoundError('Constancia no encontrada.');
+  return { code: row.id, report: row.report as RetryReport };
 }
 
 async function lockRequest(tx: Prisma.TransactionClient, id: string) {
@@ -99,31 +122,36 @@ async function lockRequest(tx: Prisma.TransactionClient, id: string) {
   return row;
 }
 
-// Autoriza un intento adicional solo para la actividad de la solicitud. No toca los demás ejercicios ni el módulo.
-// Repetir la aprobación (doble clic, reintento por red) devuelve la misma decisión.
-export async function approveReactivation(id: string, reason: string, context: ActionContext, now = new Date()) {
-  return prisma.$transaction(async (tx) => {
+// Bloquea primero al usuario, como el envío de exámenes: serializa aprobación, solicitud e intentos.
+export async function approveReactivation(id: string, reason: string, context: ActionContext, now = new Date(), db: Db = prisma) {
+  return inTransaction(db, async (tx) => {
+    const initial = await tx.reactivationRequest.findUnique({ where: { id }, select: { userId: true } });
+    if (!initial) throw new NotFoundError('Solicitud no encontrada.', 'REACTIVATION_NOT_FOUND');
+    await tx.$queryRaw`SELECT id FROM induccion.usuarios WHERE id = ${initial.userId}::uuid FOR UPDATE`;
     const row = await lockRequest(tx, id);
-    if (row.status === 'APPROVED') return present(row);
-    if (row.status !== 'PENDING') throw new ConflictError('La solicitud ya fue rechazada.', 'REACTIVATION_DECIDED');
     const actor = await tx.usuario.findUnique({ where: { id: context.actorUserId }, select: { rol: true } });
     if (actor?.rol !== Role.ADMIN) throw new ConflictError('Solo un administrador decide las solicitudes.', 'ADMIN_REQUIRED');
-    const override = await createOverrideTx(tx, row.userId, row.activityId, { action: 'REACTIVATE', reason, extraAttempts: 1 }, `reactivation-request:${row.id}`, context, now);
+    if (row.status === 'APPROVED') return present(row);
+    if (row.status !== 'PENDING') throw new ConflictError('La solicitud ya fue rechazada.', 'REACTIVATION_DECIDED');
+    // Incluso una solicitud pendiente del flujo anterior se resuelve sin borrar módulos.
+    const overrideId = (await createOverrideTx(tx, row.userId, row.activityId, { action: 'REACTIVATE', reason, extraAttempts: 1 }, `reactivation-request:${row.id}`, context, now)).id;
     const updated = await tx.reactivationRequest.update({
       where: { id }, include: requestInclude,
-      data: { status: 'APPROVED', decisionReason: reason, decidedById: context.actorUserId, decidedAt: now, overrideId: override.id },
+      data: { status: 'APPROVED', decisionReason: reason, decidedById: context.actorUserId, decidedAt: now, overrideId, restartCourse: false },
     });
     await audit(tx, context, {
       action: 'REACTIVATION_REQUEST_APPROVED', entityType: 'ReactivationRequest', entityId: id, reason,
-      before: { status: row.status }, after: { status: 'APPROVED', overrideId: override.id, userId: row.userId, activityId: row.activityId },
+      before: { status: row.status, restartCourse: row.restartCourse }, after: { status: 'APPROVED', overrideId, restartCourse: false, userId: row.userId, activityId: row.activityId },
     });
     return present(updated);
-  }, { timeout: 30_000 });
+  });
 }
 
 export async function rejectReactivation(id: string, reason: string, context: ActionContext, now = new Date()) {
   return prisma.$transaction(async (tx) => {
     const row = await lockRequest(tx, id);
+    const actor = await tx.usuario.findUnique({ where: { id: context.actorUserId }, select: { rol: true } });
+    if (actor?.rol !== Role.ADMIN) throw new ConflictError('Solo un administrador decide las solicitudes.', 'ADMIN_REQUIRED');
     if (row.status === 'REJECTED') return present(row);
     if (row.status !== 'PENDING') throw new ConflictError('La solicitud ya fue aprobada.', 'REACTIVATION_DECIDED');
     const updated = await tx.reactivationRequest.update({

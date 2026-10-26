@@ -3,22 +3,24 @@ import { prisma } from '../config/prisma.js';
 import { COLLECTIONS_KEYS } from '../domain/collections.js';
 import { EXAM_SECTIONS } from '../domain/collections-exam.js';
 import { FINAL_EXAM_BANK } from '../domain/final-exam-bank.js';
+import { TRAINING_PLAN_VERSION } from '../domain/certification.js';
 import { OPTION_LETTERS } from '../domain/final-exam.js';
-import { OBJECTIONS_KEYS } from '../domain/objections.js';
 import { TIPIFICA_ASSIGNED_COUNT, assignedExerciseNumbers } from '../domain/tipifica/assignment.js';
 import type { TypificationDraft } from '../domain/tipifica/draft.js';
 import { startAttempt } from '../services/attempt.service.js';
 import { approveCertification, certificationDossier, myCertification } from '../services/certification.service.js';
 import { completeCollectionsBlock, saveCollectionsExamSection, startCollectionsExam, submitCollectionsExam } from '../services/collections.service.js';
 import { finalExamState, saveFinalExamAnswer, startFinalExam, submitFinalExam } from '../services/final-exam.service.js';
-import { completeObjectionsBlock } from '../services/objections.service.js';
+import { startObjectionsExam, saveObjectionsAnswer, submitObjectionsExam } from '../services/objections.service.js';
+import { OBJECTIONS_CASES } from '../domain/objections-expert.js';
 import { computeModuleState } from '../services/progress.service.js';
 import { approveReactivation, requestReactivation } from '../services/reactivation.service.js';
+import { activateSelfRetry } from '../services/evaluation-retry.service.js';
 import { submitTipificaExercise, tipificaState } from '../services/tipifica.service.js';
 import { ORIGIN, createTestUser, loginAgent, passOfficeModule, resetRateLimits } from './helpers.js';
 
 // Recorrido completo con evaluaciones oficiales: perfiles, un intento, Tipifica en la base, reactivaciones,
-// examen general, validación del administrador, certificado único, modo repaso y resumen consolidado.
+// examen general, emisión automática, certificado único, modo repaso y resumen consolidado.
 
 const SUITE = 'eval';
 const base = { action: 'hacer-llamada', channel: 'telefonico', location: false, promiseDate: '', promiseAmount: '', callbackAt: '' } as const;
@@ -70,7 +72,9 @@ async function reachTipifica(userId: string, experienced: boolean) {
   await passOfficeModule(userId);
   if (experienced) await presentDiagnostic(userId, false);
   await passTheory(userId);
-  for (const key of OBJECTIONS_KEYS) await completeObjectionsBlock(userId, key);
+  const start = await startObjectionsExam(userId);
+  for (const entry of OBJECTIONS_CASES) await saveObjectionsAnswer(userId, start.exam.draft!.attemptId, entry.key, entry.example);
+  await submitObjectionsExam(userId, start.exam.draft!.attemptId);
 }
 
 async function passTipifica(userId: string) {
@@ -188,7 +192,7 @@ describe('Tipifica oficial', () => {
     // Doble clic simultáneo: un solo intento.
     const [first, second] = await Promise.all([submitTipificaExercise(userId, n!, GOOD[n!]!), submitTipificaExercise(userId, n!, GOOD[n!]!)]);
     expect(first.result.attemptId).toBe(second.result.attemptId);
-    expect([first.alreadySubmitted, second.alreadySubmitted].sort()).toEqual([false, true]);
+    expect([first.alreadySubmitted, second.alreadySubmitted].sort()).toEqual([false, false]);
     // Un segundo envío (otro navegador, recarga) devuelve el resultado guardado.
     const again = await submitTipificaExercise(userId, n!, wrong(n!));
     expect(again.alreadySubmitted).toBe(true);
@@ -232,7 +236,7 @@ describe('Tipifica oficial', () => {
 });
 
 describe('reactivaciones', () => {
-  it('7. el examen general no aprobado puede reactivarse: se conserva el intento anterior y no se duplica la solicitud', async () => {
+  it('7. permite un reintento propio y después acompañamiento, conservando módulos e historial', async () => {
     const userId = await advisor(false);
     await reachTipifica(userId, false);
     await passTipifica(userId);
@@ -241,6 +245,14 @@ describe('reactivaciones', () => {
     const exam = await finalExamState(userId);
     expect(exam.status).toBe('NO_APROBADO');
     await expect(startFinalExam(userId)).rejects.toMatchObject({ code: 'NO_ATTEMPTS_LEFT' });
+    await expect(requestReactivation(userId, exam.activityId, null)).rejects.toMatchObject({ code: 'SELF_RETRY_AVAILABLE' });
+    const sealsBefore = await prisma.seal.findMany({ where: { userId }, orderBy: { id: 'asc' } });
+    const [own1, own2] = await Promise.all([activateSelfRetry(userId, exam.activityId), activateSelfRetry(userId, exam.activityId)]);
+    expect([own1.activated, own2.activated].sort()).toEqual([false, true]);
+    const failedRetry = await passFinalExam(userId, false);
+    expect(failedRetry.result.number).toBe(2);
+    expect(failedRetry.result.passed).toBe(false);
+    await expect(startFinalExam(userId)).rejects.toMatchObject({ code: 'NO_ATTEMPTS_LEFT' });
     const [r1, r2] = await Promise.all([requestReactivation(userId, exam.activityId, 'Quiero repasar y volver a intentar'), requestReactivation(userId, exam.activityId, null)]);
     expect(r1.request.id).toBe(r2.request.id);
     expect(await prisma.reactivationRequest.count({ where: { userId, status: 'PENDING' } })).toBe(1);
@@ -248,14 +260,18 @@ describe('reactivaciones', () => {
     const approved = await approveReactivation(r1.request.id, 'Autorizado por coordinación', ctx());
     expect(approved.status).toBe('APPROVED');
     expect((await approveReactivation(r1.request.id, 'Autorizado por coordinación', ctx())).overrideId).toBe(approved.overrideId);
-    expect((await finalExamState(userId)).status).toBe('REACTIVADO');
+    const archived = await prisma.reactivationRequest.findUniqueOrThrow({ where: { id: r1.request.id } });
+    expect(archived.courseArchive).toBeNull();
+    expect(archived.report).toMatchObject({ attemptId: failedRetry.result.attemptId });
+    expect(await prisma.seal.findMany({ where: { userId }, orderBy: { id: 'asc' } })).toEqual(sealsBefore);
     const retry = await passFinalExam(userId, true);
     expect(retry.result.passed).toBe(true);
-    expect(retry.result.number).toBe(2);
+    expect(retry.result.number).toBe(3);
     expect(retry.result.reactivated).toBe(true);
     const attempts = await attemptsOf(userId, 'examen-general');
-    expect(attempts).toHaveLength(2);
-    expect(attempts.filter((attempt) => attempt.status === 'FAILED')).toHaveLength(1);
+    expect(attempts).toHaveLength(3);
+    expect(attempts.filter((attempt) => attempt.status === 'FAILED')).toHaveLength(2);
+    expect(attempts.some(attempt => attempt.id === failed.result.attemptId)).toBe(true);
     const audit = await prisma.adminAuditLog.findMany({ where: { entityId: r1.request.id } });
     expect(audit.map((row) => row.action)).toContain('REACTIVATION_REQUEST_APPROVED');
   });
@@ -279,7 +295,10 @@ describe('examen general y certificación', () => {
       expect(JSON.stringify(start.questions)).not.toMatch(/"answer"|explanation/);
       const exam = await passFinalExam(userId);
       expect(exam.result.passed).toBe(true);
-      expect((await myCertification(userId)).status).toBe('PENDIENTE_VALIDACION');
+      expect((await myCertification(userId)).status).toBe('CERTIFICADO');
+      const repeated = await Promise.all([submitFinalExam(userId), submitFinalExam(userId)]);
+      expect(repeated.every(item => item.alreadySubmitted)).toBe(true);
+      expect(await prisma.certificate.count({ where: { userId } })).toBe(1);
       certifiedUser = userId;
     }
   });
@@ -290,13 +309,13 @@ describe('examen general y certificación', () => {
     const denied = await agent.post(`/api/admin/certifications/${certifiedUser}/approve`).set(ORIGIN).send({});
     expect(denied.status).toBe(403);
     await expect(approveCertification(certifiedUser, null, { actorUserId: certifiedUser })).rejects.toMatchObject({ code: 'ADMIN_REQUIRED' });
-    expect(await prisma.certificate.count({ where: { userId: certifiedUser } })).toBe(0);
+    expect(await prisma.certificate.count({ where: { userId: certifiedUser } })).toBe(1);
   });
 
   it('10. la emisión es única e idempotente aunque lleguen dos aprobaciones a la vez', async () => {
     const [a, b] = await Promise.all([approveCertification(certifiedUser, 'Cumple', ctx()), approveCertification(certifiedUser, 'Cumple', ctx())]);
     expect(a.certificate.id).toBe(b.certificate.id);
-    expect([a.created, b.created].sort()).toEqual([false, true]);
+    expect([a.created, b.created].sort()).toEqual([false, false]);
     expect(await prisma.certificate.count({ where: { userId: certifiedUser } })).toBe(1);
     expect(await prisma.trainingCompletionSummary.count({ where: { userId: certifiedUser } })).toBe(1);
     const { agent } = await loginAgent(adminDocument, 'administrador');
@@ -325,12 +344,12 @@ describe('examen general y certificación', () => {
   it('12. el historial consolidado conserva la trazabilidad', async () => {
     const summary = await prisma.trainingCompletionSummary.findFirstOrThrow({ where: { userId: certifiedUser } });
     const certificate = await prisma.certificate.findFirstOrThrow({ where: { userId: certifiedUser, status: 'ACTIVE' } });
-    expect(summary).toMatchObject({ certificateId: certificate.id, certificateCode: certificate.code, approvedById: adminId, typificationPassed: 2, typificationTotal: 2, trainingProfile: 'CON_EXPERIENCIA', planVersion: 1, cycle: 1 });
+    expect(summary).toMatchObject({ certificateId: certificate.id, certificateCode: certificate.code, approvedById: null, typificationPassed: 2, typificationTotal: 2, trainingProfile: 'CON_EXPERIENCIA', planVersion: TRAINING_PLAN_VERSION, cycle: 1 });
     expect(Number(summary.finalExamScore)).toBe(100);
     expect(summary.diagnosticScore).not.toBeNull();
     // Los datos originales siguen ahí: intentos, auditoría y decisión.
     expect(await prisma.attempt.count({ where: { userId: certifiedUser } })).toBeGreaterThanOrEqual(7);
-    expect(await prisma.adminAuditLog.count({ where: { action: { in: ['CERTIFICATION_APPROVED', 'CERTIFICATE_ISSUED'] }, OR: [{ entityId: certificate.id }, { afterJson: { path: ['userId'], equals: certifiedUser } }] } })).toBe(2);
+    expect(await prisma.adminAuditLog.count({ where: { action: { in: ['CERTIFICATION_APPROVED', 'CERTIFICATE_ISSUED'] }, OR: [{ entityId: certificate.id }, { afterJson: { path: ['userId'], equals: certifiedUser } }] } })).toBe(1);
     const dossier = await certificationDossier(certifiedUser);
     expect(dossier.status).toBe('CERTIFICADO');
     expect(dossier.typification.every((activity) => activity.passed)).toBe(true);

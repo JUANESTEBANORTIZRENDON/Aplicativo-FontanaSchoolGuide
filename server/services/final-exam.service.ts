@@ -13,6 +13,7 @@ import { startAttemptTx, submitAttemptTx } from './attempt.service.js';
 import type { ActionContext } from './audit.service.js';
 import { attemptResults } from './evaluation-result.service.js';
 import { loadSnapshot } from './progress.service.js';
+import { certifyAfterFinalExam } from './automatic-certification.service.js';
 
 // Examen general ABCD: obligatorio para los dos perfiles, un intento. Al iniciar se sortean las preguntas y se guardan
 // en el intento (con su orden); cada respuesta se guarda al marcarla; al enviar califica el servidor con el banco.
@@ -105,7 +106,11 @@ export async function submitFinalExam(userId: string, now = new Date()) {
     const attempt = await openAttempt(tx, userId, activity.id);
     if (!attempt) {
       const last = await tx.attempt.findFirst({ where: { userId, evaluation: { activityId: activity.id }, submittedAt: { not: null } }, orderBy: { number: 'desc' }, select: { id: true } });
-      if (last) return { result: (await attemptResults(tx, [last.id])).get(last.id)!, alreadySubmitted: true };
+      if (last) {
+        const result = (await attemptResults(tx, [last.id])).get(last.id)!;
+        if (result.passed) await certifyAfterFinalExam(tx, userId, now);
+        return { result, alreadySubmitted: true };
+      }
       throw new ConflictError('Inicia el examen antes de enviarlo.', 'ATTEMPT_CLOSED');
     }
     const rows = await tx.attemptAnswer.findMany({ where: { attemptId: attempt.id }, orderBy: { position: 'asc' } });
@@ -114,8 +119,9 @@ export async function submitFinalExam(userId: string, now = new Date()) {
       await tx.attemptAnswer.updateMany({ where: { attemptId: attempt.id, questionId: answer.questionId }, data: { isCorrect: answer.isCorrect, awardedScore: new Prisma.Decimal(answer.awardedScore) } });
     }
     await submitAttemptTx(tx, userId, attempt.id, { score: grade.score, passed: grade.passed, now });
+    if (grade.passed) await certifyAfterFinalExam(tx, userId, now);
     return { result: (await attemptResults(tx, [attempt.id])).get(attempt.id)!, alreadySubmitted: false };
-  }, { timeout: 30_000 });
+  }, { timeout: 60_000 });
 }
 
 // Configuración desde el administrador: otra versión de la evaluación (las anteriores y sus intentos no cambian).
