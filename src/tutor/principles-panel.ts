@@ -42,7 +42,7 @@ export function mountPrinciples(host: HTMLElement, options: PrinciplesOptions = 
       </div>
       <div class="detail-note principle-narration"><strong>Esto es lo que explica el tutor</strong><p id="principle-narration"></p></div>
       <button type="button" class="principle-pause" id="principle-play" aria-label="Pausar la explicación">Pausar explicación</button>
-      <p class="principle-status" id="principle-status" role="status" aria-live="polite"></p>
+      <p class="principle-status" id="principle-status" role="status" aria-live="polite"></p><div class="principle-confirmation" data-confirmation-slot></div>
     </article>`;
   const q = <T extends HTMLElement>(selector: string): T => host.querySelector<T>(selector)!;
   const buttons = [...host.querySelectorAll<HTMLButtonElement>('[data-principle]')];

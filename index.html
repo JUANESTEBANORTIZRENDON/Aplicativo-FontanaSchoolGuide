@@ -134,17 +134,24 @@
             </span>
             Nuestra historia
           </button>
-          <button id="principles-tab" role="tab" aria-selected="false" aria-controls="principles" tabindex="-1" disabled title="Disponible al terminar Nuestra historia.">
+
+          <button id="policies-tab" role="tab" aria-selected="false" aria-controls="policies" tabindex="-1" disabled title="Disponible al terminar Nuestra historia.">
             <span class="tab-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>
             </span>
-            Principios de trabajo
+            Reglas y políticas
           </button>
-          <button id="security-tab" role="tab" aria-selected="false" aria-controls="security" tabindex="-1">
+          <button id="security-tab" role="tab" aria-selected="false" aria-controls="security" tabindex="-1" disabled title="Disponible al terminar Reglas y políticas.">
             <span class="tab-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 3 7v5c0 5 9 9 9 9s9-4 9-9V7z"/><path d="m8 12 3 3 5-6"/></svg>
             </span>
             Seguridad de la información
+          </button>
+          <button id="principles-tab" role="tab" aria-selected="false" aria-controls="principles" tabindex="-1" disabled title="Disponible al terminar Seguridad de la información.">
+            <span class="tab-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg>
+            </span>
+            Principios de trabajo
           </button>
         </div>
 
@@ -201,7 +208,7 @@
                 <h4 tabindex="-1">Una carta a García</h4>
                 <p>El ensayo de Elbert Hubbard invita a tomar la iniciativa y asumir con responsabilidad una tarea hasta llevarla a término.</p>
                 <p>En nuestro trabajo, podemos aplicar esa idea al comprender cada gestión, buscar soluciones, pedir orientación cuando haga falta y dar seguimiento a los compromisos.</p>
-                <small>Una reflexión sobre iniciativa y compromiso. <a href="https://www.gutenberg.org/ebooks/17195" target="_blank" rel="noopener noreferrer">Conoce el ensayo original</a>.</small>
+                <small>Una reflexión sobre iniciativa y compromiso. <a href="https://obtienearchivo.bcn.cl/obtienearchivo?id=documentos/10221.1/40299/1/211470.pdf" target="_blank" rel="noopener noreferrer">Conoce el ensayo original</a>.</small>
                 <button class="story-next primary">Siguiente →</button>
               </div>
             </article>
@@ -260,7 +267,7 @@
         <div id="security" class="panel company-security" role="tabpanel" aria-labelledby="security-tab" hidden>
           <a class="security-manual-link" href="/manuales/fontana-seguridad-informacion.pdf" download="Fontana_Guia_General_Seguridad_Informacion.pdf"><span>↓ Descargar manual de seguridad de la información</span><small>PDF · 5 páginas</small></a>
           <div class="method-heading security-heading"><div><p class="eyebrow">SEGURIDAD DE LA INFORMACIÓN</p><h3>Cómo protegemos la información, en seis pasos.</h3></div></div>
-          <div class="security-cards" data-security-slides>
+          <div class="security-cards" data-security-slides data-security-avatar="/imagenes/avatar-seguridad.png">
             <article><span class="security-number" aria-hidden="true">01</span><h4>Usa tu propia cuenta</h4><p>Entra solo a los sistemas autorizados para tu cargo. Si te falta un permiso, solicítalo; no uses la cuenta de un compañero ni intentes saltar bloqueos.</p></article>
             <article><span class="security-number" aria-hidden="true">02</span><h4>Tu contraseña es personal</h4><p>No la compartas, ni siquiera con jefes o personas que digan ser de soporte. No la envíes por mensajes ni actives la opción de recordarla.</p></article>
             <article><span class="security-number" aria-hidden="true">03</span><h4>Cuida equipos y archivos</h4><p>Bloquea el equipo al alejarte y guarda la información solo en los lugares autorizados. No instales programas ni conectes memorias USB por tu cuenta.</p></article>
@@ -271,7 +278,17 @@
 
 
         </div>
-      </section>
+        <div id="policies" class="panel company-security" role="tabpanel" aria-labelledby="policies-tab" hidden>
+          <div class="method-heading security-heading"><div><p class="eyebrow">REGLAS Y POLÍTICAS</p><h3>Las reglas que nos cuidan a todos, en seis pasos.</h3></div></div>
+          <div class="security-cards" data-security-slides>
+            <article><span class="security-number" aria-hidden="true">01</span><h4>Cumple tu horario</h4><p>Conéctate a tiempo y respeta tus pausas. Si no puedes asistir o llegarás tarde, avisa con anticipación a tu líder por el canal oficial; no esperes a que te lo pregunten.</p></article>
+            <article><span class="security-number" aria-hidden="true">02</span><h4>Trato respetuoso siempre</h4><p>Con clientes, compañeros y líderes: lenguaje cordial, sin gritos, burlas ni presiones indebidas. En la cobranza no se amenaza, no se humilla y no se hostiga a nadie.</p></article>
+            <article><span class="security-number" aria-hidden="true">03</span><h4>Cobramos con ética</h4><p>Contacta a los clientes en los horarios y con la frecuencia que permiten la ley y la política interna. Informa con claridad la deuda y las opciones reales de pago, sin prometer lo que no está autorizado.</p></article>
+            <article><span class="security-number" aria-hidden="true">04</span><h4>Registra toda gestión</h4><p>Cada llamada o mensaje se tipifica en Control Next con información veraz y completa. Lo que no se registra no existió, y nunca se alteran ni se inventan datos.</p></article>
+            <article><span class="security-number" aria-hidden="true">05</span><h4>Usa bien los recursos</h4><p>Los equipos, las líneas y las herramientas de la compañía son para el trabajo. Mantén tu puesto en orden y reporta cualquier daño o falla en cuanto la notes.</p></article>
+            <article><span class="security-number" aria-hidden="true">06</span><h4>Habla cuando algo no esté bien</h4><p>Si ves una conducta que incumple estas reglas, o te sientes en una situación incómoda, repórtalo a tu líder o al área de Talento Humano. Hacerlo es una forma de cuidar al equipo.</p></article>
+          </div>
+        </div>      </section>
 
       <!-- PIE DE PÁGINA. -->
       <footer>
@@ -295,9 +312,9 @@
       </div>
       <p class="eyebrow">TRES PARTES · UN NUEVO COMIENZO</p>
       <h2 id="completion-title">Ya conoces nuestra historia.</h2>
-      <p id="completion-description">Ahora da el siguiente paso en Fontana: conoce los principios que guían nuestro trabajo.</p>
+      <p id="completion-description">Ahora da el siguiente paso en Fontana: conoce las reglas y políticas que guían nuestro trabajo.</p>
       <div class="completion-milestones" aria-label="3 de 3 partes completadas"><span>01 ✓</span><span>02 ✓</span><span>03 ✓</span></div>
-      <button class="primary" id="completion-go-principles" autofocus>Explorar los principios de trabajo →</button>
+      <button class="primary" id="completion-go-principles" autofocus>Continuar con las reglas y políticas →</button>
     </dialog>
 
     </div>

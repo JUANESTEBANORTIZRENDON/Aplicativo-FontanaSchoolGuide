@@ -12,9 +12,7 @@ function element<T extends HTMLElement>(selector: string): T {
   return result;
 }
 
-mountSecuritySlider(element('#security'));
-
-// NAVEGACIÓN ENTRE HISTORIA, PRINCIPIOS Y SEGURIDAD
+// NAVEGACIÓN ENTRE HISTORIA, REGLAS, SEGURIDAD Y PRINCIPIOS (en ese orden; cada pestaña se abre al terminar la anterior)
 // La ruta permanece visible; su alto determina el espacio al desplazar el contenido.
 const learningPath = element('.learning-path');
 const pathResizeObserver = new ResizeObserver(() => {
@@ -22,8 +20,10 @@ const pathResizeObserver = new ResizeObserver(() => {
 });
 pathResizeObserver.observe(learningPath);
 const tabs = [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+const policiesTab = element<HTMLButtonElement>('#policies-tab');
+const securityTab = element<HTMLButtonElement>('#security-tab');
 const principlesTab = element<HTMLButtonElement>('#principles-tab');
-let principlesUnlocked = false;
+let storyUnlocked = false;
 // PRINCIPIOS DE TRABAJO: el tutor (con voz) se carga solo al abrir la pestaña y se silencia al salir de ella.
 let principles: PrinciplesPanel | null = null;
 let principlesVisible = false;
@@ -31,11 +31,12 @@ async function showPrinciples(): Promise<void> {
   if (!principles) {
     const { mountPrinciples } = await import('./tutor/principles-panel');
     principles ??= mountPrinciples(element('#principles-mount'), { completed: principlesReviewed, onProgress: updatePrinciplesProgress });
+    // La confirmación de lectura vive junto al resumen de los principios, no en un bloque aparte.
+    element('#principles-mount').querySelector('[data-confirmation-slot]')?.append(readingConfirmation);
   }
   if (principlesVisible) principles.show(); else principles.hide();
   if (principlesReviewed && !inductionCompleted) saveProgress('metodo');
 }
-// Los principios se habilitan al terminar Nuestra historia.
 function unlockTab(tab: HTMLButtonElement): void {
   tab.disabled = false;
   tab.removeAttribute('title');
@@ -52,6 +53,22 @@ function selectTab(index: number): void {
   if (principlesVisible || principles) void showPrinciples();
 
 }
+function openTab(tab: HTMLButtonElement): void {
+  unlockTab(tab);
+  selectTab(tabs.indexOf(tab));
+  focusContent();
+}
+// Al terminar los pasos de una pestaña se abre la siguiente y aparece el botón para continuar.
+function chainTab(panelId: string, topic: string | undefined, next: HTMLButtonElement, label: string): void {
+  const panel = element(panelId);
+  const button = document.createElement('button');
+  button.type = 'button'; button.className = 'primary security-continue'; button.hidden = true; button.textContent = label;
+  button.addEventListener('click', () => openTab(next));
+  panel.append(button);
+  mountSecuritySlider(panel, topic, () => { unlockTab(next); button.hidden = false; });
+}
+chainTab('#policies', 'reglas y políticas de la compañía', securityTab, 'Continuar con la seguridad de la información →');
+chainTab('#security', undefined, principlesTab, 'Continuar con los principios de trabajo →');
 tabs.forEach((tab, index) => {
   tab.addEventListener('click', () => selectTab(index));
   tab.addEventListener('keydown', (event: KeyboardEvent) => {
@@ -131,28 +148,26 @@ storyCards.forEach((card, index) => {
 // Finalizar permite abrir el aviso de nuevo si el usuario lo cierra.
 finishStory.addEventListener('click', () => {
   if (openedStories.size !== storyCards.length) return;
-  // Al repasar, los principios ya están desbloqueados y se abren directamente.
-  if (principlesUnlocked) { explorePrinciples(); return; }
+  // Al repasar, la siguiente pestaña ya está desbloqueada y se abre directamente.
+  if (storyUnlocked) { explorePolicies(); return; }
   storyCompleted = true;
   saveProgress('historia');
-  finishStory.textContent = 'Continuar a los principios →';
+  finishStory.textContent = 'Continuar con las reglas y políticas →';
   completionDialog.showModal();
 });
 element('#close-completion').addEventListener('click', () => completionDialog.close());
 completionDialog.addEventListener('close', () => {
-  if (!principlesUnlocked) finishStory.focus({ preventScroll: true });
+  if (!storyUnlocked) finishStory.focus({ preventScroll: true });
 });
 
-// El botón del aviso abre el recorrido conservando el avance entre etapas.
-function explorePrinciples(): void {
+// El botón del aviso abre la pestaña siguiente (Reglas y políticas).
+function explorePolicies(): void {
   if (!storyCompleted) return;
-  principlesUnlocked = true;
+  storyUnlocked = true;
   if (completionDialog.open) completionDialog.close();
-  unlockTab(principlesTab);
-  selectTab(tabs.indexOf(principlesTab));
-  focusContent();
+  openTab(policiesTab);
 }
-element('#completion-go-principles').addEventListener('click', explorePrinciples);
+element('#completion-go-principles').addEventListener('click', explorePolicies);
 
 // CONFIRMACIÓN DE LECTURA Y ACCESO AL AULA
 const readingConfirmation = element<HTMLLabelElement>('#reading-confirmation');
@@ -190,6 +205,8 @@ companyRead.addEventListener('change', () => {
     experienceResult.textContent = '';
   }
   updateExperienceAccess();
+  // Al marcarla se desbloquea la ruta de formación justo debajo.
+  if (companyRead.checked && !experienceSection.hidden) experienceSection.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'nearest' });
 });
 let finishing = false;
 experienceForm.addEventListener('submit', async (event: SubmitEvent) => {
@@ -234,9 +251,11 @@ export function restoreProgress(progress: { historia: boolean; metodo: boolean; 
     highestUnlockedStory = storyCards.length - 1;
     document.querySelectorAll<HTMLButtonElement>('.story-next:not(#finish-story)').forEach((button) => { button.hidden = true; });
     storyCompleted = true;
-    principlesUnlocked = true;
-    finishStory.textContent = 'Continuar a los principios →';
-    unlockTab(principlesTab);
+    storyUnlocked = true;
+    finishStory.textContent = 'Continuar con las reglas y políticas →';
+    // Quien ya terminó la historia no repite el orden: todo queda abierto para repasar.
+    [policiesTab, securityTab, principlesTab].forEach(unlockTab);
+    document.querySelectorAll<HTMLButtonElement>('.security-continue').forEach((button) => { button.hidden = false; });
   }
   if (progress.metodo || progress.completada) {
     savedProgress.metodo = true;

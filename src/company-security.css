@@ -1,8 +1,17 @@
 /* Security shares the presentation of Principles; the future avatar is not mounted yet. */
-#security.company-security { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 22px; }
+#security.company-security, #policies.company-security { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 22px; }
 .company-security > * { min-width: 0; }
 .company-security .security-heading .eyebrow { margin: 0 0 10px; }
 .company-security .security-heading h3 { margin: 0; font-size: 28px; line-height: 1.35; font-weight: 600; }
+.company-security .security-stage { display: grid; grid-template-columns: auto 1fr; align-items: end; gap: 20px; }
+.company-security .security-avatar { width: clamp(150px, 16vw, 210px); margin: 0 0 -4px; align-self: end; -webkit-mask-image: linear-gradient(to bottom, #000 80%, transparent 100%); mask-image: linear-gradient(to bottom, #000 80%, transparent 100%); }
+.company-security .security-avatar img { display: block; width: 100%; height: auto; image-rendering: auto; }
+.company-security .security-stage .principle-copy { padding-bottom: 8px; }
+.company-security .security-stage h4 { margin: 10px 0 8px; }
+.company-security .security-explanation { margin-top: 12px; }
+.company-security .security-continue { justify-self: end; }
+.company-security .security-continue[hidden] { display: none; }
+@media(max-width:560px) { .company-security .security-stage { grid-template-columns: 1fr; justify-items: center; text-align: center; } }
 .company-security .security-manual-link { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 18px; padding: 14px 18px; border: 1px solid #dac789; border-radius: 12px; background: #fff9e9; color: #8b1538; text-decoration: none; font-size: 15px; font-weight: 600; }
 .company-security .security-manual-link:hover { background: #fff2cf; text-decoration: underline; }
 .company-security .security-manual-link small { color: #5b513a; font-size: 13px; font-weight: 400; }

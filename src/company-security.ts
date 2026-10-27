@@ -12,16 +12,17 @@ export function createSecurityReading(total: number) {
   };
 }
 
-export function mountSecuritySlider(root: HTMLElement): void {
+// onComplete se avisa una sola vez, al llegar al último paso (los pasos solo se desbloquean en orden).
+export function mountSecuritySlider(root: HTMLElement, topic = 'seguridad de la información', onComplete?: () => void): void {
   const slides = root.querySelector<HTMLElement>('[data-security-slides]')!;
   const cards = [...slides.querySelectorAll<HTMLElement>('article')];
   if (!cards.length) return;
   const reading = createSecurityReading(cards.length);
   slides.classList.add('security-slider');
   slides.setAttribute('role', 'region');
-  slides.setAttribute('aria-label', 'Lectura paso a paso de seguridad de la información');
+  slides.setAttribute('aria-label', `Lectura paso a paso de ${topic}`);
   const options = document.createElement('div'); options.className = 'steps security-options';
-  options.setAttribute('role', 'group'); options.setAttribute('aria-label', 'Los seis pasos de seguridad de la información');
+  options.setAttribute('role', 'group'); options.setAttribute('aria-label', `Los seis pasos de ${topic}`);
   cards.forEach((card, i) => {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'step';
     button.dataset.securityStep = String(i); button.setAttribute('aria-controls', `security-slide-${i}`);
@@ -34,13 +35,26 @@ export function mountSecuritySlider(root: HTMLElement): void {
     const paragraph = card.querySelector('p')!;
     const note = document.createElement('div'); note.className = 'detail-note security-explanation';
     const label = document.createElement('strong'); label.textContent = 'Lo que debes recordar';
-    note.append(label, paragraph); card.append(note);
+    note.append(label, paragraph);
+    const avatarSrc = slides.dataset.securityAvatar;
+    if (avatarSrc) {
+      // Mismo reparto que los principios: personaje a la izquierda, número y título a la derecha, explicación debajo.
+      const stage = document.createElement('div'); stage.className = 'principle-stage security-stage';
+      const figure = document.createElement('figure'); figure.className = 'security-avatar';
+      const image = new Image(); image.src = avatarSrc; image.alt = ''; image.width = 520; image.height = 672; image.decoding = 'async';
+      figure.append(image);
+      const copy = document.createElement('div'); copy.className = 'principle-copy';
+      copy.append(count, card.querySelector('h4')!); stage.append(figure, copy); card.append(stage);
+    }
+    card.append(note);
   });
   const detail = document.createElement('div'); detail.className = 'step-detail security-detail';
   detail.append(...cards); slides.append(options, detail);
   const steps = [...slides.querySelectorAll<HTMLButtonElement>('[data-security-step]')];
+  let completed = false;
   function paint(focus = false) {
     const state = reading.state();
+    if (!completed && state.visited[cards.length - 1]) { completed = true; onComplete?.(); }
     cards.forEach((card, i) => { card.hidden = state.current !== i; });
     steps.forEach((button, i) => {
       button.disabled = i > state.unlocked;

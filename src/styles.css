@@ -285,8 +285,7 @@ h1  {
   gap: 12px;
   padding: 0 34px 8px;
 }
-#learning > .tabs { padding-top: 24px; }
-.tabs button  {
+#learning > .tabs { padding-top: 24px; }.tabs button  {
   position: relative;
   display: flex;
   align-items: center;
@@ -1219,3 +1218,7 @@ header { position: relative; }
 .welcome-continue-link:hover { transform: translateY(-2px); box-shadow: 0 12px 24px #74112e33; }
 .welcome-continue-link:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
 @media (max-width: 640px) { .welcome-continue { padding: 16px 18px; } .welcome-continue-link { width: 100%; justify-content: center; } }
+
+/* La confirmación de lectura queda dentro del resumen de principios. */
+.principle-confirmation { margin-top: 14px; }
+.principle-confirmation .reading-confirmation { margin: 0; }
