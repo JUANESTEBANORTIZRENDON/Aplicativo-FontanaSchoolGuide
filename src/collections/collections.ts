@@ -1,4 +1,4 @@
-import './collections.css';
+﻿import './collections.css';
 import './collections-ui.css';
 import { progressGuide } from '../progress-guide';
 import { playSeal } from '../seal-animation';
@@ -54,7 +54,10 @@ export async function mountCollections(container: HTMLElement, backHref: string)
   }
   async function continueBlock(block: Block): Promise<void> {
     if (saving || !(isGuidedBlock(block.key) ? guidedCase.progress[block.key].finished : challengeOf(block.key).finished)) return;
-    saving = true; error = ''; render();
+    // Mientras se guarda solo cambia el botón: la lección no se reconstruye ni pierde el foco ni su avance.
+    saving = true; error = '';
+    container.querySelectorAll<HTMLButtonElement>('[data-concept-continue], [data-case-continue]').forEach((button) => { button.disabled = true; button.textContent = 'Guardando…'; });
+    container.querySelectorAll('[aria-busy]').forEach((section) => section.setAttribute('aria-busy', 'true'));
     try {
       const wasComplete = state.complete;
       state = (await api<{ data: State }>(`${BASE}/blocks/${block.key}/complete`, { method: 'POST', body: JSON.stringify({}) })).data;

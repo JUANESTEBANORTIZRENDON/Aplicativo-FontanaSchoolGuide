@@ -1,4 +1,4 @@
-import './final-exam.css';
+﻿import './final-exam.css';
 import { progressGuide } from '../progress-guide';
 import { api, ApiError, escapar, formatDate } from '../http';
 import { bindReactivation, reactivationNotice, statusChip, type EvaluationStatus } from '../reactivation';
@@ -126,27 +126,39 @@ export async function mountFinalExam(container: HTMLElement, backHref: string, m
     root.querySelectorAll<HTMLButtonElement>('[data-go]').forEach((button) => button.addEventListener('click', () => { index = Number(button.dataset.go); error = ''; renderQuestion(); }));
   }
 
+  // Las respuestas se guardan en orden y cada resultado se aplica a la pregunta que lo originó,
+  // aunque la persona ya haya pasado a otra. El envío espera a que terminen los guardados pendientes.
+  let saveChain: Promise<unknown> = Promise.resolve();
   async function choose(letter: Letter): Promise<void> {
-    const item = questions[index]!;
+    const at = index;
+    const item = questions[at]!;
     const previous = item.selected;
     item.selected = letter;
     root.querySelectorAll('.fexam-option').forEach((label) => label.classList.toggle('is-selected', label.querySelector<HTMLInputElement>('input')!.value === letter));
     const status = root.querySelector<HTMLElement>('[data-save]');
     if (status) status.textContent = 'Guardando…';
+    const request = saveChain.catch(() => undefined).then(() => api('/training/final-exam/answers', { method: 'PUT', body: JSON.stringify({ questionId: item.question.id, option: letter }) }));
+    saveChain = request;
     try {
-      await api('/training/final-exam/answers', { method: 'PUT', body: JSON.stringify({ questionId: item.question.id, option: letter }) });
-      if (status) status.textContent = 'Respuesta guardada.';
+      await request;
+      if (item.selected !== letter) return; // se cambió de opción mientras guardaba: la última respuesta es la que cuenta
       error = '';
-      root.querySelector(`[data-go="${index}"]`)?.classList.add('is-answered');
+      if (index === at && status?.isConnected) status.textContent = 'Respuesta guardada.';
+      root.querySelector(`[data-go="${at}"]`)?.classList.add('is-answered');
       const counter = root.querySelector('.fexam-top span:last-child');
       if (counter) counter.textContent = `${answered()} respondidas`;
+      const percent = Math.round((answered() / questions.length) * 100);
+      const bar = root.querySelector<HTMLElement>('.fexam-bar');
+      bar?.setAttribute('aria-valuenow', String(percent));
+      bar?.querySelector<HTMLElement>('span')?.style.setProperty('width', `${percent}%`);
     } catch (cause) {
+      if (item.selected !== letter) return;
       item.selected = previous;
       error = (cause as Error).message;
-      renderQuestion();
+      if (index === at) renderQuestion();
+      else { const box = root.querySelector<HTMLElement>('.fexam-error'); if (box) { box.textContent = `No se pudo guardar la respuesta de la pregunta ${at + 1}. ${error}`; box.hidden = false; } }
     }
   }
-
   function renderReview(): void {
     const missing = questions.map((item, position) => (item.selected ? null : position + 1)).filter((value): value is number => value !== null);
     root.innerHTML = `
@@ -175,6 +187,7 @@ export async function mountFinalExam(container: HTMLElement, backHref: string, m
     button.disabled = true;
     button.textContent = 'Calificando…';
     try {
+      await saveChain.catch(() => undefined); // las respuestas pendientes deben quedar guardadas antes de calificar
       const { result } = (await api<{ data: { result: Result } }>('/training/final-exam/submit', { method: 'POST', body: '{}' })).data;
       questions = []; index = 0;
       state = (await api<{ data: State }>('/training/final-exam')).data;

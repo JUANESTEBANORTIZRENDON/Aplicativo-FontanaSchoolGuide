@@ -1,6 +1,9 @@
-import type { ToastKind } from '../context';
+﻿import type { ToastKind } from '../context';
 import { esc } from '../utils/format';
+import { dismiss } from '../utils/dom';
 import { hydrateIcons, icon } from './icons';
+
+const MAX_TOASTS = 3;
 
 const KIND_ICON: Record<ToastKind, string> = {
   success: 'CircleCheck',
@@ -25,8 +28,10 @@ export function createToaster(root: HTMLElement) {
       item.innerHTML = `${icon(KIND_ICON[kind])}<span>${esc(message)}</span>`;
       hydrateIcons(item);
       region.append(item);
+      // Con varios avisos seguidos (p. ej. por clics repetidos) solo se conservan los últimos.
+      [...region.children].filter((child) => !child.classList.contains('is-leaving')).slice(0, -MAX_TOASTS).forEach((child) => dismiss(child as HTMLElement));
       const timer = setTimeout(() => {
-        item.remove();
+        dismiss(item);
         timers.delete(timer);
       }, 4500);
       timers.add(timer);

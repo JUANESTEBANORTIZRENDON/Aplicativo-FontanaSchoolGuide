@@ -247,22 +247,10 @@
           <div class="principles-finish">
             <p id="principles-progress" class="principles-progress" role="status" aria-live="polite">Revisa los cinco principios para continuar. Llevas 0 de 5.</p>
             <label id="reading-confirmation" class="reading-confirmation" hidden>
-              <input id="company-read" type="checkbox" aria-controls="experience-section">
+              <input id="company-read" type="checkbox" aria-controls="album-continue">
               <span>He leído acerca de la empresa</span>
             </label>
           </div>
-          <!-- Se desbloquea al marcar la confirmación de lectura (después de revisar los cinco principios). -->
-          <section id="experience-section" class="experience-section" aria-labelledby="experience-title" hidden>
-            <p class="eyebrow">LISTO PARA CONTINUAR</p>
-            <h3 id="experience-title">Tu ruta de formación te espera</h3>
-            <p class="experience-description">En el módulo «Inducción a las cobranzas» te preguntaremos por tu experiencia para definir cómo continúas.</p>
-            <form id="experience-form">
-              <fieldset id="experience-fields" disabled>
-                <button type="submit" class="primary">Ir a mi ruta de formación</button>
-              </fieldset>
-              <p id="experience-result" class="experience-result" role="status" hidden></p>
-            </form>
-          </section>
         </div>
         <div id="security" class="panel company-security" role="tabpanel" aria-labelledby="security-tab" hidden>
           <a class="security-manual-link" href="/manuales/fontana-seguridad-informacion.pdf" download="Fontana_Guia_General_Seguridad_Informacion.pdf"><span>↓ Descargar manual de seguridad de la información</span><small>PDF · 5 páginas</small></a>
@@ -288,7 +276,23 @@
             <article><span class="security-number" aria-hidden="true">05</span><h4>Usa bien los recursos</h4><p>Los equipos, las líneas y las herramientas de la compañía son para el trabajo. Mantén tu puesto en orden y reporta cualquier daño o falla en cuanto la notes.</p></article>
             <article><span class="security-number" aria-hidden="true">06</span><h4>Habla cuando algo no esté bien</h4><p>Si ves una conducta que incumple estas reglas, o te sientes en una situación incómoda, repórtalo a tu líder o al área de Talento Humano. Hacerlo es una forma de cuidar al equipo.</p></article>
           </div>
-        </div>      </section>
+        </div>
+      </section>
+
+      <!-- MURAL INDEPENDIENTE: fotos y videos configurados en public/vida-fontana/mural.json. -->
+      <section id="vida-fontana" class="fontana-life" aria-labelledby="fontana-life-title">
+        <h2 id="fontana-life-title">Así vivimos <em>Fontana.</em></h2>
+        <div id="fontana-life-mural"><span class="fontana-life-loading" role="status" aria-label="Preparando el mural"></span></div>
+      </section>
+
+      <!-- Aparece al terminar de ver el álbum y lleva a la ruta de formación (src/training.ts). -->
+      <section id="album-continue" class="experience-section album-continue" aria-labelledby="album-continue-title" hidden>
+        <p class="eyebrow">LISTO PARA CONTINUAR</p>
+        <h3 id="album-continue-title">Ya sabes cómo vivimos Fontana</h3>
+        <p class="experience-description">Da el siguiente paso: tu ruta de formación te espera para convertirte en asesor certificado.</p>
+        <button type="button" class="primary" id="album-continue-button">Ir a mi ruta de formación</button>
+        <p id="album-continue-note" class="experience-result" role="status" hidden></p>
+      </section>
 
       <!-- PIE DE PÁGINA. -->
       <footer>

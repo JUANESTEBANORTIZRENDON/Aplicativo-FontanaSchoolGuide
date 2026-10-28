@@ -1,4 +1,4 @@
-import { escapar } from '../http';
+﻿import { escapar } from '../http';
 import { officeApi, type Lesson } from './api';
 import { errorMessage, lessonCard, type OfficeContext } from './office';
 import { EXERCISES, EXCEL_PASS_SCORE } from '../../server/domain/excel-practice';
@@ -135,7 +135,7 @@ function mountPreview(root: HTMLElement, lesson: Lesson, tried: Set<string>, onC
       const wrap = root.querySelector<HTMLElement>('.xl-intro-table-wrap')!;
       const changed = root.querySelector<HTMLElement>('.is-changed-cell') ?? root.querySelector<HTMLElement>('.is-pasted') ?? root.querySelector<HTMLElement>('.is-restored') ?? root.querySelector<HTMLElement>('.is-copied');
       if (changed && wrap.scrollWidth > wrap.clientWidth) wrap.scrollTo({ left: wrap.scrollLeft + changed.getBoundingClientRect().left - wrap.getBoundingClientRect().left - (wrap.clientWidth - changed.offsetWidth) / 2, behavior });
-      if (tools.every(item => tried.has(item.id))) onComplete();
+      if (!root.dataset.completed && tools.every(item => tried.has(item.id))) { root.dataset.completed = 'true'; onComplete(); } // se avisa una sola vez
     }));
   }
   draw();

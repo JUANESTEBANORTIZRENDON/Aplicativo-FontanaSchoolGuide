@@ -1,0 +1,41 @@
+[
+  {
+    "id": "nuestra-quincena",
+    "kind": "photo",
+    "title": "Nuestra quincena",
+    "caption": "Celebramos juntos cada logro del equipo.",
+    "alt": "",
+    "src": null,
+    "poster": null,
+    "captions": null
+  },
+  {
+    "id": "momentos-en-video",
+    "kind": "video",
+    "title": "Historias para ver y sentir",
+    "caption": "Así se vive un día en Fontana.",
+    "src": null,
+    "poster": null,
+    "captions": null
+  },
+  {
+    "id": "cierre-de-mes",
+    "kind": "photo",
+    "title": "Cada cierre cuenta una historia",
+    "caption": "El esfuerzo de todos, reflejado en cada resultado.",
+    "alt": "",
+    "src": null,
+    "poster": null,
+    "captions": null
+  },
+  {
+    "id": "momentos-en-equipo",
+    "kind": "photo",
+    "title": "Compartir también nos une",
+    "caption": "Los mejores momentos ocurren en equipo.",
+    "alt": "",
+    "src": null,
+    "poster": null,
+    "captions": null
+  }
+]

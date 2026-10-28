@@ -1,4 +1,4 @@
-// Ficha del cliente («G.C - cédula») de Control Next. Esta página solo compone las piezas:
+﻿// Ficha del cliente («G.C - cédula») de Control Next. Esta página solo compone las piezas:
 // plantillas de lectura (customer-file/templates), ventanas (customer-file/modals), el formulario de tipificación
 // (customer-file/TypificationForm) y, si el cliente es de la prueba, el panel del ejercicio (customer-file/PracticePanel).
 
@@ -27,7 +27,7 @@ import { findProfile } from '../domain/typification/catalog';
 import { validateDraft, type TypificationDraft } from '../domain/typification/draft';
 import { parseAmount } from '../domain/management-form';
 import type { CustomerView, Portfolio } from '../types/simulator';
-import { combine, on, qs, type Cleanup } from '../utils/dom';
+import { combine, debounce, on, qs, type Cleanup } from '../utils/dom';
 import { esc } from '../utils/format';
 
 const FOLDER_SVG = `<svg class="sim-folder" viewBox="0 0 120 100" aria-hidden="true"><path d="M6 18h38l10 10h60v62H6z" fill="#2ba3b5"/><rect x="22" y="30" width="80" height="62" rx="4" fill="#6fc6d4"/><rect x="36" y="40" width="52" height="52" fill="#e9f4f6"/><circle cx="62" cy="58" r="10" fill="#f2c8a0"/><path d="M50 56c0-12 24-12 24 0-4-4-20-4-24 0z" fill="#3b3b3b"/><path d="M44 92c2-14 34-14 36 0z" fill="#8e6fd8"/></svg>`;
@@ -169,6 +169,8 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
     hydrateIcons(historyRegion);
   };
   renderHistory();
+  // El histórico se filtra cuando la persona hace una pausa al escribir, no en cada tecla.
+  const searchHistory = debounce(() => { histPage = 1; renderHistory(); }, 150);
 
   // Tiempo de gestión: corre desde que se abre la ficha (o desde el último guardado).
   let startedAt = Date.now();
@@ -225,18 +227,21 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
     }
   }
 
+  let submittingOfficial = false; // evita que un doble clic abra dos confirmaciones y envíe dos veces
   function submit(): void {
+    if (submittingOfficial) return;
     const draft = form.read();
     const errors = validateDraft(draft, current().totalBalance, clock());
     if (form.showErrors(errors)) return;
     // Dentro de la plataforma la prueba siempre es oficial: si su estado aún no llegó, se espera antes de calificar.
     if (exercise && practice && (isOfficial() || isEmbedded())) {
-      void whenOfficialReady().then((state) => {
+      submittingOfficial = true;
+      void whenOfficialReady().then(async (state) => {
         // Solo las llamadas asignadas al asesor cuentan como evaluación; las demás son práctica libre.
-        if (state && !state.reviewMode && state.exercises.some((item) => item.number === exercise.number)) void submitOfficialExercise(draft);
+        if (state && !state.reviewMode && state.exercises.some((item) => item.number === exercise.number)) await submitOfficialExercise(draft);
         else if (state) evaluateLocally(draft);
         else ctx.toast('No se pudo confirmar tu prueba oficial con la plataforma. Recarga la pantalla e inténtalo de nuevo.', 'error');
-      });
+      }).finally(() => { submittingOfficial = false; });
       return;
     }
     evaluateLocally(draft);
@@ -321,7 +326,7 @@ export function renderCustomerFilePage(ctx: SimContext, container: HTMLElement, 
       if (action && ACTIONS[action]) ACTIONS[action]();
     }),
     on(sizeSelect, 'change', () => { histPage = 1; renderHistory(); }),
-    on(searchInput, 'input', () => { histPage = 1; renderHistory(); }),
+    on(searchInput, 'input', searchHistory),
     ctx.store.subscribe((s, prev) => {
       if (s.managements !== prev.managements) {
         const v = current();

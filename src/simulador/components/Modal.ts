@@ -1,6 +1,6 @@
-// Ventana modal genérica al estilo de Control Next (título, contenido y botones a la derecha).
+﻿// Ventana modal genérica al estilo de Control Next (título, contenido y botones a la derecha).
 
-import { combine, on, qs, trapFocus } from '../utils/dom';
+import { combine, dismiss, on, qs, trapFocus } from '../utils/dom';
 import { esc } from '../utils/format';
 import { hydrateIcons } from './icons';
 
@@ -44,9 +44,9 @@ export function openModal(root: HTMLElement, options: ModalOptions): Promise<str
     const dialog = qs(overlay, '.sim-modal');
     const close = (value: string | null): void => {
       cleanup();
-      overlay.remove();
       if (previous?.isConnected) previous.focus();
       resolve(value);
+      dismiss(overlay);
     };
     const cleanup = combine([
       trapFocus(dialog),

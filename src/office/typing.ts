@@ -1,4 +1,4 @@
-import { escapar } from '../http';
+﻿import { escapar } from '../http';
 import { ApiError, officeApi, type TypingPrepared, type TypingResult } from './api';
 import { errorMessage, loadingCard, loadingOverlay, mountOfficeRetry, showError, type OfficeContext } from './office';
 
@@ -151,7 +151,8 @@ function renderReady(ctx: OfficeContext, prepared: TypingPrepared): void {
     let ok = 0;
     spans.forEach((span, index) => {
       const written = typedChars[index];
-      span.className = written === undefined ? (index === typedChars.length ? 'is-current' : '') : written === chars[index] ? 'is-ok' : 'is-bad';
+      const next = written === undefined ? (index === typedChars.length ? 'is-current' : '') : written === chars[index] ? 'is-ok' : 'is-bad';
+      if (span.className !== next) span.className = next; // solo se tocan los caracteres que cambian
       if (written === chars[index]) ok += 1;
     });
     correct.textContent = `${ok} caracteres correctos`;

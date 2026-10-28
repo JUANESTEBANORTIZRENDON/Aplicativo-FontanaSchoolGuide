@@ -1,4 +1,4 @@
-/* Componentes del simulador. */
+﻿/* Componentes del simulador. */
 
 /* ---------- Botones ---------- */
 .sim-btn {
@@ -1569,6 +1569,7 @@ ul.sim-help-list {
 
 /* ---------- Modal de confirmación ---------- */
 .sim-modal-overlay {
+  animation: sim-fade-in 0.15s ease-out;
   position: fixed;
   inset: 0;
   z-index: 80;
@@ -1579,6 +1580,7 @@ ul.sim-help-list {
 }
 
 .sim-modal {
+  animation: sim-pop-in 0.18s ease-out;
   display: grid;
   gap: var(--sim-space-3);
   width: min(440px, 100%);
@@ -1774,3 +1776,11 @@ ul.sim-help-list {
     justify-content: center;
   }
 }
+
+/* Entradas y salidas breves de ventanas y avisos (solo opacity y transform). */
+.sim-modal-overlay.is-leaving { animation: sim-fade-out 0.12s ease-in forwards; }
+.sim-toast.is-leaving { animation: sim-toast-out 0.15s ease-in forwards; }
+@keyframes sim-fade-in { from { opacity: 0; } }
+@keyframes sim-fade-out { to { opacity: 0; } }
+@keyframes sim-pop-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+@keyframes sim-toast-out { to { opacity: 0; transform: translateY(6px); } }

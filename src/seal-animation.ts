@@ -1,4 +1,4 @@
-import './seal-animation.css';
+﻿import './seal-animation.css';
 import { escapar } from './http';
 
 // Animación de sello compartida por todos los módulos: al completarlo, un sello con el logo de Fontana cae sobre
@@ -19,7 +19,7 @@ const LOGO = '/imagenes/fontana-logo.webp';
 function preloadLogo(): Promise<void> {
   return new Promise((resolve) => {
     const image = new Image();
-    const timer = window.setTimeout(resolve, 1200);
+    const timer = window.setTimeout(resolve, 400); // el logo suele estar en caché; no se retrasa el sello por él
     image.onload = image.onerror = () => { window.clearTimeout(timer); resolve(); };
     image.src = LOGO;
   });

@@ -1,4 +1,4 @@
-import { api, escapar } from './http';
+﻿import { api, escapar } from './http';
 import { pasosCamino } from './learning-path';
 import { revealApp, showAppLoading } from './loading';
 import { BANCOS, SEXOS, TALLAS_CAMISA, TIPOS_DOCUMENTO, TIPOS_SANGRE, type DatosPersonales } from '../server/domain/profile';
@@ -306,9 +306,9 @@ export async function iniciarInterfaz(): Promise<void> {
     return;
   }
   if (practiceRoute && !reviewing) {
-    const { mostrarPractica } = await import('./practice');
+    // Los dos módulos se descargan a la vez en lugar de uno tras otro.
+    const [{ mostrarPractica }, { mountLearningPath }] = await Promise.all([import('./practice'), import('./advisor/advisor')]);
     mostrarPractica(usuario.nombreCompleto, route);
-    const { mountLearningPath } = await import('./advisor/advisor');
     await mountLearningPath();
     await revealApp();
     return;

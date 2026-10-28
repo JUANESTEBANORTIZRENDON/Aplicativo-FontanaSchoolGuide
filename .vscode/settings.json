@@ -9,5 +9,6 @@
     "**/dist": true
   },
   "editor.tabSize": 2,
-  "editor.insertSpaces": true
+  "editor.insertSpaces": true,
+  "python.terminal.useEnvFile": true
 }

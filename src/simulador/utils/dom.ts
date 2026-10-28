@@ -1,4 +1,4 @@
-// Ayudas mínimas para el DOM.
+﻿// Ayudas mínimas para el DOM.
 
 export type Cleanup = () => void;
 
@@ -68,4 +68,14 @@ export function debounce<A extends unknown[]>(fn: (...args: A) => void, ms: numb
 
 export function prefersReducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/** Retira un elemento con una salida breve; sin animación (o con movimiento reducido) se quita al instante. */
+export function dismiss(element: HTMLElement): void {
+  if (prefersReducedMotion()) { element.remove(); return; }
+  element.inert = true;
+  element.classList.add('is-leaving');
+  const remove = (): void => element.remove();
+  element.addEventListener('animationend', remove, { once: true });
+  window.setTimeout(remove, 300); // respaldo si el navegador no emite el fin de la animación
 }

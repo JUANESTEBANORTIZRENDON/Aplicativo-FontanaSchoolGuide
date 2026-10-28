@@ -1,4 +1,4 @@
-import { escapar } from '../http';
+﻿import { escapar } from '../http';
 import { decorateTutorFeedback } from '../tutor/feedback';
 import { officeApi, type ExcelPractice, type ExcelResult } from './api';
 import { errorMessage, type OfficeContext } from './office';
@@ -13,7 +13,8 @@ const COLUMNS = ALL_COLUMNS.filter(col => col.key !== 'abono' && col.key !== 'pe
 
 type Pos = { r: number; c: number };
 type Tool = 'undo' | 'copy' | 'paste' | 'search' | 'save';
-const ADVANCE_MS = 2400;
+// Tiempo para leer la confirmación antes de pasar solo; cualquier acción del usuario cancela el avance.
+const ADVANCE_MS = 3200;
 const money = (value: number) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value);
 const sameCell = (a: Cell | null | undefined, b: Cell | null | undefined) => Boolean(a && b && a.row === b.row && a.column === b.column);
 // El guardado de savedAt lo decide cada lado con su reloj; el resto del estado debe coincidir.
@@ -72,7 +73,7 @@ export function renderPractice(ctx: OfficeContext, id: string, initial: ExcelPra
   const lifecycle = new MutationObserver(() => {
     if (!isHere()) { clearTimeout(advanceTimer); stopPointing(); savingDialog?.close(); clearTutor?.(); document.removeEventListener('pointerdown', outsideMenu, true); lifecycle.disconnect(); }
   });
-  lifecycle.observe(document.body, { childList: true, subtree: true });
+  lifecycle.observe(ctx.view, { childList: true });
   // Filas que recorre el cursor: las visibles y, al final, la fila de totales.
   const shown = () => [...visibleRows(local), local.footer];
   const cellOf = (p: Pos): Cell | null => { const row = shown()[p.r - 1]; return p.r > 0 && row ? { row: row.id, column: COLUMNS[p.c]!.key } : null; };
@@ -92,7 +93,7 @@ export function renderPractice(ctx: OfficeContext, id: string, initial: ExcelPra
         const result = await officeApi.excelAction(id, { attemptId: initial.attemptId, revision: server.revision, action });
         if (mine !== generation || !isHere()) return false;
         server = upgradePractice(result.state);
-        if (pending === 1 && !sameState(local, server)) { local = structuredClone(server); clampPos(); }
+        if (pending === 1 && !edit && !sameState(local, server)) { local = structuredClone(server); clampPos(); }
         else if (pending === 1) local.savedAt = server.savedAt;
         return true;
       } catch (error) {
@@ -123,6 +124,7 @@ export function renderPractice(ctx: OfficeContext, id: string, initial: ExcelPra
     if (action.type === 'search' && local.found) { pos = posOf(local.found) ?? pos; reveal = true; }
     clampPos(); send(action); paint(); scheduleAdvance();
   }
+  function holdAdvance() { if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = undefined; } }
   function scheduleAdvance() {
     if (advanceTimer || moving || finishing || note && !note.ok || !local.completed[local.current] || local.current >= EXERCISES.length - 1 || pending > 0 || !server.completed[server.current]) return;
     advanceTimer = window.setTimeout(() => { advanceTimer = undefined; if (isHere() && !finishing && local.completed[local.current]) void moveExercise('next'); }, ADVANCE_MS);
@@ -150,7 +152,7 @@ export function renderPractice(ctx: OfficeContext, id: string, initial: ExcelPra
       savingDialog?.close(); savingDialog = undefined; moving = false;
       if (isHere()) {
         paint(); focusGrid(); scheduleAdvance();
-        if (advanced) $('#xl-task').scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+        if (advanced) $('#xl-task').scrollIntoView({ block: 'nearest', behavior: 'instant' });
       }
     }
   }
@@ -367,7 +369,19 @@ export function renderPractice(ctx: OfficeContext, id: string, initial: ExcelPra
     queryInput.focus(); queryInput.select();
   }
   function closeSearch() { searchOpen = false; searchBox.hidden = true; focusGrid(); }
-  function move(dr: number, dc: number) { pos = { r: pos.r + dr, c: pos.c + dc }; clampPos(); reveal = true; paint(); }
+  // Cambiar de celda solo mueve la marca de selección: no se reconstruye la tabla, la cinta ni la tarea.
+  function select(next: Pos, scroll = true) {
+    grid.querySelectorAll('.is-active').forEach(el => { el.classList.remove('is-active'); if (el.matches('td')) el.setAttribute('aria-selected', 'false'); });
+    pos = next; clampPos();
+    const cell = grid.querySelector<HTMLElement>(`#xl-r${pos.r}c${pos.c}`);
+    cell?.classList.add('is-active'); cell?.setAttribute('aria-selected', 'true');
+    grid.querySelectorAll('tbody tr')[pos.r]?.querySelector('.xl-rowhead')?.classList.add('is-active');
+    grid.querySelectorAll('thead .xl-colhead')[pos.c]?.classList.add('is-active');
+    grid.setAttribute('aria-activedescendant', `xl-r${pos.r}c${pos.c}`);
+    paintFormula();
+    if (scroll) ensureVisible();
+  }
+  function move(dr: number, dc: number) { select({ r: pos.r + dr, c: pos.c + dc }); }
 
   async function finish() {
     if (finishing || moving || !isHere()) return;
@@ -390,12 +404,13 @@ export function renderPractice(ctx: OfficeContext, id: string, initial: ExcelPra
   // ---- Eventos (delegados): solo se atienden los que ocurren dentro del simulador ----
   root.addEventListener('mousedown', event => {
     if (moving || finishing) return;
+    holdAdvance();
     const td = (event.target as HTMLElement).closest<HTMLElement>('td.xl-cell');
     if (!td || (event.target as HTMLElement).closest('.xl-arrow, .xl-editor')) return;
     event.preventDefault();
     if (beginPointing({ r: Number(td.dataset.r), c: Number(td.dataset.c) })) return;
     commitEdit(null); if (menu) closeMenu(false);
-    pos = { r: Number(td.dataset.r), c: Number(td.dataset.c) }; clampPos(); paint(); focusGrid();
+    select({ r: Number(td.dataset.r), c: Number(td.dataset.c) }, false); focusGrid();
   });
   root.addEventListener('dblclick', event => { if (!moving && !finishing && (event.target as HTMLElement).closest('td.xl-cell:not(.xl-hdr)') && !edit) startEdit(null); });
   root.addEventListener('click', event => {
@@ -443,10 +458,11 @@ export function renderPractice(ctx: OfficeContext, id: string, initial: ExcelPra
     const c = match ? COLUMNS.findIndex(col => col.letter === match[1]!.toUpperCase()) : -1; const r = match ? Number(match[2]) - 1 : -1;
     const target = r === 0 ? { r: 0, c } : posOf(r >= 1 ? { row: r - 1 === local.rows.length ? FOOTER_ID : local.rows[r - 1]?.id ?? '', column: COLUMNS[c]?.key ?? 'cliente' } : null);
     if (c < 0 || !target) { say('Esa celda no existe o está oculta por un filtro. Prueba con una como C2.'); paintFormula(); return; }
-    pos = target; reveal = true; paint(); focusGrid();
+    select(target); focusGrid();
   });
   root.addEventListener('keydown', event => {
     if (moving || finishing) return;
+    holdAdvance();
     if (event.isComposing || event.altKey) return;
     const target = event.target as HTMLElement; const key = event.key; const lower = key.toLowerCase();
     const mod = event.ctrlKey || event.metaKey;
@@ -494,11 +510,11 @@ export function renderPractice(ctx: OfficeContext, id: string, initial: ExcelPra
       const atEnd = event.shiftKey ? pos.r === 0 && pos.c === 0 : pos.r === last && pos.c === COLUMNS.length - 1;
       if (atEnd) return; // sin trampa de teclado: en los extremos Tab sale de la hoja
       event.preventDefault();
-      if (event.shiftKey) { if (pos.c === 0) { pos = { r: pos.r - 1, c: COLUMNS.length - 1 }; reveal = true; paint(); } else move(0, -1); }
-      else if (pos.c === COLUMNS.length - 1) { pos = { r: pos.r + 1, c: 0 }; reveal = true; paint(); } else move(0, 1);
+      if (event.shiftKey) { if (pos.c === 0) select({ r: pos.r - 1, c: COLUMNS.length - 1 }); else move(0, -1); }
+      else if (pos.c === COLUMNS.length - 1) select({ r: pos.r + 1, c: 0 }); else move(0, 1);
     }
-    else if (key === 'Home') { event.preventDefault(); pos = { r: pos.r, c: 0 }; reveal = true; paint(); }
-    else if (key === 'End') { event.preventDefault(); pos = { r: pos.r, c: COLUMNS.length - 1 }; reveal = true; paint(); }
+    else if (key === 'Home') { event.preventDefault(); select({ r: pos.r, c: 0 }); }
+    else if (key === 'End') { event.preventDefault(); select({ r: pos.r, c: COLUMNS.length - 1 }); }
     else if (key === 'PageDown' || key === 'PageUp') { event.preventDefault(); move(key === 'PageDown' ? 8 : -8, 0); }
     else if (key === 'F2') { event.preventDefault(); startEdit(null); }
     else if (key === 'Delete' || key === 'Backspace') { event.preventDefault(); const cell = cellOf(pos); if (cell) dispatch({ type: 'edit', cell, value: '' }); }

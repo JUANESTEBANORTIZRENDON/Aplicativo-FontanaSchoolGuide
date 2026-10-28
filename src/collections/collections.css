@@ -509,3 +509,5 @@ body:has(.collections-course) .auth-intro { display: none; }
 .collections-exam-option.is-selected > span { background: #8b1538; border-color: #8b1538; color: #fff; }
 .collections-exam-option:has(input:focus-visible) { outline: 3px solid #d4af37; outline-offset: 2px; }
 .collections-exam-options:disabled .collections-exam-option { cursor: default; opacity: .7; }
+
+.collections-quick-challenge.is-leaving { opacity: 0; transform: translateY(-4px); transition: opacity .14s ease, transform .14s ease; pointer-events: none; }

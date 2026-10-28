@@ -1,4 +1,4 @@
-/* Aspecto de Control Next (encabezado, campañas, ficha del cliente, panel Buscar) y la guía interactiva.
+﻿/* Aspecto de Control Next (encabezado, campañas, ficha del cliente, panel Buscar) y la guía interactiva.
    Va después de components.css y solo sobrescribe dentro de .sim-root. */
 
 .sim-root {
@@ -140,7 +140,8 @@
 
 /* ---------- Panel «Buscar» ---------- */
 .sim-search-host[hidden] { display: none; }
-.sim-search-overlay { position: fixed; inset: 0; z-index: 70; background: rgb(0 0 0 / 0.42); }
+.sim-search-overlay { position: fixed; inset: 0; z-index: 70; background: rgb(0 0 0 / 0.42); opacity: 0; transition: opacity 0.22s ease; }
+.sim-search-host.is-open .sim-search-overlay { opacity: 1; }
 .sim-search {
   position: fixed;
   top: 0;

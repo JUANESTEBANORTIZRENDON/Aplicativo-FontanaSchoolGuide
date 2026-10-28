@@ -1,4 +1,4 @@
-/* Animación de sello de módulo completado (compartida). */
+﻿/* Animación de sello de módulo completado (compartida). */
 .fontana-seal-stage { position: fixed; inset: 0; z-index: 1200; display: grid; place-items: center; padding: 20px; background: rgba(35, 8, 20, .62); backdrop-filter: blur(4px); animation: fontana-seal-fade .35s ease-out both; }
 .fontana-seal-stage.is-leaving { animation: fontana-seal-out .26s ease-in forwards; }
 .fontana-seal-paper { position: relative; width: min(500px, 100%); padding: 34px 28px 28px; overflow: hidden; border-radius: 26px; background: linear-gradient(160deg, #fffefa, #f8efdb); box-shadow: 0 34px 90px rgba(20, 5, 12, .5); text-align: center; animation: fontana-seal-paper .5s cubic-bezier(.2, .8, .2, 1) both; }
@@ -19,7 +19,7 @@
 @keyframes fontana-seal-paper { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
 @keyframes fontana-seal-stamp { 0% { opacity: 0; transform: scale(2.8) rotate(-30deg); } 70% { opacity: 1; transform: scale(.9) rotate(-6deg); } 100% { opacity: 1; transform: scale(1) rotate(-8deg); } }
 @keyframes fontana-seal-ripple { 0% { opacity: .9; transform: scale(.95); } 100% { opacity: 0; transform: scale(1.35); } }
-@keyframes fontana-seal-glint { from { left: -60%; } to { left: 130%; } }
+@keyframes fontana-seal-glint { from { transform: translateX(0) skewX(-18deg); } to { transform: translateX(430%) skewX(-18deg); } }
 @keyframes fontana-seal-glow { 0% { opacity: 0; } 40% { opacity: 1; } 100% { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) {
   .fontana-seal-stage, .fontana-seal-paper, .fontana-seal-stamp, .fontana-seal-caption, .fontana-seal-continue, .fontana-seal-paper::after { animation-duration: .01s; animation-delay: 0s; }

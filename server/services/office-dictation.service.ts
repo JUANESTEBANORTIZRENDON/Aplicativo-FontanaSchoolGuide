@@ -14,6 +14,7 @@ import { activeConfig, officeActivities } from '../repositories/office.repositor
 import { lockActivityProgress } from '../repositories/progress.repository.js';
 import { startAttemptTx, submitAttemptTx } from './attempt.service.js';
 import { signedUrl } from './media.service.js';
+import { getStorage } from '../integrations/storage.js';
 import { snapshotOf } from './office-config.service.js';
 import { loadSnapshot } from './progress.service.js';
 
@@ -144,8 +145,12 @@ export async function requestPlay(userId: string, exerciseId: string, attemptId:
     }
     const updated = await tx.dictationAttemptResult.update({ where: { attemptId }, data: { playsUsed: { increment: 1 } } });
     const remaining = Math.max(0, snapshot.dictationMaxPlays - updated.playsUsed);
-    if (result.exercise.audioKey) {
-      return { mode: 'audio' as const, playsRemaining: remaining, ...signedUrl(result.exercise.audioKey, userId, now) };
+    // La base puede conservar la clave aunque el archivo local se haya perdido.
+    // En desarrollo, permite continuar con la voz del navegador en ese caso.
+    const audioKey = result.exercise.audioKey;
+    const audioAvailable = Boolean(audioKey && await getStorage().exists(audioKey));
+    if (audioAvailable) {
+      return { mode: 'audio' as const, playsRemaining: remaining, ...signedUrl(audioKey!, userId, now) };
     }
     if (env.DICTATION_DEV_TTS) {
       // Solo desarrollo y pruebas: la voz del navegador lee el texto. La interfaz lo marca como audio de prueba.

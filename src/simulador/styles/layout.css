@@ -1,4 +1,4 @@
-/* Estructura: barra lateral, encabezado, ingreso, perfil y cuadrícula del panel. */
+﻿/* Estructura: barra lateral, encabezado, ingreso, perfil y cuadrícula del panel. */
 
 /* ---------- Contenedor general ---------- */
 .sim-shell {
@@ -502,3 +502,7 @@
     justify-self: center;
   }
 }
+
+/* Al cambiar de pantalla el contenido nuevo aparece con un fundido breve (solo opacity). */
+.sim-page { animation: sim-page-in 0.16s ease-out; }
+@keyframes sim-page-in { from { opacity: 0; } }

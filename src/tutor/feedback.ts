@@ -1,4 +1,4 @@
-import { createTutor } from './tutor';
+﻿import { createTutor } from './tutor';
 import type { TutorExpression } from './manifest';
 
 // Acompaña una devolución ya calculada: no elige respuestas, notas ni desbloqueos.
@@ -14,7 +14,13 @@ export function decorateTutorFeedback(feedback: HTMLElement, expression: TutorEx
   const typing = () => tutor.pauseAmbient(Boolean(activity.querySelector('input:focus, textarea:focus, select:focus, [contenteditable="true"]:focus')));
   activity.addEventListener('focusin', typing); activity.addEventListener('focusout', typing);
   let disposed = false;
-  const observer = new MutationObserver(() => { if (!wrapper.isConnected) destroy(); });
+  // Se comprueba como máximo una vez por fotograma, sin importar cuántas mutaciones haga la página.
+  let checking = false;
+  const observer = new MutationObserver(() => {
+    if (checking) return;
+    checking = true;
+    requestAnimationFrame(() => { checking = false; if (!wrapper.isConnected) destroy(); });
+  });
   observer.observe(document.body, { childList: true, subtree: true });
   function destroy() {
     if (disposed) return;

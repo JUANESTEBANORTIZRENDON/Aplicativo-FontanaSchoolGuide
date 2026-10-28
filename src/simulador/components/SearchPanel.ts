@@ -1,11 +1,11 @@
-// Panel lateral «Buscar» de Control Next: busca un cliente en todas las campañas por cédula, nombre, obligación,
+﻿// Panel lateral «Buscar» de Control Next: busca un cliente en todas las campañas por cédula, nombre, obligación,
 // teléfono o correo. El resultado se muestra en la ventana «Busqueda Cliente» y al pulsar OK se abre su ficha.
 
 import type { SimContext } from '../context';
 import { findPortfolio, PORTFOLIOS } from '../data/mock-portfolios';
 import { searchCustomers, type SearchQuery } from '../domain/control-next';
 import type { CustomerView } from '../types/simulator';
-import { combine, on, qs, trapFocus, type Cleanup } from '../utils/dom';
+import { combine, on, prefersReducedMotion, qs, trapFocus, type Cleanup } from '../utils/dom';
 import { esc } from '../utils/format';
 import { hydrateIcons, icon } from './icons';
 import { openModal } from './Modal';
@@ -71,12 +71,16 @@ export function mountSearchPanel(ctx: SimContext): SearchPanel {
     opener = document.activeElement as HTMLElement | null;
     host.hidden = false;
     error.textContent = '';
-    requestAnimationFrame(() => host.classList.add('is-open'));
+    void panel.offsetWidth; // fija el estado cerrado para que la apertura se anime siempre
+    host.classList.add('is-open');
     qs<HTMLInputElement>(form, '[name="document"]').focus();
   };
   const close = (): void => {
     host.classList.remove('is-open');
-    host.hidden = true;
+    // El panel termina de salir antes de ocultarse; sin movimiento se oculta al instante.
+    const hide = (): void => { if (!host.classList.contains('is-open')) host.hidden = true; };
+    if (prefersReducedMotion()) hide();
+    else { panel.addEventListener('transitionend', hide, { once: true }); window.setTimeout(hide, 300); }
     if (opener?.isConnected) opener.focus();
   };
 

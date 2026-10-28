@@ -1,9 +1,16 @@
-import './styles.css';
+﻿import './styles.css';
 import './company-security.css';
 import { mountSecuritySlider } from './company-security';
 import { api } from './http';
 import { showAppLoading } from './loading';
 import type { PrinciplesPanel } from './tutor/principles-panel';
+import { mountCompanyLife } from './company-life';
+
+const companyLife = document.querySelector<HTMLElement>('#fontana-life-mural');
+if (companyLife) {
+  companyLife.dataset.locked = 'true'; // se desbloquea al confirmar la lectura de la empresa
+  void mountCompanyLife(companyLife, undefined, () => showAlbumContinue());
+}
 
 // Obtiene un elemento obligatorio y detecta referencias HTML incorrectas.
 function element<T extends HTMLElement>(selector: string): T {
@@ -169,56 +176,57 @@ function explorePolicies(): void {
 }
 element('#completion-go-principles').addEventListener('click', explorePolicies);
 
-// CONFIRMACIÓN DE LECTURA Y ACCESO AL AULA
+// CONFIRMACIÓN DE LECTURA Y ACCESO A LA RUTA (el paso final está debajo del álbum)
 const readingConfirmation = element<HTMLLabelElement>('#reading-confirmation');
 const companyRead = element<HTMLInputElement>('#company-read');
-const experienceSection = element('#experience-section');
-const experienceFields = element<HTMLFieldSetElement>('#experience-fields');
-const experienceForm = element<HTMLFormElement>('#experience-form');
-const experienceResult = element('#experience-result');
 const principlesProgress = element('#principles-progress');
 let principlesReviewed = false;
 // Con la inducción ya terminada (repaso) los principios no vuelven a bloquear el acceso.
 let inductionCompleted = false;
-function updateExperienceAccess(): void {
-  const unlocked = principlesReviewed && companyRead.checked;
-  // La confirmación de lectura se muestra únicamente al revisar los cinco principios.
+// La confirmación de lectura se muestra únicamente al revisar los cinco principios.
+function updateReadingAccess(): void {
   readingConfirmation.hidden = !principlesReviewed;
-  // La casilla habilita el acceso al aula.
-  experienceSection.hidden = !unlocked;
-  experienceFields.disabled = !unlocked;
 }
 function updatePrinciplesProgress({ reviewed, total }: { reviewed: number; total: number }): void {
   if (inductionCompleted) return;
-  if (principlesReviewed && reviewed >= total) { updateExperienceAccess(); return; }
+  if (principlesReviewed && reviewed >= total) { updateReadingAccess(); return; }
   principlesReviewed = reviewed >= total;
   if (principlesReviewed) saveProgress('metodo');
   principlesProgress.textContent = principlesReviewed
-    ? 'Revisaste los cinco principios. Confirma tu lectura para continuar al aula.'
+    ? 'Revisaste los cinco principios. Confirma tu lectura y sigue con el álbum, al final de la página.'
     : `Revisa los cinco principios para continuar. Llevas ${reviewed} de ${total}.`;
-  updateExperienceAccess();
+  updateReadingAccess();
 }
-// Al terminar la inducción inicial se abre la ruta de formación; la experiencia se pregunta en el módulo 02.
+// Sin la confirmación de lectura el álbum permanece bloqueado.
+function syncAlbumLock(): void {
+  if (!companyLife) return;
+  companyLife.dataset.locked = String(!companyRead.checked);
+  companyLife.dispatchEvent(new Event('albumlock'));
+}
 companyRead.addEventListener('change', () => {
-  if (!companyRead.checked) {
-    experienceResult.hidden = true;
-    experienceResult.textContent = '';
-  }
-  updateExperienceAccess();
-  // Al marcarla se desbloquea la ruta de formación justo debajo.
-  if (companyRead.checked && !experienceSection.hidden) experienceSection.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'nearest' });
+  if (!companyRead.checked) albumContinueNote.hidden = true;
+  syncAlbumLock();
 });
+
+// Después de ver el álbum aparece, debajo, el paso hacia la ruta de formación.
+const albumContinue = element('#album-continue');
+const albumContinueButton = element<HTMLButtonElement>('#album-continue-button');
+const albumContinueNote = element('#album-continue-note');
 let finishing = false;
-experienceForm.addEventListener('submit', async (event: SubmitEvent) => {
-  event.preventDefault();
-  if (finishing || !principlesReviewed || !companyRead.checked) return;
+// Termina la inducción inicial y abre la ruta de formación; la experiencia se pregunta en el módulo 02.
+async function finishInduction(): Promise<void> {
+  if (finishing) return;
+  if (!principlesReviewed || !companyRead.checked) {
+    albumContinueNote.textContent = 'Antes de continuar, termina la historia, las reglas, la seguridad y los principios de trabajo, y confirma tu lectura.';
+    albumContinueNote.hidden = false;
+    return;
+  }
   finishing = true;
-  const submit = experienceForm.querySelector<HTMLButtonElement>('button[type="submit"]')!;
-  const originalLabel = submit.textContent;
-  submit.disabled = true;
-  submit.textContent = 'Preparando tu ruta…';
+  const originalLabel = albumContinueButton.textContent;
+  albumContinueButton.disabled = true;
+  albumContinueButton.textContent = 'Preparando tu ruta…';
   companyRead.disabled = true;
-  experienceResult.hidden = true;
+  albumContinueNote.hidden = true;
   try {
     const result = await fetch('/api/auth/induccion/completar', { method: 'POST', credentials: 'same-origin' });
     if (result.status === 401) { location.assign('/login'); return; }
@@ -231,17 +239,21 @@ experienceForm.addEventListener('submit', async (event: SubmitEvent) => {
     showAppLoading('Preparando tu ruta de formación…');
     location.assign('/practica');
   } catch (error) {
-    experienceResult.textContent = error instanceof TypeError
+    albumContinueNote.textContent = error instanceof TypeError
       ? 'No pudimos conectar con el servidor. Revisa tu conexión e intenta nuevamente.'
       : error instanceof Error ? error.message : 'No pudimos continuar. Intenta nuevamente.';
-    experienceResult.hidden = false;
+    albumContinueNote.hidden = false;
     companyRead.disabled = false;
-    submit.disabled = false;
-    submit.textContent = originalLabel;
+    albumContinueButton.disabled = false;
+    albumContinueButton.textContent = originalLabel;
     finishing = false;
   }
-});
-
+}
+albumContinueButton.addEventListener('click', () => { void finishInduction(); });
+function showAlbumContinue(): void {
+  albumContinue.hidden = false;
+  albumContinue.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'nearest' });
+}
 // Al volver, lo que el asesor ya completó queda desbloqueado: los bloqueos solo aplican la primera vez.
 export function restoreProgress(progress: { historia: boolean; metodo: boolean; completada: boolean }): void {
   const historia = progress.historia || progress.metodo || progress.completada;
@@ -264,7 +276,8 @@ export function restoreProgress(progress: { historia: boolean; metodo: boolean; 
     // Solo la inducción terminada restaura también la confirmación final.
     inductionCompleted = progress.completada;
     companyRead.checked = progress.completada;
-    updateExperienceAccess();
+    syncAlbumLock();
+    updateReadingAccess();
   }
 }
 
@@ -294,7 +307,8 @@ function showSlide(index: number): void {
 }
 function startCarousel(): void {
   window.clearInterval(carouselTimer);
-  if (document.hidden || carousel.contains(document.activeElement)) return;
+  // Con movimiento reducido las fotos no cambian solas; se navegan con los puntos.
+  if (document.hidden || carousel.contains(document.activeElement) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   carouselTimer = window.setInterval(() => showSlide((activeSlide + 1) % slides.length), CAROUSEL_INTERVAL);
 }
 dots.forEach((dot, index) => dot.addEventListener('click', () => { showSlide(index); startCarousel(); }));
