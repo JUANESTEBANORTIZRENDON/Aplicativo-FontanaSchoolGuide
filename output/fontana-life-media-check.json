@@ -1,0 +1,6 @@
+[
+  {"id":"qa-photo","kind":"photo","title":"Comprobación de fotografía","alt":"Logo de Fontana para comprobar la ampliación","src":"/imagenes/fontana-logo.webp","featured":true},
+  {"id":"qa-video","kind":"video","title":"Comprobación de archivo no disponible","src":"/output/video-qa-no-disponible.mp4"},
+  {"id":"qa-pending-photo","kind":"photo","title":"Fotografía pendiente","src":null},
+  {"id":"qa-pending-frame","kind":"photo","title":"Fotografía pendiente","src":null}
+]
