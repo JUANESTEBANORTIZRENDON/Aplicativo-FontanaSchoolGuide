@@ -36,7 +36,7 @@ function shell(title: string, subtitle: string, content: string, usuario?: Usuar
       <a class="auth-brand" href="/"><img src="/imagenes/fontana-logo.webp" alt=""><span>FONTANA <small>SCHOOL</small></span></a>
       ${usuario ? `<div class="auth-account"><span>${escapar(usuario.nombreCompleto)}</span><button type="button" id="logout" class="text-button">Cerrar sesión</button></div>` : ''}
     </header>
-    <main class="auth-main"><div class="auth-intro"><p class="auth-kicker">FONTANA SCHOOL</p><h1>${title}</h1><p>${subtitle}</p></div>${content}</main>
+    <main class="auth-main">${title || subtitle ? `<div class="auth-intro"><p class="auth-kicker">FONTANA SCHOOL</p><h1>${title}</h1><p>${subtitle}</p></div>` : ''}${content}</main>
   `;
   document.body.hidden = false;
   document.querySelector('#logout')?.addEventListener('click', async () => {
@@ -48,7 +48,7 @@ function shell(title: string, subtitle: string, content: string, usuario?: Usuar
 // Identidad compartida por el acceso y el formulario del primer ingreso.
 function aplicarEstiloAcceso(): void {
   document.body.classList.add('auth-login', 'login-motion');
-  document.querySelector('.auth-intro')!.remove();
+  document.querySelector('.auth-intro')?.remove();
   document.querySelector('.auth-brand')!.innerHTML = '<img src="/imagenes/fontana-logo.webp" alt="Fontana"><span>Aula de formación</span>';
 }
 
@@ -299,7 +299,7 @@ export async function iniciarInterfaz(): Promise<void> {
     return;
   }
   if (advisorSubroute) {
-    shell('Tu ruta de formación', 'Fontana School · Inducción', '<div id="module-page"></div>', usuario);
+    shell('', '', '<div id="module-page"></div>', usuario);
     const { renderModulePage } = await import('./advisor/advisor');
     await renderModulePage(document.querySelector<HTMLElement>('#module-page')!, practiceRoute ? route : '/induccion', usuario.tieneExperienciaCobranzasDigitales);
     await revealApp();

@@ -1,5 +1,6 @@
 import './advisor.css';
 import { api, ApiError, escapar, formatDate } from '../http';
+import { revealApp, showAppLoading } from '../loading';
 import { progressGuide } from '../progress-guide';
 import { pasoEquipoDisponible, TEAM_WELCOME_ROUTE } from '../learning-path';
 
@@ -144,17 +145,70 @@ const CERTIFICATE_SLUG = 'certificado';
 
 // Primera pantalla de «Inducción a las cobranzas»: la experiencia define el camino. Quien es nuevo recorre la
 // teoría; quien tiene experiencia presenta primero un examen diagnóstico y después recorre la misma teoría.
+const expIcon = (path: string, width = 1.8) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+
+// Portada del módulo 02: tarjeta centrada con la elección de experiencia.
+function expIntroHtml(backHref: string): string {
+  return `<section class="exp-intro-layout">
+      <div class="exp-panel">
+        ${experienceFormHtml()}
+        <a class="secondary-link" href="${escapar(backHref)}">← Volver a tu ruta</a>
+      </div>
+    </section>`;
+}
+
+// Enlaza el envío de la elección de experiencia (igual comportamiento, cualquiera sea el contenedor que la aloja).
+function wireExperienceForm(form: HTMLFormElement | null, container: HTMLElement, backHref: string): void {
+  form?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const answer = new FormData(form).get('experience');
+    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    const error = form.querySelector<HTMLElement>('#experience-error')!;
+    button.disabled = true;
+    error.hidden = true;
+    showAppLoading(answer === 'experienced' ? 'Preparando tu diagnóstico…' : 'Preparando tu ruta de formación…');
+    try {
+      await api('/auth/experiencia', { method: 'POST', body: JSON.stringify({ tieneExperienciaCobranzasDigitales: answer === 'experienced' }) });
+      await renderModulePage(container, backHref, answer === 'experienced');
+      await revealApp();
+    } catch (failure) {
+      await revealApp();
+      error.textContent = (failure as Error).message;
+      error.hidden = false;
+      button.disabled = false;
+    }
+  });
+}
+
 function experienceFormHtml(): string {
+  const check = expIcon('<path d="m5 13 4 4L19 7"/>', 3);
+  const arrow = '<i aria-hidden="true">→</i>';
   return `<form id="experience-form" class="exp-form">
-      <p class="auth-kicker">CONOZCAMOS TU EXPERIENCIA</p>
-      <h3>¿Cuál es tu punto de partida?</h3>
-      <p>Selecciona la opción que mejor describe tu experiencia en cobranzas digitales.</p>
-      <div class="exp-options">
-        <label class="exp-option"><input type="radio" name="experience" value="experienced" required><span><strong>Tengo experiencia</strong><small>Ya he trabajado en cobranzas digitales. Presentarás un examen diagnóstico (un intento) y luego la teoría del módulo.</small></span></label>
-        <label class="exp-option"><input type="radio" name="experience" value="new" required><span><strong>Soy completamente nuevo</strong><small>Es mi primera experiencia en cobranzas digitales. Verás la teoría paso a paso, sin examen inicial.</small></span></label>
+      <div class="exp-choose">
+        <p class="auth-kicker">CONOZCAMOS TU EXPERIENCIA</p>
+        <h3>¿Cuál es tu punto de partida?</h3>
+        <p>Esto define tu camino en el módulo. Elige la opción que mejor te describa.</p>
+      </div>
+      <div class="exp-options" role="radiogroup" aria-label="Tu experiencia en cobranzas digitales">
+        <label class="exp-option">
+          <input type="radio" name="experience" value="experienced" required>
+          <span class="exp-option-body">
+            <span class="exp-option-icon">${expIcon('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/>')}</span>
+            <span class="exp-option-head"><strong>Tengo experiencia</strong></span>
+          </span>
+          <span class="exp-check">${check}</span>
+        </label>
+        <label class="exp-option">
+          <input type="radio" name="experience" value="new" required>
+          <span class="exp-option-body">
+            <span class="exp-option-icon">${expIcon('<path d="M12 21v-9"/><path d="M12 12c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6Z"/><path d="M12 14c0-2.8-2.2-5-5-5 0 2.8 2.2 5 5 5Z"/>')}</span>
+            <span class="exp-option-head"><strong>Soy completamente nuevo</strong></span>
+          </span>
+          <span class="exp-check">${check}</span>
+        </label>
       </div>
       <p id="experience-error" class="feedback feedback-error" role="alert" hidden></p>
-      <button type="submit" class="primary-action">Confirmar respuesta</button>
+      <button type="submit" class="primary-action">Confirmar y empezar el módulo ${arrow}</button>
     </form>`;
 }
 
@@ -165,6 +219,8 @@ async function teamWelcomeUnlocked(): Promise<boolean> {
 
 // Rutas /induccion/modulos/:slug y /induccion/certificado: el servidor valida el acceso.
 export async function renderModulePage(container: HTMLElement, backHref = '/induccion', experience: boolean | null = null): Promise<void> {
+  // El fondo de marca solo cubre la portada del módulo 02; cualquier otra vista lo quita.
+  document.body.classList.remove('exp-intro-screen');
   // Paso 03 «Trabaja con nosotros»: la bienvenida solo se abre con el examen general aprobado.
   if (location.pathname.replace(/\/$/, '') === TEAM_WELCOME_ROUTE) {
     container.innerHTML = '<section class="auth-card narrow module-page"><p>Cargando…</p></section>';
@@ -215,6 +271,13 @@ export async function renderModulePage(container: HTMLElement, backHref = '/indu
       await mountTipifica(container, backHref, data.module.order);
       return;
     }
+    // Portada del módulo 02 (antes de elegir experiencia): layout de dos paneles con fondo de marca.
+    if (slug === INDUCTION_SLUG) {
+      document.body.classList.add('exp-intro-screen');
+      container.innerHTML = expIntroHtml(backHref);
+      wireExperienceForm(container.querySelector<HTMLFormElement>('#experience-form'), container, backHref);
+      return;
+    }
     page.innerHTML = `
       <div class="fontana-progress-row">
         <div>
@@ -223,26 +286,9 @@ export async function renderModulePage(container: HTMLElement, backHref = '/indu
         </div>
         ${progressGuide(backHref)}
       </div>
-      ${slug === INDUCTION_SLUG ? experienceFormHtml() : `<div class="module-placeholder"><strong>${escapar(data.content.message)}</strong><p>Este espacio mostrará las actividades del módulo cuando estén listas.</p></div>`}
-      ${slug !== INDUCTION_SLUG && data.activities.length ? `<ul class="module-activities">${data.activities.map((activity) => `<li>${escapar(activity.title)}${activity.enabled ? '' : ` · <em>${escapar(activity.blockedReason)}</em>`}</li>`).join('')}</ul>` : ''}
+      <div class="module-placeholder"><strong>${escapar(data.content.message)}</strong><p>Este espacio mostrará las actividades del módulo cuando estén listas.</p></div>
+      ${data.activities.length ? `<ul class="module-activities">${data.activities.map((activity) => `<li>${escapar(activity.title)}${activity.enabled ? '' : ` · <em>${escapar(activity.blockedReason)}</em>`}</li>`).join('')}</ul>` : ''}
       <a class="secondary-link" href="${escapar(backHref)}">← Volver a tu ruta</a>`;
-    page.querySelector<HTMLFormElement>('#experience-form')?.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const form = event.currentTarget as HTMLFormElement;
-      const answer = new FormData(form).get('experience');
-      const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
-      const error = form.querySelector<HTMLElement>('#experience-error')!;
-      button.disabled = true;
-      error.hidden = true;
-      try {
-        await api('/auth/experiencia', { method: 'POST', body: JSON.stringify({ tieneExperienciaCobranzasDigitales: answer === 'experienced' }) });
-        await renderModulePage(container, backHref, answer === 'experienced');
-      } catch (failure) {
-        error.textContent = (failure as Error).message;
-        error.hidden = false;
-        button.disabled = false;
-      }
-    });
   } catch (error) {
     const reason = error instanceof ApiError && typeof error.details?.blockedReason === 'string' ? error.details.blockedReason : (error as Error).message;
     page.innerHTML = `
