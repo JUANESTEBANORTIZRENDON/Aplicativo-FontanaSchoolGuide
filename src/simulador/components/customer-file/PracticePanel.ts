@@ -9,7 +9,7 @@ import type { Evaluation } from '../../domain/expert/engine';
 import type { CustomerView } from '../../types/simulator';
 import { EXERCISE_PORTFOLIO, EXERCISES, type Exercise } from '../../domain/expert/exercises';
 import {
-  assignedNumbers, isOfficial, isOfficialExercise, officialExercise, officialState, toEvaluation, type OfficialExercise,
+  assignedNumbers, isEmbedded, isOfficial, isOfficialExercise, officialExercise, officialState, toEvaluation, type OfficialExercise,
 } from '../../domain/expert/official';
 
 /** Las llamadas de la prueba de este asesor: las dos que le tocaron (oficial) o las seis (práctica libre). */
@@ -216,7 +216,8 @@ export function mountPracticePanel(host: HTMLElement, ctx: SimContext, exercise:
 
   return {
     showEvaluation(evaluation, officialInfo) {
-      const attempts = officialInfo ? 1 : ctx.store.recordPractice(exercise.id, evaluation.score, evaluation.approved).attempts;
+      const missing = evaluation.items.filter((i) => !i.ok).map((i) => i.label);
+      const attempts = officialInfo ? 1 : ctx.store.recordPractice(exercise.id, evaluation.score, evaluation.approved, missing).attempts;
       render(evaluation, officialInfo, attempts);
       opts.resultSlot.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     },
@@ -247,6 +248,90 @@ export function mountPracticePanel(host: HTMLElement, ctx: SimContext, exercise:
       })),
     ]),
   };
+}
+
+interface PracticeStatus {
+  official: boolean;
+  total: number;
+  /** Presentados (oficial) o con al menos un intento (práctica libre). */
+  done: number;
+  /** Aprobados / con todos los puntos cubiertos. */
+  correct: number;
+  allDone: boolean;
+  note: string;
+  cta: 'start' | 'continue' | null;
+}
+
+/** Resume el avance de la prueba de tipificación para mostrarlo en la lista de clientes. */
+function buildStatus(ctx: SimContext): PracticeStatus | null {
+  if (isOfficial()) {
+    const st = officialState();
+    if (!st) return null;
+    const total = st.total;
+    const done = st.completedCount;
+    let met = 0;
+    let unmet = 0;
+    for (const e of st.exercises) {
+      if (e.result?.typification) {
+        met += e.result.typification.metCount;
+        unmet += e.result.typification.unmetCount;
+      }
+    }
+    const allDone = st.passed || done >= total;
+    const note = done === 0
+      ? 'Aún no has presentado ningún ejercicio. Cada llamada se presenta una sola vez.'
+      : allDone
+        ? unmet > 0
+          ? `Cubriste ${met} de ${met + unmet} puntos en total. Ya puedes presentar el examen general.`
+          : '¡Cubriste todos los puntos! Ya puedes presentar el examen general.'
+        : `Te falta${total - done === 1 ? '' : 'n'} ${total - done} por presentar.${unmet > 0 ? ` En los presentados te faltaron ${unmet} punto${unmet === 1 ? '' : 's'}.` : ''}`;
+    return { official: true, total, done, correct: done, allDone, note, cta: allDone ? null : done === 0 ? 'start' : 'continue' };
+  }
+  const results = ctx.store.get().practice.results;
+  const total = EXERCISES.length;
+  const done = EXERCISES.filter((e) => results[e.id]).length;
+  const correct = EXERCISES.filter((e) => results[e.id]?.approved).length;
+  const allDone = correct >= total;
+  // Puntos que quedaron pendientes en las llamadas aún no aprobadas (sin repetir).
+  const pendingMissing = [...new Set(
+    EXERCISES.filter((e) => results[e.id] && !results[e.id]!.approved).flatMap((e) => results[e.id]!.missing),
+  )];
+  const note = done === 0
+    ? 'Aún no has tipificado ninguna llamada. Puedes repetir esta práctica cuando quieras.'
+    : allDone
+      ? '¡Tipificaste correctamente todas las llamadas! Puedes repasarlas cuando quieras.'
+      : pendingMissing.length
+        ? `Te faltó: ${pendingMissing.slice(0, 3).join(', ')}${pendingMissing.length > 3 ? '…' : ''}.`
+        : `Te falta${total - correct === 1 ? '' : 'n'} ${total - correct} por mejorar.`;
+  return { official: false, total, done, correct, allDone, note, cta: allDone ? null : done === 0 ? 'start' : 'continue' };
+}
+
+/**
+ * Tarjeta de resumen de la prueba para la lista de clientes de la campaña de práctica:
+ * «X de N» y qué puntos faltan. Devuelve '' cuando no hay nada que mostrar.
+ */
+export function practiceStatusTemplate(ctx: SimContext): string {
+  // En la plataforma esperamos el estado oficial antes de mostrar nada (evita textos de práctica libre).
+  if (isEmbedded() && !officialState()) return '';
+  const s = buildStatus(ctx);
+  if (!s) return '';
+  const kicker = s.official ? 'Prueba de tipificación' : 'Práctica de tipificación';
+  const unit = s.official ? 'ejercicios' : 'llamadas';
+  const progress = s.official ? `${s.done} de ${s.total}` : `${s.correct} de ${s.total}`;
+  const ctaLabel = s.cta === 'start'
+    ? s.official ? 'Iniciar la prueba' : 'Iniciar la práctica'
+    : s.cta === 'continue'
+      ? s.official ? 'Continuar la prueba' : 'Continuar la práctica'
+      : '';
+  return `
+    <section class="sim-card sim-practice-status${s.allDone ? ' is-done' : ''}" aria-label="Avance de tu prueba de tipificación">
+      <div class="sim-practice-status__info">
+        <p class="sim-practice-status__kicker">${icon(s.allDone ? 'CircleCheck' : 'ClipboardList')} ${kicker}</p>
+        <p class="sim-practice-status__progress"><strong>${esc(progress)}</strong> ${unit}</p>
+        <p class="sim-practice-status__note">${esc(s.note)}</p>
+      </div>
+      ${s.cta ? `<button type="button" class="sim-btn sim-btn--primary" data-action="practice-start">${icon('Headphones')} ${ctaLabel}</button>` : ''}
+    </section>`;
 }
 
 /** Lleva al primer ejercicio sin aprobar (o al primero) y activa la prueba. */

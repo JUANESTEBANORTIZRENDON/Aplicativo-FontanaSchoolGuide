@@ -53,7 +53,7 @@ export const GUIDE_STEPS: Record<GuideView, GuideStep[]> = {
     {
       target: 'carteras.listado',
       title: 'Campañas',
-      text: 'Cada tarjeta es una campaña (cartera) que tienes asignada. En la práctica las campañas tienen nombres ficticios. Pulsa «Aurora» para entrar a sus clientes.',
+      text: 'Cada tarjeta es una campaña (cartera) que tienes asignada. En la práctica las campañas tienen nombres ficticios. Escoge una campaña para continuar: pulsa «Aurora» para entrar a sus clientes.',
     },
   ],
   clientes: [
@@ -149,7 +149,7 @@ export const GUIDE_STEPS: Record<GuideView, GuideStep[]> = {
     {
       target: 'ficha.nota',
       title: 'Nueva Gestión de Llamadas',
-      text: 'Escribe qué pasó en la llamada, claro y sin abreviar de más. El formato habitual empieza con el teléfono: «3001234567 // TT INDICA QUE…» (TT = titular).',
+      text: 'Tipifica todo lo que escuchaste en la llamada: no dejes nada por fuera. Escribe qué pasó, claro y sin abreviar de más. El formato habitual empieza con el teléfono: «3001234567 // TT INDICA QUE…» (TT = titular).',
     },
     {
       target: 'ficha.tipificacion',

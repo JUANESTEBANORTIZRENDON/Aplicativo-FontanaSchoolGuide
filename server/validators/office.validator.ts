@@ -93,7 +93,7 @@ export const dictationBody = z.object({
   difficulty: z.number().int().min(1).max(3).default(1),
   criticalRuleKeys: z.array(z.string().max(60)).max(20).default([]),
   audioKey: z.string().regex(/^[A-Za-z0-9._-]{1,120}$/).optional(),
-  audioDurationSeconds: z.number().int().min(20).max(30).optional(),
+  audioDurationSeconds: z.number().int().min(20).max(120).optional(),
   status: statusEnum.default('DRAFT'),
   reason: reason(5),
 }).strict();
@@ -104,7 +104,7 @@ export const dictationPatch = z.object({
   difficulty: z.number().int().min(1).max(3).optional(),
   criticalRuleKeys: z.array(z.string().max(60)).max(20).optional(),
   audioKey: z.string().regex(/^[A-Za-z0-9._-]{1,120}$/).nullable().optional(),
-  audioDurationSeconds: z.number().int().min(20).max(30).nullable().optional(),
+  audioDurationSeconds: z.number().int().min(20).max(120).nullable().optional(),
   status: statusEnum.optional(),
   reason: reason(5),
 }).strict();

@@ -6,12 +6,16 @@ import { practiceScore } from './excel-practice.js';
 import type { getActivity, submitPractice } from '../services/office-excel.service.js';
 import type { submitDictation } from '../services/office-dictation.service.js';
 
-// Contratos del asesor después de entregar: listas permitidas, sin respuestas,
-// soluciones, evidencias, transcripciones ni detalles de las reglas. El registro
-// completo se conserva únicamente en el servidor para el área administrativa.
+// Contratos del asesor después de entregar: se conserva el diagnóstico
+// pedagógico, pero nunca se devuelve la respuesta escrita ni la evidencia
+// textual original. El registro completo se conserva únicamente en el servidor
+// para el área administrativa.
 export function advisorObjectionsResult(result: ObjectionsGrade) {
   return { version: result.version, score: result.score, passed: result.passed, minimumScore: result.minimumScore,
-    recommendations: ['Repasa las lecciones y las pautas generales de atención antes de volver a practicar.'] };
+    recommendations: ['Repasa las lecciones y las pautas generales de atención antes de volver a practicar.'],
+    cases: result.cases.map(c => ({ key: c.key, title: c.title, score: c.score, maximum: c.maximum,
+      checks: c.checks.map(({ id, label, ok, points, feedback }) => ({ id, label, ok, points, feedback })),
+      critical: c.critical, recommendations: c.recommendations })) };
 }
 export type AdvisorObjectionsResult = ReturnType<typeof advisorObjectionsResult>;
 

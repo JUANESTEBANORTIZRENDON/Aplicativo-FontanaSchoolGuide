@@ -20,6 +20,8 @@ export interface PracticeResult {
   score: number;
   approved: boolean;
   attempts: number;
+  /** Puntos que faltaron en el último intento (para el resumen de la lista de clientes). */
+  missing: string[];
 }
 
 export interface PracticeState {
@@ -236,12 +238,15 @@ export function createSimulatorStore(storage: SimulatorStorage) {
     },
 
     /** Guarda el mejor puntaje del ejercicio y cuenta el intento. */
-    recordPractice(exerciseId: string, score: number, approved: boolean): PracticeResult {
+    recordPractice(exerciseId: string, score: number, approved: boolean, missing: string[] = []): PracticeResult {
       const prev = state.practice.results[exerciseId];
+      const nowApproved = approved || !!prev?.approved;
       const result: PracticeResult = {
         score: Math.max(score, prev?.score ?? 0),
-        approved: approved || !!prev?.approved,
+        approved: nowApproved,
         attempts: (prev?.attempts ?? 0) + 1,
+        // Si ya quedó aprobado no falta nada; si no, dejamos lo que faltó en este intento.
+        missing: nowApproved ? [] : missing,
       };
       set((s) => ({ practice: { ...s.practice, results: { ...s.practice.results, [exerciseId]: result } } }));
       return result;

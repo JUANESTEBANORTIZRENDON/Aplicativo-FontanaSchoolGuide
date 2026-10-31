@@ -31,10 +31,6 @@ body:has(.collections-course--induction) .auth-main { max-width: 1420px; padding
 .collections-course--induction .collections-progress { padding: 20px 24px; background: #fffaf0; border-color: var(--fc-line); box-shadow: none; }
 .collections-course--induction .collections-progress > div { font-size: 16px; line-height: 1.6; }
 .collections-course--induction .collections-progress > div > span { flex-shrink: 0; font-size: 16px; background: #f8e9ee; color: #70112c; }
-.collections-course--induction :is(.collections-progress,.collections-dossier-progress) progress { height: 10px; background: #e2e8f0; }
-.collections-course--induction :is(.collections-progress,.collections-dossier-progress) progress::-webkit-progress-bar { background: #e2e8f0; }
-.collections-course--induction :is(.collections-progress,.collections-dossier-progress) progress::-webkit-progress-value { background: #831336; }
-.collections-course--induction :is(.collections-progress,.collections-dossier-progress) progress::-moz-progress-bar { background: #831336; }
 .collections-course--induction .collections-layout { grid-template-columns: 260px minmax(0,1fr); gap: 24px; }
 .collections-course--induction .collections-layout > * { min-width: 0; }
 .collections-course--induction .collections-nav { top: 20px; padding: 16px; background: #fffaf0; border: 1px solid var(--fc-line); border-radius: 18px; }
@@ -100,11 +96,10 @@ body:has(.collections-course--induction) .auth-main { max-width: 1420px; padding
 .collections-course--induction .fontana-concept-example > span { font-size: 14px; font-weight: 650; color: #475569; letter-spacing: .04em; }
 .collections-course--induction .collections-card .fontana-concept-example p { margin-top: 10px; color: #233247; font-size: var(--fc-body); line-height: 1.7; }
 .collections-course--induction .collections-card .fontana-concept-reminder { margin-top: 24px; padding-top: 18px; color: #70112c; font-size: 16px; line-height: 1.65; border-color: var(--fc-line); }
-.collections-course--induction .fontana-concept-stage .fontana-concept-arrow { position: static; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; height: auto; min-height: 50px; margin: 0; padding: 10px; border: 1px solid #8b6a7a; border-radius: 12px; color: #70112c; background: #fff; transform: none; box-shadow: none; }
-.collections-course--induction .fontana-concept-arrow svg { width: 22px; height: 22px; flex-shrink: 0; }
-.collections-course--induction .fontana-concept-arrow::after { content: attr(aria-label); font-size: 15px; font-weight: 700; line-height: 1.5; }
-.collections-course--induction .fontana-concept-stage .fontana-concept-arrow:disabled { border: 1px dashed #8995a6; color: #526071; background: #e9eef4; opacity: 1; }
-.collections-course--induction .fontana-concept-arrow:disabled::after { content: 'No disponible'; }
+.collections-course--induction .fontana-concept-stage .fontana-concept-arrow { position: absolute; top: 50%; display: grid; place-items: center; width: 48px; height: 48px; min-height: 48px; margin: 0; padding: 10px; border: 1px solid #e5c46e8c; border-radius: 50%; color: #76112f; background: #fff5d9; transform: translateY(-50%); box-shadow: 0 4px 16px #18081026; }
+.collections-course--induction .fontana-concept-arrow svg { width: 100%; height: 100%; flex-shrink: 0; }
+.collections-course--induction .fontana-concept-arrow::after { display: none; }
+.collections-course--induction .fontana-concept-stage .fontana-concept-arrow:disabled { border: 1px solid #e5c46e55; color: #b49b63; background: #fff5d91c; opacity: .45; box-shadow: none; }
 .collections-course--induction .fontana-concept-footer { margin: 22px 0 12px; gap: 14px; flex-wrap: wrap; }
 .collections-course--induction .fontana-concept-counter, .collections-course--induction .collections-card .fontana-concept-instruction { font-size: 15px; color: var(--fc-muted); }
 .collections-course--induction .fontana-concept-dots { gap: 10px; }
@@ -142,9 +137,6 @@ body:has(.collections-course--induction) .auth-main { max-width: 1420px; padding
 .collections-course--induction .collections-card .collections-dossier-head h3 { color: #fff; font: 600 clamp(24px,2.2vw,30px)/1.4 'Manrope','Segoe UI',Arial,sans-serif; }
 .collections-course--induction .collections-dossier-head > div > span { font-size: 15px; color: #f1f5f9; }
 .collections-course--induction .collections-dossier-badge { font-size: 14px; border-color: #e4c67f; color: #ffedbd; background: #344156; }
-.collections-course--induction .collections-dossier-progress { padding: 20px 24px; background: #f8f3e8; }
-.collections-course--induction .collections-dossier-progress strong { font-size: 16px; }
-.collections-course--induction .collections-dossier-progress > div > span { font-size: 14px; color: #526071; }
 .collections-course--induction .collections-plan-workspace { grid-template-columns: minmax(0,1fr); gap: 24px; padding: 24px; }
 .collections-course--induction .collections-plan-actions h4 { font-size: 19px; }
 .collections-course--induction .collections-card .collections-plan-actions p { font-size: 15px; color: var(--fc-muted); }
@@ -268,7 +260,7 @@ body:has(.collections-course--induction) .auth-main { max-width: 1420px; padding
 @media(hover:hover) {
   .collections-course--induction .collections-primary:not(:disabled):hover, .collections-course--induction .collections-plan-source[aria-expanded=false]:hover { background: #68102b; border-color: #68102b; }
   .collections-course--induction .collections-nav button:not(:disabled):not([aria-current]):hover { transform: none; border-color: #831336; background: #fbf0f3; }
-  .collections-course--induction .fontana-concept-stage .fontana-concept-arrow:not(:disabled):hover { transform: none; background: #fbf0f3; border-color: #831336; }
+  .collections-course--induction .fontana-concept-stage .fontana-concept-arrow:not(:disabled):hover { transform: translateY(-50%) scale(1.06); background: #e9c96e; border-color: #f2d98f; }
   .collections-course--induction .collections-alternative-choices button:not(:disabled):hover { color: #70112c; background: #fbf0f3; border-color: #831336; }
   .collections-course--induction .collections-quick-choices button:not(:disabled):hover { color: #70112c; background: #fbf0f3; border-color: #831336; transform: none; }
 }
@@ -312,7 +304,7 @@ body:has(.collections-course--induction) .auth-main { max-width: 1420px; padding
   .collections-course--induction .collections-card .fontana-concept-definition { font-size: 18px; }
   .collections-course--induction .collections-quick-challenge { padding: 22px 14px; }
   .collections-course--induction .collections-quick-choices button { padding: 14px; font-size: 16px; }
-  .collections-course--induction .collections-dossier-head, .collections-course--induction .collections-dossier-progress { padding: 20px 16px; }
+  .collections-course--induction .collections-dossier-head { padding: 20px 16px; }
   .collections-course--induction .collections-plan-workspace { padding: 16px; }
   .collections-course--induction .collections-dossier-detail { padding: 18px 14px; }
   .collections-course--induction .collections-plan-workspace--wide > .collections-dossier-detail { padding: 0; }

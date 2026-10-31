@@ -44,6 +44,9 @@
 .tutor-feedback { display: grid; grid-template-columns: 94px minmax(0, 1fr); align-items: center; gap: 14px; margin-block: 12px; }
 .tutor-feedback .tutor-feedback-avatar { --tutor-width: 94px; align-self: end; }
 .tutor-feedback > :last-child { min-width: 0; margin-block: 0; }
+.tutor-feedback--avatar-only { display: block; margin-inline: auto; }
+.tutor-feedback--avatar-only .tutor-feedback-avatar { margin-inline: auto; }
+.tutor-feedback--avatar-only .collections-plan-success { display: none; }
 .tutor-feedback .tutor-figure { -webkit-mask-image: linear-gradient(to bottom, #000 86%, transparent 100%); mask-image: linear-gradient(to bottom, #000 86%, transparent 100%); }
 @media (max-width: 480px) {
   .tutor-feedback { grid-template-columns: 68px minmax(0, 1fr); gap: 8px; }

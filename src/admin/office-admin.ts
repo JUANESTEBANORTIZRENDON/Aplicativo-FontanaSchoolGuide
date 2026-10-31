@@ -222,7 +222,7 @@ async function drawDictations(body: HTMLElement, helpers: AdminHelpers, redraw: 
       const row = byId.get(audio.dataset.audio!)!;
       const form = await helpers.askForm(`Audio de «${row.title}»`, `
         <label>Archivo de audio <small>OGG o MP3, hasta 2 MB</small><input name="file" type="file" accept=".ogg,.mp3,audio/ogg,audio/mpeg" required></label>
-        <label>Duración (segundos) <small>De 20 a 30</small><input name="duration" type="number" min="20" max="30" required value="${row.audioDurationSeconds ?? 25}"></label>`);
+        <label>Duración (segundos) <small>De 20 a 120</small><input name="duration" type="number" min="20" max="120" required value="${row.audioDurationSeconds ?? 25}"></label>`);
       if (!form) return;
       const input = document.querySelector<HTMLInputElement>('#admin-dialog input[type="file"]');
       const file = input?.files?.[0];

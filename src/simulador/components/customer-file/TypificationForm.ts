@@ -58,7 +58,7 @@ function template(balance: number, phones: string[]): string {
       <p class="sim-form-summary" role="alert" aria-live="assertive" data-summary></p>
       <div data-sim-guide="ficha.nota">
         <label class="sim-visually-hidden" for="sim-tf-note">Nueva gestión de llamadas</label>
-        <textarea class="sim-input sim-cn-note" id="sim-tf-note" name="note" rows="4" maxlength="${NOTE_MAX}" placeholder="Nueva Gestion de LLamadas"></textarea>
+        <textarea class="sim-input sim-cn-note" id="sim-tf-note" name="note" rows="4" maxlength="${NOTE_MAX}" placeholder="Tipifica todo lo que escuchas en la llamada"></textarea>
         <p class="sim-error" data-error="note"></p>
       </div>
       <div class="sim-cn-grid" data-sim-guide="ficha.tipificacion">

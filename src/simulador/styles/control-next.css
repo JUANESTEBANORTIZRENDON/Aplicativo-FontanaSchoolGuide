@@ -503,6 +503,16 @@
 .sim-practice :where(h2, p, strong, small) { overflow-wrap: anywhere; }
 @media (max-width: 767px) { .sim-check-list { grid-template-columns: minmax(0, 1fr); } }
 
+/* Resumen de avance de la prueba de tipificación, en la lista de clientes de la campaña de práctica. */
+.sim-practice-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 18px; border-left: 4px solid #c62828; }
+.sim-practice-status.is-done { border-left-color: #1e7d4f; }
+.sim-practice-status__info { display: grid; gap: 2px; min-width: 0; flex: 1 1 320px; }
+.sim-practice-status__kicker { display: inline-flex; align-items: center; gap: 6px; color: #a92323; font-size: 13px; font-weight: 600; line-height: 1.5; letter-spacing: 0.03em; text-transform: uppercase; }
+.sim-practice-status.is-done .sim-practice-status__kicker { color: #1e7d4f; }
+.sim-practice-status__progress { font-size: 20px; line-height: 1.3; color: #14213d; }
+.sim-practice-status__note { color: #4b5563; font-size: 15px; line-height: 1.55; overflow-wrap: anywhere; }
+.sim-practice-status .sim-btn { flex: 0 0 auto; }
+
 /* ---------- Prueba: la llamada ocupa el lugar de la información del deudor ---------- */
 .sim-root .sim-file__info.is-call { display: block; padding: 24px 32px; border-top: 4px solid #1f5cf2; }
 .sim-call-card { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(220px, 1fr); gap: 24px; align-items: start; }

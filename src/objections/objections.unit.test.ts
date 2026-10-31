@@ -56,7 +56,7 @@ describe('montaje y borrador de la evaluación de objeciones', () => {
     await mountObjections(root as unknown as HTMLElement, '#ruta');
     expect(root.innerHTML).toContain('No tengo dinero');
     expect(root.innerHTML).toContain('Caso 1 de 5');
-    expect(root.innerHTML).toContain('<p class="obx-example-visible"><b>Ejemplo de enfoque:</b>');
+    expect(root.innerHTML).toContain('<p class="obx-example-visible"><b>Ejemplo:</b>');
     expect(root.innerHTML).toContain(caseSlideCopy('sin-dinero').example);
     expect(root.innerHTML).not.toContain('Ver un ejemplo de enfoque');
     expect(root.innerHTML).not.toContain('No pudimos abrir el módulo');
@@ -85,18 +85,18 @@ describe('montaje y borrador de la evaluación de objeciones', () => {
     expect(mocks.api).toHaveBeenCalledTimes(1);
     expect(mocks.api).toHaveBeenCalledWith('/training/objections/module');
   });
-  it('guarda el texto libre después de escribir y confirma solo tras la respuesta del servidor', async () => {
-    mocks.api.mockResolvedValueOnce({ data: fixture(true) }).mockResolvedValue({ data: {} });
+  it('conserva el texto escrito en memoria sin llamar al servidor hasta el envío', async () => {
+    mocks.api.mockResolvedValue({ data: fixture(true) });
     await mountObjections(root as unknown as HTMLElement, '#ruta');
     const editor = root.querySelector('#obx-answer')!;
     editor.value = 'Nueva gestión redactada libremente por el asesor para este cliente.';
     editor.listeners.get('input')!();
     await vi.advanceTimersByTimeAsync(1200);
-    expect(mocks.api).toHaveBeenLastCalledWith('/training/objections/exam/answer', expect.objectContaining({ method: 'PUT', body: JSON.stringify({
-      attemptId: 'attempt', key: 'sin-dinero', text: editor.value,
-    }) }));
-    expect(root.querySelector('[data-save-error]')!.hidden).toBe(true);
-    expect(root.querySelector('#obx-answer')).toBe(editor);
+    // Las respuestas viven solo en pantalla: escribir no dispara ningún guardado en el servidor.
+    expect(mocks.api).toHaveBeenCalledTimes(1);
+    expect(mocks.api).toHaveBeenCalledWith('/training/objections/module');
+    expect(root.querySelector('[data-save-error]')).toBeNull();
+    expect(root.querySelector('#obx-answer')!.value).toBe(editor.value);
   });
   it('muestra la carga al comenzar, evita doble inicio y abre el editor solo tras la respuesta del servidor', async () => {
     let acknowledge!: (value: unknown) => void;
@@ -127,37 +127,31 @@ describe('montaje y borrador de la evaluación de objeciones', () => {
     expect(root.querySelector('[data-start]')).not.toBeNull();
     expect(root.querySelector('#obx-answer')).toBeNull();
   });
-  it('mantiene el texto y muestra el error si no se puede guardar', async () => {
+  it('al escribir no guarda en el servidor ni muestra error aunque la red esté caída', async () => {
     mocks.api.mockResolvedValueOnce({ data: fixture(true) }).mockRejectedValue(new Error('Sin conexión'));
     await mountObjections(root as unknown as HTMLElement, '#ruta');
     const editor = root.querySelector('#obx-answer')!;
     editor.value = 'Gestión escrita que no debe desaparecer al perder la conexión.';
     editor.listeners.get('input')!();
     await vi.advanceTimersByTimeAsync(1200);
-    expect(root.querySelector('[data-save-error]')!.textContent).toContain('No se pudo guardar tu respuesta: Sin conexión');
-    expect(root.querySelector('[data-save-error]')!.hidden).toBe(false);
+    // Como no hay guardado por tecla, una red caída no afecta lo escrito ni genera un error de guardado.
+    expect(mocks.api).toHaveBeenCalledTimes(1);
+    expect(root.querySelector('[data-save-error]')).toBeNull();
     expect(editor.value).toBe('Gestión escrita que no debe desaparecer al perder la conexión.');
   });
-  it('mantiene la pantalla de carga hasta guardar y solo entonces pasa al siguiente caso', async () => {
-    let acknowledge!: (value: unknown) => void;
-    mocks.api.mockResolvedValueOnce({ data: fixture(true) }).mockImplementation(() => new Promise(resolve => { acknowledge = resolve; }));
+  it('al escribir y continuar pasa al siguiente caso sin diálogo de guardado', async () => {
+    mocks.api.mockResolvedValue({ data: fixture(true) });
     await mountObjections(root as unknown as HTMLElement, '#ruta');
     const editor = root.querySelector('#obx-answer')!;
     editor.value = 'Pregunto por una fecha de pago posible.';
     editor.listeners.get('input')!();
     root.querySelector('[data-answer-next]')!.listeners.get('click')!();
     await vi.advanceTimersByTimeAsync(0);
-    expect(mocks.saving).toHaveBeenCalledWith(root, 'el caso 2');
+    expect(mocks.saving).not.toHaveBeenCalled();
     expect(mocks.confirm).not.toHaveBeenCalled();
-    expect(editor.disabled).toBe(true);
-    expect(root.innerHTML).toContain('EVALUACIÓN · CASO 1 DE 5');
-    acknowledge({ data: {} });
-    await vi.advanceTimersByTimeAsync(0);
-    expect(mocks.confirm).toHaveBeenCalledTimes(1);
-    expect(mocks.close).toHaveBeenCalledTimes(1);
     expect(root.innerHTML).toContain('EVALUACIÓN · CASO 2 DE 5');
   });
-  it('cierra la carga sin confirmar ni avanzar si falla el guardado y conserva la respuesta', async () => {
+  it('continuar no llama al servidor: una red caída no borra la respuesta ni bloquea el avance', async () => {
     mocks.api.mockResolvedValueOnce({ data: fixture(true) }).mockRejectedValue(new Error('No se pudo guardar'));
     await mountObjections(root as unknown as HTMLElement, '#ruta');
     const editor = root.querySelector('#obx-answer')!;
@@ -165,11 +159,10 @@ describe('montaje y borrador de la evaluación de objeciones', () => {
     editor.listeners.get('input')!();
     root.querySelector('[data-answer-next]')!.listeners.get('click')!();
     await vi.advanceTimersByTimeAsync(0);
-    expect(mocks.confirm).not.toHaveBeenCalled();
-    expect(mocks.close).toHaveBeenCalledTimes(1);
-    expect(root.innerHTML).toContain('No se pudo guardar');
-    expect(root.innerHTML).toContain('EVALUACIÓN · CASO 1 DE 5');
-    expect(root.querySelector('#obx-answer')!.value).toBe(editor.value);
+    expect(mocks.api).toHaveBeenCalledTimes(1);
+    expect(mocks.saving).not.toHaveBeenCalled();
+    expect(mocks.close).not.toHaveBeenCalled();
+    expect(root.innerHTML).toContain('EVALUACIÓN · CASO 2 DE 5');
   });
   it('restaura el sello y la nota real de 80 sin repetir la celebración ni exigir cinco casos perfectos', async () => {
     const answers = { ...Object.fromEntries(OBJECTIONS_CASES.map(c => [c.key, c.example])), 'sin-dinero': 'Texto ajeno a esta situación.' };
@@ -177,7 +170,7 @@ describe('montaje y borrador de la evaluación de objeciones', () => {
       result: gradeObjections(answers) } };
     mocks.api.mockResolvedValue({ data: state });
     await mountObjections(root as unknown as HTMLElement, '#ruta');
-    expect(root.innerHTML).toContain('Respuesta aprobada ✓');
+    // El resultado aprobado muestra el sello y la nota, sin desglosar los criterios por caso.
     expect(root.innerHTML).not.toContain('class="obx-checks"');
     expect(root.innerHTML).not.toContain('/4');
     expect(root.innerHTML).toContain('Sello obtenido: módulo 03');

@@ -7,8 +7,11 @@ import { customerTableTemplate } from '../components/CustomerTable';
 import { filterPanelTemplate, readFilterForm } from '../components/FilterPanel';
 import { hydrateIcons, icon } from '../components/icons';
 import { mountMultiSelects } from '../components/MultiSelect';
+import { practiceStatusTemplate, startPractice } from '../components/customer-file/PracticePanel';
 import type { SimContext } from '../context';
 import { PRACTICE_ADVISOR } from '../data/catalogs';
+import { EXERCISE_PORTFOLIO } from '../domain/expert/exercises';
+import { onOfficialState } from '../domain/expert/official';
 import { applyCustomerFilters, createDefaultFilters, paginate } from '../domain/customer-filters';
 import type { CustomerFilters, ManagementStatus, Portfolio } from '../types/simulator';
 import { combine, on, qs, qsa, type Cleanup } from '../utils/dom';
@@ -52,9 +55,11 @@ export function renderCustomerManagementPage(
   }
 
   const pid = portfolio.id;
+  const isPractice = pid === EXERCISE_PORTFOLIO;
   shell.main.innerHTML = `
     <div class="sim-page">
       ${campaignHeadTemplate(ctx, portfolio, 'clientes')}
+      ${isPractice ? '<div data-practice-status></div>' : ''}
       <section class="sim-card sim-card--filters" data-sim-guide="clientes.filtros" aria-labelledby="sim-clientes-title">
         <h1 id="sim-clientes-title" class="sim-card__title sim-card__title--xl sim-campaign-title">${esc(portfolio.name)}</h1>
         <div data-filters></div>
@@ -67,7 +72,14 @@ export function renderCustomerManagementPage(
 
   const filtersSlot = qs(shell.main, '[data-filters]');
   const resultsSlot = qs(shell.main, '[data-results]');
+  const statusSlot = isPractice ? qs(shell.main, '[data-practice-status]') : null;
   let msCleanup: Cleanup = () => undefined;
+
+  const renderStatus = (): void => {
+    if (!statusSlot) return;
+    statusSlot.innerHTML = practiceStatusTemplate(ctx);
+    hydrateIcons(statusSlot);
+  };
 
   const renderFilters = (): void => {
     msCleanup();
@@ -109,11 +121,16 @@ export function renderCustomerManagementPage(
 
   renderFilters();
   renderResults();
+  renderStatus();
 
   return combine([
     shell.cleanup,
     headClick,
     () => msCleanup(),
+    statusSlot ? on(statusSlot, 'click', (event) => {
+      if ((event.target as HTMLElement).closest('[data-action="practice-start"]')) startPractice(ctx);
+    }) : () => undefined,
+    statusSlot ? onOfficialState(renderStatus) : () => undefined,
     on(filtersSlot, 'submit', (event) => {
       event.preventDefault();
       const form = event.target as HTMLFormElement;
@@ -162,6 +179,7 @@ export function renderCustomerManagementPage(
         renderResults();
         updateLegend();
       }
+      if (s.practice !== prev.practice) renderStatus();
     }),
   ]);
 }

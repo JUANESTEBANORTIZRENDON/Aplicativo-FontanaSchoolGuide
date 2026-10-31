@@ -4,7 +4,7 @@ export const icon = (paths: string) => `<svg viewBox="0 0 64 64" fill="none" str
 export type Slide = { title: string; definition: string; example: string; reminder: string; icon: string };
 
 const SLIDES: Slide[] = [
-  { title: 'Conocimiento del producto', definition: 'Entiende qué se cobra y de dónde viene el saldo.', example: 'Camila pregunta por $480.000: revisas el detalle antes de explicarlo.', reminder: 'Consulta la ficha del producto aprobada.',
+  { title: 'Conocimiento del producto', definition: 'Entiende qué se cobra y de dónde viene el saldo.', example: 'Camila pregunta por $480.000: revisas el detalle antes de explicarlo.', reminder: '',
     icon: icon('<path d="M10 13h18l4 4 4-4h18v38H36l-4 4-4-4H10zM32 17v38M17 24h8M17 32h8M39 24h8M39 32h8"/>') },
   { title: 'Manejo de objeciones', definition: 'Escucha la dificultad y pregunta antes de responder.', example: '«No puedo pagar». → «¿Qué dificultad tienes en este momento?»', reminder: 'Comprende sin discutir ni juzgar.',
     icon: icon('<path d="M10 12h34v25H26L14 47V37h-4zM44 24h10v25h-8l-8 7v-7H27M18 22h18M18 29h11"/>') },
@@ -56,7 +56,7 @@ export function mountSlider(root: HTMLElement, options: SliderOptions): void {
       <h3 id="concepts-slide-title" tabindex="-1">${escapar(slide.title)}</h3>
       <p class="fontana-concept-definition">${escapar(slide.definition)}</p>
       <div class="fontana-concept-example"><span>EJEMPLO FICTICIO</span><p>${escapar(slide.example)}</p></div>
-      <p class="fontana-concept-reminder">${escapar(slide.reminder)}</p>
+      ${slide.reminder ? `<p class="fontana-concept-reminder">${escapar(slide.reminder)}</p>` : ''}
     </article>`;
   }
   function render(): void {

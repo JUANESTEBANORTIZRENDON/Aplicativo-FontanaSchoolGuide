@@ -92,7 +92,7 @@ function card(module: ModuleView, current: boolean): string {
         <span class="path-card-status">${escapar(label)}</span>
         <div class="path-card-progress"><span class="path-card-progress-label">Progreso</span><strong class="path-card-percent">${escapar(module.progressPercent)} %</strong></div>
         <div class="path-card-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" aria-label="Progreso de ${escapar(module.name)}"><span style="width:${percent}%"></span></div>
-        ${state === 'locked' && note ? `<details class="path-card-requirement"><summary>Ver requisito para avanzar</summary>${note}</details>` : note}
+        ${note}
       </div>
       ${button}
     </li>`;

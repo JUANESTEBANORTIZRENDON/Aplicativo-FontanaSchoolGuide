@@ -10,6 +10,7 @@ import { combine, on, prefersReducedMotion, qs, type Cleanup } from '../utils/do
 import { esc } from '../utils/format';
 import { startPractice } from './customer-file/PracticePanel';
 import { hydrateIcons, icon } from './icons';
+import { openModal } from './Modal';
 
 const SEEN_KEY = 'control-next:guia-vista:';
 
@@ -169,6 +170,32 @@ export function mountGuide(ctx: SimContext): Cleanup {
     layer.classList.remove('is-active', 'is-centered');
   };
 
+  /** Lanza la prueba de tipificación si hay sesión; si no, avisa. */
+  const launchPractice = (): void => {
+    if (ctx.store.hasValidSession()) startPractice(ctx);
+    else ctx.toast('Primero inicia sesión en el simulador.', 'warning');
+  };
+
+  /**
+   * Ventana emergente que ofrece la prueba de tipificación en la lista de clientes.
+   * `resumed` = true cuando el asesor ya hizo el recorrido y solo le proponemos continuar.
+   */
+  const offerPractice = (resumed = false): void => {
+    if (ctx.root.querySelector('.sim-modal-overlay')) return; // evita apilar ventanas
+    void openModal(ctx.root, {
+      title: resumed ? 'Continúa con tu prueba de tipificación' : 'Ahora, tu prueba de tipificación',
+      body: resumed
+        ? '<p>Ya hiciste el recorrido de esta pantalla. Cuando quieras, continúa con tu prueba de tipificación: escucharás llamadas reales de entrenamiento y deberás tipificar todo lo que oigas.</p>'
+        : '<p>Ya conoces la lista de clientes. Ahora te haremos una prueba: escucharás 2 llamadas reales de entrenamiento y tendrás que tipificar todo lo que oigas. Al guardar recibirás retroalimentación de qué puntos coincidieron con la llamada.</p>',
+      actions: [
+        { label: 'Ahora no', value: 'cancel', kind: 'ghost' },
+        { label: resumed ? 'Continuar con la prueba' : 'Iniciar la prueba', value: 'start', kind: 'primary' },
+      ],
+    }).then((value) => {
+      if (value === 'start') launchPractice();
+    });
+  };
+
   const start = (force: boolean): void => {
     clearTimeout(autoTimer);
     view = currentView();
@@ -176,7 +203,12 @@ export function mountGuide(ctx: SimContext): Cleanup {
       if (force) ctx.toast('Entra a una campaña o a la ficha de un cliente para ver la guía de esa pantalla.', 'info');
       return;
     }
-    if (!force && seen(view)) return;
+    if (!force && seen(view)) {
+      // Si ya hizo el recorrido de la lista de clientes, no repetimos el paso a paso:
+      // solo le ofrecemos continuar con la prueba de tipificación.
+      if (view === 'clientes') offerPractice(true);
+      return;
+    }
     steps = GUIDE_STEPS[view];
     index = 0;
     render();
@@ -185,7 +217,13 @@ export function mountGuide(ctx: SimContext): Cleanup {
   const go = (delta: number): void => {
     const next = index + delta;
     if (next < 0) return;
-    if (next >= steps.length) return stop();
+    if (next >= steps.length) {
+      const finished = view;
+      stop();
+      // Al terminar el paso a paso de la lista de clientes, ofrece iniciar la prueba.
+      if (finished === 'clientes') offerPractice();
+      return;
+    }
     index = next;
     render();
   };
@@ -368,8 +406,7 @@ export function mountGuide(ctx: SimContext): Cleanup {
         if (run === 'demo-pausa') void runPauseDemo();
         else if (run === 'prueba') {
           stop();
-          if (ctx.store.hasValidSession()) startPractice(ctx);
-          else ctx.toast('Primero inicia sesión en el simulador.', 'warning');
+          launchPractice();
         } else void runDemo();
       }
     }),

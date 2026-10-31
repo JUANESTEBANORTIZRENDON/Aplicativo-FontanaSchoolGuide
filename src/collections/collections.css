@@ -18,7 +18,7 @@ body:has(.collections-course) .auth-intro { display: none; }
 .collections-progress progress::-webkit-progress-bar { background: #eee4d2; }
 .collections-progress progress::-webkit-progress-value { background: linear-gradient(90deg, #71112e, #a52d4c 65%, #c59b39); border-radius: 10px; }
 .collections-progress progress::-moz-progress-bar { background: linear-gradient(90deg, #71112e, #a52d4c 65%, #c59b39); border-radius: 10px; }
-.collections-layout { display: grid; grid-template-columns: 245px minmax(0, 1fr); gap: 24px; align-items: start; }
+.collections-layout { display: block; }
 .collections-nav { position: sticky; top: 18px; }
 .collections-nav-label { display: flex; justify-content: space-between; align-items: center; margin: 0 4px 13px; color: #70112c; font-size: 13px; font-weight: 700; }
 .collections-nav-label small { color: #826c46; font-size: 11px; font-weight: 400; }
@@ -36,6 +36,7 @@ body:has(.collections-course) .auth-intro { display: none; }
 .collections-nav button:disabled .collections-step { background: transparent; color: #988569; border-color: #e1d4bd; }
 .collections-card { background: #fffdf9ed; border: 1px solid #e4d5bb; border-radius: 24px; padding: clamp(22px, 2.6vw, 32px); min-width: 0; box-shadow: 0 15px 45px #67462c0c, inset 0 1px 0 #fff; }
 .collections-card > h2 { font: 600 clamp(25px, 2.6vw, 32px)/1.2 Georgia, serif; color: #70112c; margin: 14px 0 26px; }
+.collections-title-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .collections-card h3 { font-size: 18px; margin: 0 0 12px; }
 .collections-card p, .collections-card li { font-size: 15px; line-height: 1.75; }
 .collections-card p { margin: 0 0 14px; }
@@ -141,6 +142,8 @@ body:has(.collections-course) .auth-intro { display: none; }
 .collections-block-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .collections-block-toolbar > p { margin: 0; }
 .collections-block-toolbar .collections-kicker { padding: 5px 10px; border: 1px solid #e5d3aa; border-radius: 6px; background: #f7efdc; font-size: 10px; letter-spacing: .12em; }
+.collections-block-heading { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+.collections-block-heading > h2 { margin: 0; }
 .collections-card .fontana-concepts-intro { margin: -12px 0 18px; color: #617086; font-size: 14px; }
 .fontana-concepts { margin: 0; }
 .fontana-concept-stage { position: relative; isolation: isolate; overflow: hidden; padding: 32px 0; border: 1px solid #a7793b80; border-radius: 22px; background: radial-gradient(ellipse at 100% 0, #b9464f40, transparent 65%), radial-gradient(ellipse at 0 100%, #c1933a28, transparent 65%), linear-gradient(125deg, #350d1c, #68112e 64%, #871d3d); box-shadow: inset 0 1px 0 #f9df951a; }
@@ -371,14 +374,6 @@ body:has(.collections-course) .auth-intro { display: none; }
 .collections-card .collections-dossier-head h3 { margin: 0 0 10px; color: #fff8eb; font: 500 29px/1.15 Georgia, serif; }
 .collections-dossier-head > div > span { display: block; color: #f3e2c5; font-size: 12px; line-height: 1.6; }
 .collections-dossier-badge { padding: 6px 10px; border: 1px solid #dec07870; border-radius: 20px; background: #f4d17b12; color: #f3d99e; font-size: 11px; }
-.collections-dossier-progress { padding: 18px 24px; border-bottom: 1px solid var(--fc-line); background: #f8efdd; }
-.collections-dossier-progress > div { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 11px; }
-.collections-dossier-progress strong { color: #70112c; font-size: 13px; }
-.collections-dossier-progress > div > span { color: #7a684b; font-size: 11px; }
-.collections-dossier-progress progress { display: block; width: 100%; height: 7px; overflow: hidden; border: 0; border-radius: 7px; background: #e7dac0; accent-color: #8b1538; }
-.collections-dossier-progress progress::-webkit-progress-bar { background: #e7dac0; }
-.collections-dossier-progress progress::-webkit-progress-value { border-radius: 7px; background: linear-gradient(90deg, #791534, #bd9740); }
-.collections-dossier-progress progress::-moz-progress-bar { border-radius: 7px; background: linear-gradient(90deg, #791534, #bd9740); }
 .collections-plan-workspace { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.25fr); align-items: start; gap: 22px; padding: 22px; }
 .collections-plan-actions h4 { margin: 0 0 8px; color: #70112c; font-size: 14px; }
 .collections-card .collections-plan-actions p { margin: 0 0 14px; color: #7b6c60; font-size: 12px; line-height: 1.6; }
@@ -496,7 +491,7 @@ body:has(.collections-course) .auth-intro { display: none; }
 .collections-dossier button:focus-visible, .collections-plan-field input:focus-visible, .collections-plan-field select:focus-visible, .collections-plan-field textarea:focus-visible { outline: 3px solid #b78a22; outline-offset: 3px; }
 .collections-dossier button:disabled { opacity: .6; cursor: default; }
 @media(max-width:1100px) { .collections-plan-workspace { grid-template-columns: 1fr; } .collections-plan-slots { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media(max-width:700px) { .collections-dossier-head, .collections-dossier-progress { padding: 18px; } .collections-plan-workspace { padding: 16px; gap: 18px; } .collections-dossier-detail { padding: 16px; } .collections-plan-slots { grid-template-columns: 1fr; } .collections-card .collections-dossier-note { padding: 14px 16px; } }
+@media(max-width:700px) { .collections-dossier-head { padding: 18px; } .collections-plan-workspace { padding: 16px; gap: 18px; } .collections-dossier-detail { padding: 16px; } .collections-plan-slots { grid-template-columns: 1fr; } .collections-card .collections-dossier-note { padding: 14px 16px; } }
 @media(max-width:480px) { .collections-balance-script { padding: 18px; } .collections-balance-script blockquote { font-size: 16px; } .collections-balance-recall { padding: 14px; } }
 @media(max-width:480px) { .collections-registration-exercise { padding: 14px; } }
 /* Opciones del examen: radios nativos agrupados (teclado y lectores de pantalla). */
@@ -511,3 +506,61 @@ body:has(.collections-course) .auth-intro { display: none; }
 .collections-exam-options:disabled .collections-exam-option { cursor: default; opacity: .7; }
 
 .collections-quick-challenge.is-leaving { opacity: 0; transform: translateY(-4px); transition: opacity .14s ease, transform .14s ease; pointer-events: none; }
+
+/* ============================================================
+   UNIFICACIÓN DEL MÓDULO 02 CON EL ESTILO «OFIMÁTICA».
+   Re-skin de las superficies claras, la tipografía (DM Sans / Manrope)
+   y los botones para que «Inducción a las cobranzas» use la misma
+   identidad visual que el módulo de Ofimática (office.css).
+   Es un bloque aislado y reversible: al eliminarlo, el módulo vuelve
+   a su diseño anterior sin tocar nada más.
+   ============================================================ */
+
+/* Cuerpo del texto en DM Sans, como en Ofimática. */
+.collections-course { font-family: 'DM Sans', 'Segoe UI', Arial, sans-serif; }
+.collections-card p, .collections-card li { font-family: 'DM Sans', 'Segoe UI', Arial, sans-serif; }
+
+/* Controles e interacción también en DM Sans (vence a los que fijan 'Segoe UI'). */
+.collections-course :is(button, input, select, textarea, a.collections-primary, a.collections-secondary) {
+  font-family: 'DM Sans', 'Segoe UI', Arial, sans-serif;
+}
+
+/* Títulos principales: Georgia itálica vino, igual que el h1 de Ofimática. */
+.collections-heading h1,
+.collections-card > h2 { font-family: Georgia, 'Times New Roman', serif; font-style: italic; color: #8b1538; }
+
+/* Subtítulos de superficies claras: Manrope azul marino, como Ofimática.
+   (Se omite a propósito el encabezado oscuro del dossier, que lleva texto claro.) */
+.collections-card h3,
+.collections-card .fontana-concept-card h3,
+.collections-card .collections-quick-challenge h3,
+.collections-card .collections-lesson-final h3,
+.collections-card .collections-exam-intro h3,
+.collections-card .collections-exam-result h3,
+.collections-exam-section h3,
+.collections-card .collections-dossier-detail h4 {
+  font-family: 'Manrope', 'Segoe UI', Arial, sans-serif;
+  color: #192840;
+}
+
+/* Tarjetas: superficie blanca con matiz azul y borde sutil (office-card). */
+.collections-card {
+  border-color: #d4af3733;
+  background: radial-gradient(ellipse at 100% 0%, #b9cfe240, transparent 65%), linear-gradient(145deg, #fffaf0, #f2f5f7);
+}
+
+/* Botones con el radio y el gradiente de Ofimática. */
+.collections-primary {
+  border-radius: 12px;
+  border-color: #8b1538;
+  background: linear-gradient(120deg, #8b1538, #70112c);
+}
+.collections-secondary { border-radius: 12px; }
+
+/* Encabezado superior: vino brillante, igual que el header de Ofimática. */
+body:has(.collections-course) .auth-header {
+  background:
+    radial-gradient(ellipse at 50% 0%, #eaa6b755, transparent 65%),
+    radial-gradient(ellipse at 90% 100%, #d4af3728, transparent 55%),
+    linear-gradient(115deg, #70112c, #8b1538 60%, #9c2748);
+}

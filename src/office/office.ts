@@ -288,6 +288,6 @@ async function renderResult(ctx: OfficeContext): Promise<void> {
     const key = `fontana:sello:ofimatica-mecanografia:${result.sealIssuedAt}`;
     let celebrated = true;
     try { celebrated = localStorage.getItem(key) === '1'; if (!celebrated) localStorage.setItem(key, '1'); } catch { celebrated = false; }
-    if (!celebrated) void playSeal({ moduleName: 'Ofimática para tus cobranzas', moduleNumber: 1, label: 'APROBADO', nextName: next?.name ?? null });
+    if (!celebrated) void playSeal({ moduleName: 'Ofimática para tus cobranzas', moduleNumber: 1, label: 'APROBADO', nextName: next?.name ?? null }).then(() => { window.location.assign(ctx.backHref); });
   }
 }

@@ -5,6 +5,7 @@ import type { TutorExpression } from './manifest';
 export function decorateTutorFeedback(feedback: HTMLElement, expression: TutorExpression): () => void {
   const wrapper = document.createElement('div');
   wrapper.className = 'tutor-feedback';
+  if (!feedback.textContent?.trim()) wrapper.classList.add('tutor-feedback--avatar-only');
   wrapper.dataset.tone = expression;
   const portrait = document.createElement('div');
   portrait.className = 'tutor-feedback-avatar';

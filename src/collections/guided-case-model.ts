@@ -33,7 +33,6 @@ export const ALTERNATIVE_PRACTICE: { quote: string; expected: PaymentAlternative
 
 export const GUIDED_BLOCKS = {
   preparacion: {
-    intro: 'Revisa la ficha y verifica el saldo antes de contactar.',
     steps: [
       { key: 'saldo', title: 'Verificar el saldo', short: 'Revisa la ficha y su actualización.' },
     ],
@@ -72,7 +71,7 @@ export type GuidedStepKey = typeof GUIDED_BLOCKS[GuidedBlockKey]['steps'][number
 type Choice = { value: string; text: string; feedback: string };
 export const QUALITY_ANSWERS: Choice[] = [
   { value: 'pago', text: 'Para confirmar que ya hizo un pago.', feedback: 'La grabación y el monitoreo no confirman un pago. El aviso explica que se realizan por efectos de calidad.' },
-  { value: 'calidad', text: 'Por efectos de calidad en la atención.', feedback: '' },
+  { value: 'calidad', text: 'Para cuidar la calidad de la atención.', feedback: '' },
   { value: 'descuento', text: 'Para aprobarle un descuento.', feedback: 'La grabación y el monitoreo no aprueban descuentos. Su finalidad en el aviso es la calidad.' },
 ];
 export const INFORMATION_QUESTIONS: Choice[] = [

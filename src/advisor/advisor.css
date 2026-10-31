@@ -31,11 +31,6 @@
 .training-route .path-card[data-enabled="true"] .path-card-bar span { transition: width .85s cubic-bezier(.22, 1, .36, 1); }
 .training-route .path-card-body small { color: #475569; font-size: 14px; line-height: 1.6; }
 .training-route .path-card-note { margin: 8px 0 0; color: #475569; font-size: 15px; line-height: 1.6; overflow-wrap: anywhere; }
-.training-route .path-card-requirement { margin-top: 10px; }
-.training-route .path-card-requirement summary { width: fit-content; color: #526072; font-size: 14px; font-weight: 500; line-height: 1.6; cursor: pointer; }
-.training-route .path-card-requirement summary:hover { color: #8b1538; }
-.training-route .path-card-requirement summary:focus-visible { outline: 2px solid #8b1538; outline-offset: 3px; border-radius: 3px; }
-.training-route .path-card-requirement[open] summary { color: #8b1538; }
 .training-route .path-card-action { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 44px; padding: 11px 14px; border: 1px solid transparent; border-radius: 10px; background: #8b1538; color: #fff; font: 600 16px/1.5 'Segoe UI', Arial, sans-serif; text-align: center; text-decoration: none; cursor: pointer; transition: background-color .2s ease, box-shadow .2s ease; }
 .training-route .path-card-action svg { width: 17px; height: 17px; flex-shrink: 0; }
 .training-route .path-card-action:focus-visible { outline: 3px solid #8b1538; outline-offset: 4px; }
